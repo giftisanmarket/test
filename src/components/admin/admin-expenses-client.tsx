@@ -387,15 +387,15 @@ export function AdminExpensesClient({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header & Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl md:text-4xl font-heading font-black text-primary flex items-center gap-3">
-            <ReceiptText className="w-8 h-8 text-accent" />
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-heading font-black text-primary flex items-center gap-2.5 sm:gap-3 leading-tight">
+            <ReceiptText className="w-7 h-7 sm:w-8 sm:h-8 text-accent shrink-0" />
             <span>{isAr ? "مصاريف المنصة والتكاليف" : "Platform Expenses & Purchases"}</span>
           </h1>
-          <p className="text-sm text-charcoal/50 mt-1">
+          <p className="text-xs sm:text-sm text-charcoal/50 mt-1 max-w-xl">
             {isAr
               ? "سجل وتتبع جميع المشتريات التشغيلية، التغليف، الإعلانات، الاستضافة، وتكاليف الفريق."
               : "Track and manage all operational spendings, packaging, marketing ads, hosting, and team expenses."}
@@ -406,25 +406,25 @@ export function AdminExpensesClient({
           <button
             type="button"
             onClick={exportCSV}
-            className="px-4 py-2.5 bg-white hover:bg-cream border border-primary/10 rounded-xl text-xs font-bold text-primary flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+            className="flex-1 sm:flex-initial justify-center px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-cream border border-primary/10 rounded-xl text-xs font-bold text-primary flex items-center gap-1.5 sm:gap-2 transition-all shadow-sm cursor-pointer"
           >
-            <Download className="w-4 h-4 text-accent" />
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
             <span>{isAr ? "تصدير CSV" : "Export CSV"}</span>
           </button>
 
           <button
             type="button"
             onClick={() => window.print()}
-            className="px-4 py-2.5 bg-white hover:bg-cream border border-primary/10 rounded-xl text-xs font-bold text-primary flex items-center gap-2 transition-all shadow-sm cursor-pointer no-print"
+            className="flex-1 sm:flex-initial justify-center px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white hover:bg-cream border border-primary/10 rounded-xl text-xs font-bold text-primary flex items-center gap-1.5 sm:gap-2 transition-all shadow-sm cursor-pointer no-print"
           >
-            <Printer className="w-4 h-4 text-primary/60" />
+            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary/60" />
             <span>{isAr ? "طباعة" : "Print Report"}</span>
           </button>
 
           <button
             type="button"
             onClick={openAddModal}
-            className="px-5 py-2.5 bg-primary hover:bg-brand text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer ms-auto md:ms-0"
+            className="w-full sm:w-auto justify-center px-4 sm:px-5 py-2.5 bg-primary hover:bg-brand text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{isAr ? "تسجيل مصروف جديد" : "Log New Expense"}</span>
@@ -433,92 +433,103 @@ export function AdminExpensesClient({
       </div>
 
       {/* KPI Financial Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Card 1: Total Spent */}
-        <div className="p-6 bg-white rounded-3xl border border-primary/5 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-charcoal/40">
+        <div className="p-3.5 sm:p-5 md:p-6 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-charcoal/40 truncate">
               {isAr ? "إجمالي المصاريف" : "Total Platform Spend"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
-              <DollarSign className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
+              <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <p className="text-2xl md:text-3xl font-black text-primary font-heading">
+          <p className="text-lg sm:text-2xl md:text-3xl font-black text-primary font-heading truncate">
             EGP {analytics.totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <span className="text-xs text-charcoal/50 font-medium block">
+          <span className="text-[10px] sm:text-xs text-charcoal/50 font-medium block truncate">
             {analytics.totalCount} {isAr ? "عملية مسجلة" : "recorded entries"}
           </span>
         </div>
 
         {/* Card 2: This Month */}
-        <div className="p-6 bg-white rounded-3xl border border-primary/5 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-charcoal/40">
+        <div className="p-3.5 sm:p-5 md:p-6 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-charcoal/40 truncate">
               {isAr ? "مصاريف هذا الشهر" : "This Month"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <Calendar className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <p className="text-2xl md:text-3xl font-black text-emerald-700 font-heading">
+          <p className="text-lg sm:text-2xl md:text-3xl font-black text-emerald-700 font-heading truncate">
             EGP {analytics.thisMonthSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <span className="text-xs text-charcoal/50 font-medium block">
-            {isAr ? "الشهر الحالي" : "Current calendar month"}
+          <span className="text-[10px] sm:text-xs text-charcoal/50 font-medium block truncate">
+            {isAr ? "الشهر الحالي" : "Current month"}
           </span>
         </div>
 
         {/* Card 3: Last Month */}
-        <div className="p-6 bg-white rounded-3xl border border-primary/5 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-charcoal/40">
+        <div className="p-3.5 sm:p-5 md:p-6 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-charcoal/40 truncate">
               {isAr ? "مصاريف الشهر الماضي" : "Last Month"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-              <Calendar className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+              <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <p className="text-2xl md:text-3xl font-black text-primary font-heading">
+          <p className="text-lg sm:text-2xl md:text-3xl font-black text-primary font-heading truncate">
             EGP {analytics.lastMonthSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
-          <span className="text-xs text-charcoal/50 font-medium block">
-            {isAr ? "الشهر المنصرم" : "Previous calendar month"}
+          <span className="text-[10px] sm:text-xs text-charcoal/50 font-medium block truncate">
+            {isAr ? "الشهر المنصرم" : "Previous month"}
           </span>
         </div>
 
         {/* Card 4: Top Category */}
-        <div className="p-6 bg-white rounded-3xl border border-primary/5 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-charcoal/40">
+        <div className="p-3.5 sm:p-5 md:p-6 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-1.5 sm:space-y-2">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-charcoal/40 truncate">
               {isAr ? "أعلى بند إنفاق" : "Top Category"}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-              <PieChart className="w-4 h-4" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
+              <PieChart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <p className="text-lg md:text-xl font-bold text-primary truncate">
+          <p className="text-base sm:text-lg md:text-xl font-bold text-primary truncate">
             {categoryLabels[topCategoryKey as ExpenseCategoryType]?.[isAr ? "ar" : "en"] || topCategoryKey}
           </p>
-          <span className="text-xs text-purple-700 font-bold block">
+          <span className="text-[11px] sm:text-xs text-purple-700 font-bold block truncate">
             EGP {topCategoryAmount.toLocaleString()}
           </span>
         </div>
       </div>
 
       {/* Category Breakdown Progress Bars */}
-      <div className="p-6 bg-white rounded-3xl border border-primary/5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-black uppercase tracking-wider text-primary">
-            {isAr ? "توزيع المصاريف حسب الأقسام" : "Category Spending Breakdown"}
-          </h3>
-          <span className="text-xs text-charcoal/40 font-medium">
+      <div className="p-4 sm:p-6 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-primary">
+              {isAr ? "توزيع المصاريف حسب الأقسام" : "Category Spending Breakdown"}
+            </h3>
+            {categoryFilter !== "ALL" && (
+              <button
+                type="button"
+                onClick={() => setCategoryFilter("ALL")}
+                className="text-[10px] text-accent font-bold hover:underline cursor-pointer"
+              >
+                ({isAr ? "إلغاء الفلتر" : "Clear filter"})
+              </button>
+            )}
+          </div>
+          <span className="text-[10px] sm:text-xs text-charcoal/40 font-medium">
             {Object.keys(analytics.categoryTotals || {}).length} {isAr ? "أقسام مفعلة" : "active categories"}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 pt-1 sm:pt-2">
           {(Object.keys(categoryLabels) as ExpenseCategoryType[]).map((catKey) => {
             const catInfo = categoryLabels[catKey];
             const amount = analytics.categoryTotals?.[catKey] || 0;
@@ -529,39 +540,48 @@ export function AdminExpensesClient({
             return (
               <div
                 key={catKey}
+                onClick={() => setCategoryFilter(categoryFilter === catKey ? "ALL" : catKey)}
                 className={cn(
-                  "p-4 rounded-2xl border transition-all",
+                  "p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer flex flex-col justify-between hover:shadow-md",
                   catInfo.bg,
                   categoryFilter === catKey ? "ring-2 ring-primary shadow-sm" : ""
                 )}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Icon className={cn("w-4 h-4", catInfo.color)} />
-                    <span className="text-xs font-bold text-primary truncate max-w-[130px]">
-                      {catInfo[isAr ? "ar" : "en"]}
+                <div>
+                  {/* Row 1: Icon on left, bill count badge on right */}
+                  <div className="flex items-center justify-between gap-1 mb-2">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-white/80 border border-black/5 flex items-center justify-center shrink-0 shadow-sm">
+                      <Icon className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4", catInfo.color)} />
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-charcoal/60 px-1.5 sm:px-2 py-0.5 rounded-md bg-white/80 border border-black/5 shrink-0">
+                      {count} {isAr ? "فاتورة" : "bills"}
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold text-charcoal/60">
-                    {count} {isAr ? "فاتورة" : "bills"}
-                  </span>
-                </div>
 
-                <div className="flex items-baseline justify-between">
-                  <p className="text-sm font-black text-primary">
-                    EGP {amount.toLocaleString()}
+                  {/* Row 2: Title with full available width - no collision with badge or icon */}
+                  <p className="text-xs font-bold text-primary truncate leading-snug mb-2" title={catInfo[isAr ? "ar" : "en"]}>
+                    {catInfo[isAr ? "ar" : "en"]}
                   </p>
-                  <span className="text-[10px] font-mono font-bold text-charcoal/50">
-                    {percentage.toFixed(1)}%
-                  </span>
                 </div>
 
-                {/* Progress bar */}
-                <div className="w-full h-1.5 bg-black/5 rounded-full mt-2 overflow-hidden">
-                  <div
-                    className="h-full bg-primary rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, percentage)}%` }}
-                  />
+                <div>
+                  {/* Row 3: Amount and percentage */}
+                  <div className="flex items-baseline justify-between gap-1">
+                    <p className="text-xs sm:text-sm font-black text-primary truncate">
+                      EGP {amount.toLocaleString()}
+                    </p>
+                    <span className="text-[9px] sm:text-[10px] font-mono font-bold text-charcoal/50 shrink-0">
+                      {percentage.toFixed(1)}%
+                    </span>
+                  </div>
+
+                  {/* Row 4: Progress bar */}
+                  <div className="w-full h-1 sm:h-1.5 bg-black/5 rounded-full mt-2 overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, percentage)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             );
@@ -570,8 +590,8 @@ export function AdminExpensesClient({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 bg-white rounded-2xl border border-primary/5 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+      <div className="p-3.5 sm:p-4 bg-white rounded-2xl border border-primary/5 shadow-sm flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch md:items-center justify-between">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full md:w-auto">
           {/* Timeframe filter pills */}
           {[
             { id: "ALL", label: isAr ? "كل الفترات" : "All Time" },
@@ -583,7 +603,7 @@ export function AdminExpensesClient({
               key={tf.id}
               onClick={() => setTimeframeFilter(tf.id as any)}
               className={cn(
-                "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                "px-2.5 sm:px-3.5 py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer",
                 timeframeFilter === tf.id
                   ? "bg-primary text-white shadow-sm"
                   : "bg-cream/40 text-charcoal/60 hover:bg-cream hover:text-primary"
@@ -593,7 +613,7 @@ export function AdminExpensesClient({
             </button>
           ))}
 
-          <span className="h-4 w-px bg-primary/10 mx-1 hidden sm:block" />
+          <span className="h-4 w-px bg-primary/10 mx-0.5 hidden sm:block" />
 
           {/* Custom Category Dropdown Filter */}
           <div className="relative">
@@ -601,17 +621,17 @@ export function AdminExpensesClient({
               type="button"
               onClick={() => setIsCategoryFilterOpen(!isCategoryFilterOpen)}
               className={cn(
-                "h-8 px-3.5 bg-cream/40 border border-primary/10 rounded-xl text-xs font-bold text-primary hover:border-primary/30 flex items-center gap-2 transition-all cursor-pointer shadow-sm",
+                "h-8 sm:h-9 px-3 sm:px-3.5 bg-cream/40 border border-primary/10 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold text-primary hover:border-primary/30 flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer shadow-sm",
                 categoryFilter !== "ALL" && "bg-primary text-white border-primary"
               )}
             >
-              <Filter className="w-3.5 h-3.5 opacity-70" />
-              <span>
+              <Filter className="w-3.5 h-3.5 opacity-70 shrink-0" />
+              <span className="truncate max-w-[120px] sm:max-w-none">
                 {categoryFilter === "ALL"
                   ? (isAr ? "جميع الأقسام" : "All Categories")
                   : categoryLabels[categoryFilter as ExpenseCategoryType]?.[isAr ? "ar" : "en"] || categoryFilter}
               </span>
-              <ChevronDown className={cn("w-3.5 h-3.5 opacity-60 transition-transform duration-200", isCategoryFilterOpen && "rotate-180")} />
+              <ChevronDown className={cn("w-3.5 h-3.5 opacity-60 transition-transform duration-200 shrink-0", isCategoryFilterOpen && "rotate-180")} />
             </button>
 
             <AnimatePresence>
@@ -623,7 +643,7 @@ export function AdminExpensesClient({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -6, scale: 0.96 }}
                     transition={{ duration: 0.15 }}
-                    className="absolute start-0 top-full mt-1.5 w-56 bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 space-y-0.5 overflow-hidden text-start"
+                    className="absolute start-0 top-full mt-1.5 w-60 max-w-[calc(100vw-2.5rem)] bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 space-y-0.5 max-h-72 overflow-y-auto custom-scrollbar text-start"
                   >
                     <button
                       type="button"
@@ -926,34 +946,35 @@ export function AdminExpensesClient({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md overflow-y-auto p-4 sm:p-6 md:p-8 flex justify-center items-start min-h-screen"
+            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md overflow-y-auto p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen"
             onClick={() => !isSubmitting && setIsAddModalOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              initial={{ scale: 0.95, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              exit={{ scale: 0.95, opacity: 0, y: 16 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-xl bg-white rounded-[2rem] p-6 md:p-8 shadow-2xl border border-primary/5 my-auto space-y-6 shrink-0"
+              className="relative w-full max-w-xl bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 md:p-8 shadow-2xl border border-primary/5 my-auto space-y-4 sm:space-y-6 shrink-0 max-h-[92dvh] overflow-y-auto custom-scrollbar"
             >
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => setIsAddModalOpen(false)}
-                className="absolute top-6 end-6 w-9 h-9 rounded-full bg-cream hover:bg-primary/5 flex items-center justify-center text-charcoal/60 hover:text-primary transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-accent">
-                  {isAr ? "إدارة التكاليف التشغيلية" : "Platform Financial Operations"}
-                </span>
-                <h3 className="text-xl md:text-2xl font-heading font-black text-primary mt-1">
-                  {editingExpense
-                    ? (isAr ? "تعديل بيانات المصروف" : "Edit Expense Entry")
-                    : (isAr ? "تسجيل مصروف أو مشترى جديد" : "Log New Platform Expense")}
-                </h3>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-accent">
+                    {isAr ? "إدارة التكاليف التشغيلية" : "Platform Financial Operations"}
+                  </span>
+                  <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-black text-primary mt-0.5 leading-snug">
+                    {editingExpense
+                      ? (isAr ? "تعديل بيانات المصروف" : "Edit Expense Entry")
+                      : (isAr ? "تسجيل مصروف أو مشترى جديد" : "Log New Platform Expense")}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-cream hover:bg-primary/5 flex items-center justify-center text-charcoal/60 hover:text-primary transition-all cursor-pointer shrink-0"
+                >
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
               </div>
 
               <form onSubmit={handleSaveExpense} className="space-y-4">

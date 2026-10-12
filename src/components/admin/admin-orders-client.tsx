@@ -622,7 +622,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
       {/* Edit Order Modal */}
       <AnimatePresence>
         {editingOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -631,22 +631,22 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
               className="absolute inset-0 bg-primary/20 backdrop-blur-xl"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl p-8 md:p-12 space-y-8 no-print"
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] shadow-2xl p-5 sm:p-8 md:p-12 space-y-6 sm:space-y-8 no-print max-h-[92dvh] overflow-y-auto custom-scrollbar"
             >
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-1">Admin Control</p>
-                  <h2 className="text-2xl md:text-3xl font-heading font-bold text-primary">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-primary leading-tight">
                     Update Order State
                   </h2>
                   <p className="font-mono text-xs font-bold text-accent mt-1 break-all">#{editingOrder.id}</p>
                 </div>
                 <button
                   onClick={() => setEditingOrder(null)}
-                  className="w-10 h-10 rounded-full border border-primary/5 flex items-center justify-center text-primary/40 hover:text-primary transition-colors"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-primary/10 flex items-center justify-center text-primary/40 hover:text-primary transition-colors shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -776,17 +776,17 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                 )}
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-3 sm:gap-4 pt-3 sm:pt-4">
                 <button
                   onClick={() => setEditingOrder(null)}
-                  className="flex-1 h-14 border border-primary/10 text-primary font-bold rounded-2xl hover:bg-primary/5 transition-all text-sm"
+                  className="flex-1 h-12 sm:h-14 border border-primary/10 text-primary font-bold rounded-2xl hover:bg-primary/5 transition-all text-xs sm:text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleUpdateStatus}
                   disabled={isUpdating}
-                  className="flex-1 h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 h-12 sm:h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isUpdating ? (
                     <>
@@ -805,7 +805,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
       {/* Order Details Modal */}
       <AnimatePresence>
         {selectedOrderDetails && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -814,121 +814,129 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
               className="absolute inset-0 bg-primary/20 backdrop-blur-xl"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-4xl bg-white rounded-[2rem] md:rounded-[3rem] shadow-2xl overflow-hidden no-print max-h-[90vh] flex flex-col"
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              className="relative w-full max-w-4xl bg-white rounded-2xl sm:rounded-[2rem] md:rounded-[3rem] shadow-2xl overflow-hidden no-print max-h-[92dvh] sm:max-h-[90vh] flex flex-col"
             >
-              <div className="overflow-y-auto custom-scrollbar p-8 md:p-12 space-y-10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] mb-4 break-all">
+              <div className="overflow-y-auto custom-scrollbar p-4 sm:p-6 md:p-10 lg:p-12 space-y-6 sm:space-y-8 md:space-y-10">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] mb-2 sm:mb-4 max-w-full break-all">
                       {dict.admin.order_details} #{selectedOrderDetails.id}
                     </div>
-                    <h2 className="text-2xl md:text-4xl font-heading font-bold text-primary">{dict.admin.full_order_details} <span className="serif italic">{dict.admin.overview_accent}</span></h2>
+                    <h2 className="text-xl sm:text-2xl md:text-4xl font-heading font-bold text-primary leading-tight">
+                      {dict.admin.full_order_details} <span className="serif italic">{dict.admin.overview_accent}</span>
+                    </h2>
                   </div>
                   <button
                     onClick={() => setSelectedOrderDetails(null)}
-                    className="w-10 h-10 md:w-12 md:h-12 rounded-full border border-primary/5 flex items-center justify-center text-primary/40 hover:text-primary transition-colors shrink-0"
+                    className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full border border-primary/10 flex items-center justify-center text-primary/40 hover:text-primary hover:bg-primary/5 transition-colors shrink-0"
                   >
                     <X className="w-5 h-5 md:w-6 md:h-6" />
                   </button>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-8">
-                  <div className="md:col-span-2 space-y-6">
+                <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
+                  <div className="md:col-span-2 space-y-4 sm:space-y-6">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40">{dict.admin.included_treasures}</h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3.5 sm:space-y-4">
                       {selectedOrderDetails.items?.map((item: any, idx: number) => (
-                        <div key={idx} className="flex gap-4 p-4 bg-cream/20 rounded-2xl border border-primary/5">
-                          <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-white border border-primary/5 shadow-sm shrink-0">
-                            <img src={item.product?.images?.[0]} alt="" className="object-cover w-full h-full" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-start gap-4">
-                              <div>
-                                <p className="font-bold text-primary text-sm">{item.product?.name}</p>
-                                <p className="text-[10px] text-charcoal/40 font-medium">Qty: {item.quantity} • {dict.product?.currency} {item.price}</p>
-                              </div>
-                              <span className={cn(
-                                "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border",
-                                item.status === "PENDING" ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
-                                item.status === "PROCESSING" ? "bg-purple-50 text-purple-600 border-purple-200" :
-                                item.status === "SHIPPED" ? "bg-blue-50 text-blue-600 border-blue-200" :
-                                "bg-green-50 text-green-700 border-green-200"
-                              )}>
-                                {item.status}
-                              </span>
+                        <div key={idx} className="p-3.5 sm:p-4 bg-cream/20 rounded-2xl border border-primary/5 space-y-3">
+                          <div className="flex gap-3 sm:gap-4 items-start">
+                            <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-white border border-primary/5 shadow-sm shrink-0">
+                              <img src={item.product?.images?.[0]} alt="" className="object-cover w-full h-full" />
                             </div>
-                            {item.variant && (
-                              <p className="text-[10px] font-bold text-accent mt-1">Variant: {item.variant.name}</p>
-                            )}
-                            {item.personalization && (
-                              <p className="text-[10px] italic text-charcoal/60 mt-1 bg-white/50 p-2 rounded-lg border border-primary/5">
-                                "{item.personalization}"
-                              </p>
-                            )}
-                            {item.product?.artisan && (
-                              <div className="mt-2 text-[10px] bg-primary/5 p-3 rounded-xl border border-primary/10 space-y-1">
-                                <p className="font-bold text-primary flex items-center gap-1.5">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap sm:flex-nowrap justify-between items-start gap-1.5 sm:gap-2">
+                                <div className="min-w-0 pr-1">
+                                  <p className="font-bold text-primary text-xs sm:text-sm leading-snug break-words">{item.product?.name}</p>
+                                  <p className="text-[10px] text-charcoal/50 font-medium mt-0.5">Qty: {item.quantity} • {dict.product?.currency} {item.price}</p>
+                                </div>
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest border shrink-0",
+                                  item.status === "PENDING" ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
+                                  item.status === "PROCESSING" ? "bg-purple-50 text-purple-600 border-purple-200" :
+                                  item.status === "SHIPPED" ? "bg-blue-50 text-blue-600 border-blue-200" :
+                                  "bg-green-50 text-green-700 border-green-200"
+                                )}>
+                                  {item.status}
+                                </span>
+                              </div>
+                              {item.variant && (
+                                <p className="text-[10px] font-bold text-accent mt-1">Variant: {item.variant.name}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {item.personalization && (
+                            <p className="text-[10px] italic text-charcoal/60 bg-white/60 p-2.5 rounded-xl border border-primary/5 break-words">
+                              "{item.personalization}"
+                            </p>
+                          )}
+
+                          {item.product?.artisan && (
+                            <div className="text-[10px] bg-primary/5 p-3 sm:p-3.5 rounded-xl border border-primary/10 space-y-1.5">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                                <p className="font-bold text-primary flex items-center gap-1.5 min-w-0">
                                   <Store className="w-3.5 h-3.5 text-accent shrink-0" />
-                                  <span>Seller Studio: {item.product.artisan.studioName}</span>
+                                  <span className="truncate">Seller Studio: {item.product.artisan.studioName}</span>
                                 </p>
                                 {item.product.artisan.phoneNumber && (
-                                  <p className="text-accent font-bold flex items-center gap-1.5">
+                                  <p className="text-accent font-bold flex items-center gap-1 shrink-0">
                                     <Phone className="w-3 h-3 shrink-0" />
                                     <span>Phone: {item.product.artisan.phoneNumber}</span>
                                   </p>
                                 )}
-                                <div className="pt-1.5 border-t border-primary/10 mt-1">
-                                  <p className="font-bold text-primary flex items-center gap-1.5 mb-1">
-                                    <MapPin className="w-3.5 h-3.5 text-primary/60 shrink-0" />
-                                    <span>Exact Pickup Address (Courier):</span>
-                                  </p>
-                                  <ShippingAddressDisplay 
-                                    address={[
-                                      item.product.artisan.pickupAddress || item.product.artisan.location || "Not specified",
-                                      item.product.artisan.pickupBuilding ? `Bldg/Fl: ${item.product.artisan.pickupBuilding}` : null,
-                                      item.product.artisan.pickupDistrict ? `District: ${item.product.artisan.pickupDistrict}` : null
-                                    ].filter(Boolean).join(", ")} 
-                                    city={item.product.artisan.pickupCity || item.product.artisan.location}
-                                    className="text-xs text-charcoal/70 ps-5"
-                                    lang={lang}
-                                  />
-                                  {item.product.artisan.pickupNotes && (
-                                    <p className="text-charcoal/50 ps-5 text-[9px] italic mt-1">
-                                      Notes: {item.product.artisan.pickupNotes}
-                                    </p>
-                                  )}
-                                </div>
                               </div>
-                            )}
-                          </div>
+                              <div className="pt-2 border-t border-primary/10 mt-1 space-y-1">
+                                <p className="font-bold text-primary flex items-center gap-1.5 mb-1">
+                                  <MapPin className="w-3.5 h-3.5 text-primary/60 shrink-0" />
+                                  <span>Exact Pickup Address (Courier):</span>
+                                </p>
+                                <ShippingAddressDisplay 
+                                  address={[
+                                    item.product.artisan.pickupAddress || item.product.artisan.location || "Not specified",
+                                    item.product.artisan.pickupBuilding ? `Bldg/Fl: ${item.product.artisan.pickupBuilding}` : null,
+                                    item.product.artisan.pickupDistrict ? `District: ${item.product.artisan.pickupDistrict}` : null
+                                  ].filter(Boolean).join(", ")} 
+                                  city={item.product.artisan.pickupCity || item.product.artisan.location}
+                                  className="text-[11px] sm:text-xs text-charcoal/70 ps-3 sm:ps-5 break-words leading-relaxed"
+                                  lang={lang}
+                                />
+                                {item.product.artisan.pickupNotes && (
+                                  <p className="text-charcoal/50 ps-3 sm:ps-5 text-[9px] italic mt-1 break-words">
+                                    Notes: {item.product.artisan.pickupNotes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="space-y-8">
+                  <div className="space-y-6 sm:space-y-8">
                     <div className="space-y-4">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40">{dict.admin.customer_details}</h3>
-                      <div className="bg-primary/5 p-6 rounded-2xl space-y-4">
+                      <div className="bg-primary/5 p-4 sm:p-6 rounded-2xl space-y-3.5 sm:space-y-4">
                         <div>
                           <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest mb-1">{dict.admin.customer}</p>
-                          <p className="font-bold text-primary text-sm">{selectedOrderDetails.user?.name || "Anonymous"}</p>
+                          <p className="font-bold text-primary text-sm break-words">{selectedOrderDetails.user?.name || "Anonymous"}</p>
                         </div>
                         <div>
                           <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest mb-1">{dict.studio?.community || "Contact"}</p>
-                          <p className="text-xs font-medium text-charcoal/60">{selectedOrderDetails.user?.email || selectedOrderDetails.clientEmail}</p>
-                          <p className="text-xs font-bold text-accent mt-1">{selectedOrderDetails.clientPhone || "No Phone"}</p>
+                          <p className="text-xs font-medium text-charcoal/60 break-all">{selectedOrderDetails.user?.email || selectedOrderDetails.clientEmail}</p>
+                          <p className="text-xs font-bold text-accent mt-1 break-words">{selectedOrderDetails.clientPhone || "No Phone"}</p>
                         </div>
-                        <div className="pt-4 border-t border-primary/10">
+                        <div className="pt-3.5 sm:pt-4 border-t border-primary/10">
                           <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest mb-2">{dict.admin.ship_to}</p>
                           <ShippingAddressDisplay 
                             address={selectedOrderDetails.shippingAddress} 
                             city={selectedOrderDetails.shippingCity}
                             country={selectedOrderDetails.shippingCountry}
-                            className="text-xs text-charcoal/60"
+                            className="text-xs text-charcoal/60 leading-relaxed"
                             lang={lang}
                           />
                         </div>
@@ -937,14 +945,14 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                         <div className="pt-3 border-t border-primary/10 space-y-1.5">
                           <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest">{isAr ? "طريقة الدفع" : "Payment Method"}</p>
                           {selectedOrderDetails.orderNotes?.includes("[COD") ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-xl text-amber-900 text-xs font-bold border border-amber-200/80">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 rounded-xl text-amber-900 text-xs font-bold border border-amber-200/80 max-w-full">
                               <Banknote className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                              <span>{isAr ? "الدفع عند الاستلام (COD)" : "Cash on Delivery (COD)"}</span>
+                              <span className="truncate">{isAr ? "الدفع عند الاستلام (COD)" : "Cash on Delivery (COD)"}</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-xl text-emerald-900 text-xs font-bold border border-emerald-200/80">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 rounded-xl text-emerald-900 text-xs font-bold border border-emerald-200/80 max-w-full">
                               <CreditCard className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                              <span>{isAr ? "دفع إلكتروني (بطاقة / محفظة)" : "Paid Online (Cards / Wallets)"}</span>
+                              <span className="truncate">{isAr ? "دفع إلكتروني (بطاقة / محفظة)" : "Paid Online (Cards / Wallets)"}</span>
                             </span>
                           )}
                         </div>
@@ -964,8 +972,8 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                 <Truck className="w-3 h-3 text-accent" />
                                 <span>{isAr ? "تعليمات التوصيل من العميل (المندوب)" : "Delivery Instructions (Courier)"}</span>
                               </p>
-                              <div className="p-3.5 bg-accent/5 rounded-2xl border border-accent/20">
-                                <p className="text-xs font-medium text-primary italic leading-relaxed">
+                              <div className="p-3 sm:p-3.5 bg-accent/5 rounded-2xl border border-accent/20">
+                                <p className="text-xs font-medium text-primary italic leading-relaxed break-words">
                                   "{deliveryNote}"
                                 </p>
                               </div>
@@ -977,7 +985,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
 
                     <div className="space-y-4">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40">{dict.admin.financials}</h3>
-                      <div className="bg-cream/30 p-6 rounded-2xl space-y-3">
+                      <div className="bg-cream/30 p-4 sm:p-6 rounded-2xl space-y-3">
                         <div className="flex justify-between text-xs">
                           <span className="text-charcoal/40 font-bold uppercase tracking-widest text-[9px]">{dict.admin.subtotal}</span>
                           <span className="font-bold text-primary">{dict.product?.currency} {selectedOrderDetails.totalAmount - (selectedOrderDetails.shippingCost || 0) + (selectedOrderDetails.discountApplied || 0)}</span>
@@ -996,13 +1004,13 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                           <span className="font-black text-primary uppercase tracking-[0.2em] text-[10px]">{dict.admin.total_paid}</span>
                           <span className="text-xl font-heading font-bold text-primary">{dict.product?.currency} {selectedOrderDetails.totalAmount}</span>
                         </div>
+                      </div>
                     </div>
-                  </div>
                     
                     {(selectedOrderDetails.status === "SHIPPED" || selectedOrderDetails.status === "DELIVERED") ? (
                       <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40">Fulfillment</h3>
-                        <div className="bg-blue-50/50 border border-blue-100 p-6 rounded-2xl space-y-3">
+                        <div className="bg-blue-50/50 border border-blue-100 p-4 sm:p-6 rounded-2xl space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-blue-700">
                               <Truck className="w-4 h-4" />
@@ -1016,17 +1024,17 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                           </div>
                           <div>
                             <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Tracking Number</p>
-                            <p className="font-mono text-sm font-bold text-blue-900 tracking-wider">
+                            <p className="font-mono text-sm font-bold text-blue-900 tracking-wider break-all">
                               {selectedOrderDetails.trackingNumber || "N/A"}
                             </p>
                           </div>
                           {selectedOrderDetails.trackingNumber && (
-                            <div className="pt-2 flex gap-2">
+                            <div className="pt-2 flex">
                               <a
                                 href={`https://bosta.co/track/${selectedOrderDetails.trackingNumber}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
                                 Live Bosta Tracking
@@ -1051,7 +1059,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                             type="button"
                             onClick={() => handleBostaShip(selectedOrderDetails.id)}
                             disabled={isBostaLoading}
-                            className="w-full py-3.5 bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full py-3.5 bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold rounded-xl sm:rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                           >
                             {isBostaLoading ? (
                               <>

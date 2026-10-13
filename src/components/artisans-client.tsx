@@ -110,7 +110,7 @@ export function ArtisansClient({ artisans, dict }: ArtisansClientProps) {
 
       {/* Editorial Centered Header — Matching /products and /categories style */}
       <section className="pt-8 md:pt-12 pb-6 text-center">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -139,7 +139,7 @@ export function ArtisansClient({ artisans, dict }: ArtisansClientProps) {
       </section>
 
       {/* Search & Filter Toolbar */}
-      <section className="container mx-auto px-4 md:px-6 mb-8">
+      <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 mb-8">
         <div className="max-w-3xl mx-auto space-y-4">
           
           {/* Search Input Bar */}
@@ -237,7 +237,7 @@ export function ArtisansClient({ artisans, dict }: ArtisansClientProps) {
       </section>
 
       {/* Main Artisan Cards Grid */}
-      <div className="container mx-auto px-4 md:px-6 pb-20">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 pb-20">
         {filteredArtisans.length === 0 ? (
           <div className="py-20 text-center space-y-4 max-w-md mx-auto">
             <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary/40 mx-auto">
@@ -260,7 +260,7 @@ export function ArtisansClient({ artisans, dict }: ArtisansClientProps) {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 2xl:gap-7">
             <AnimatePresence mode="popLayout">
               {filteredArtisans.map((artisan, idx) => (
                 <motion.div

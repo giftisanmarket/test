@@ -57,7 +57,7 @@ export function FoundingBanner({ dict }: { dict: any }) {
           aria-label={isArabic ? "إعلان الانضمام للحرفيين" : "Artisan recruitment announcement"}
           className="relative z-[61] overflow-hidden bg-[#064E3B] text-white/90 border-b border-white/10"
         >
-          <div className="max-w-[1600px] mx-auto px-3 sm:px-4 md:px-8 pe-9 sm:pe-10 md:pe-12 py-2 sm:py-1.5 flex items-center justify-center text-center text-xs">
+          <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-3 sm:px-4 md:px-8 2xl:px-12 3xl:px-16 pe-9 sm:pe-10 md:pe-12 2xl:pe-16 py-2 sm:py-1.5 flex items-center justify-center text-center text-xs 2xl:text-sm">
             <div
               onClick={handleNavigate}
               className="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 cursor-pointer group"

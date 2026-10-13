@@ -21,8 +21,8 @@ export default function ProductDetailLoading() {
       <NavbarSkeleton />
 
       {/* Product Main Container */}
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-6 md:py-12">
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 py-6 md:py-12 2xl:py-16">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 2xl:gap-16 3xl:gap-20 items-start">
           {/* Image Gallery Column */}
           <div className="space-y-4 min-w-0">
             {/* Main Image */}
@@ -47,7 +47,7 @@ export default function ProductDetailLoading() {
             <div className="flex justify-between items-start gap-4">
               <div className="flex-1 space-y-2">
                 <Skeleton className="w-24 h-4 rounded-md" />
-                <Skeleton className="w-4/5 h-10 md:h-12 rounded-xl" />
+                <Skeleton className="w-4/5 h-10 md:h-12 2xl:h-14 rounded-xl" />
                 {/* Rating stars & review count */}
                 <div className="flex items-center gap-2 pt-1">
                   <div className="flex gap-1">
@@ -110,8 +110,8 @@ export default function ProductDetailLoading() {
             <Skeleton className="w-28 h-4 rounded-md" />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
-            {[1, 2, 3, 4, 5].map((i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 2xl:gap-5 3xl:gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <ProductCardSkeleton key={i} />
             ))}
           </div>

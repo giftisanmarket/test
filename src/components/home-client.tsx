@@ -183,11 +183,11 @@ export default function HomeClient({
         id="newsletter"
         className="py-16 md:py-20 bg-primary text-white overflow-hidden relative border-t border-white/10"
       >
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 relative z-10 text-center space-y-5 md:space-y-6">
-          <h2 className="text-2xl md:text-4xl font-heading font-bold">
+        <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 relative z-10 text-center space-y-5 md:space-y-6 2xl:space-y-8">
+          <h2 className="text-2xl md:text-4xl 2xl:text-5xl font-heading font-bold">
             {dict?.home?.waitlist_title || (isArabic ? "انضم إلى مجتمع جيفتيزان" : "Join the Giftisan Circle")}
           </h2>
-          <p className="text-white/75 max-w-xl mx-auto text-xs md:text-base text-balance leading-relaxed">
+          <p className="text-white/75 max-w-xl 2xl:max-w-2xl mx-auto text-xs md:text-base 2xl:text-lg text-balance leading-relaxed">
             {dict?.home?.waitlist_desc ||
               (isArabic
                 ? "اشترك لتصلك أحدث الإبداعات اليدوية وقصص الحرفيين والعروض الخاصة أولاً بأول."

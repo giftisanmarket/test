@@ -7,7 +7,7 @@ export default function CheckoutLoading() {
       {/* Sticky Navbar Skeleton */}
       <NavbarSkeleton />
 
-      <div className="container mx-auto px-4 pt-24 md:pt-32">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 pt-6 sm:pt-8 lg:pt-10 2xl:pt-12">
         {/* Back Link chevron mockup */}
         <div className="flex items-center gap-2 mb-6 md:mb-8">
           <Skeleton className="w-5 h-5 rounded-full" />

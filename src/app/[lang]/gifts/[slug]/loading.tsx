@@ -9,7 +9,7 @@ export default function RecipientGiftsLoading() {
 
       {/* Breadcrumbs Strip Skeleton */}
       <div className="bg-cream-dark/40 border-b border-primary/5 py-2.5">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <div className="flex items-center gap-2">
             <Skeleton className="w-12 h-3.5 rounded-md" />
             <span className="text-charcoal/30 text-xs">/</span>
@@ -21,11 +21,11 @@ export default function RecipientGiftsLoading() {
       </div>
 
       {/* Recipient Header Skeleton */}
-      <section className="pt-6 sm:pt-8 pb-4 sm:pb-5 container mx-auto px-4 md:px-6">
+      <section className="pt-6 sm:pt-8 2xl:pt-10 pb-4 sm:pb-5 w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <Skeleton className="w-56 sm:w-80 md:w-96 h-9 sm:h-11 rounded-xl" />
+              <Skeleton className="w-56 sm:w-80 md:w-96 2xl:w-[420px] h-9 sm:h-11 2xl:h-12 rounded-xl" />
               <Skeleton className="w-16 h-5 rounded-full" />
             </div>
             <Skeleton className="w-72 sm:w-[480px] max-w-full h-4 rounded-md mt-2.5" />
@@ -38,7 +38,7 @@ export default function RecipientGiftsLoading() {
 
       {/* Sticky Filter Toolbar Skeleton */}
       <div className="sticky top-[105px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2.5 md:py-3 border-y border-primary/5 mb-6 md:mb-8">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           {/* Mobile Toolbar */}
           <div className="flex md:hidden items-center gap-2 w-full overflow-hidden">
             <Skeleton className="w-20 h-7 rounded-full shrink-0" />
@@ -67,9 +67,9 @@ export default function RecipientGiftsLoading() {
       </div>
 
       {/* Products Grid Skeleton */}
-      <section className="container mx-auto px-4 md:px-6 pb-16">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
+      <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 pb-16 2xl:pb-24">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 2xl:gap-6">
+          {Array.from({ length: 12 }).map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
         </div>

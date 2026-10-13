@@ -10,16 +10,16 @@ export function MissionStatementBar({ dict }: MissionStatementBarProps) {
   const isArabic = dict?.common?.home === "الرئيسية" || dict?.common?.search?.includes("ابحث");
 
   return (
-    <section className="w-full bg-primary/5 border-t border-primary/10 mt-12 pt-12 md:pt-16 pb-12">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12">
+    <section className="w-full bg-primary/5 border-t border-primary/10 mt-12 2xl:mt-16 pt-12 md:pt-16 2xl:pt-20 pb-12 2xl:pb-16">
+      <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16">
         {/* Etsy-Style 'What is Giftisan' Section */}
-        <div className="text-center max-w-3xl mx-auto mb-10 md:mb-14">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] font-serif font-normal italic text-primary tracking-tight leading-tight">
+        <div className="text-center max-w-3xl 2xl:max-w-4xl mx-auto mb-10 md:mb-14 2xl:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.6rem] 2xl:text-[3.1rem] 3xl:text-5xl font-serif font-normal italic text-primary tracking-tight leading-tight">
             {isArabic
               ? "ما هو جيفتيزان؟ مجتمع يحتفي بالحرفية المصرية."
               : "What is Giftisan? A community doing good."}
           </h2>
-          <p className="mt-3 text-xs sm:text-sm md:text-base text-charcoal/65 leading-relaxed font-normal">
+          <p className="mt-3 text-xs sm:text-sm md:text-base 2xl:text-lg text-charcoal/65 leading-relaxed font-normal">
             {isArabic
               ? "جيفتيزان مجتمع يربطك مباشرة بأمهر المبدعين والحرفيين في مصر، لنمنح كل هدية قيمة حقيقية وقصة ملهمة."
               : "Giftisan is a curated community connecting you directly to passionate independent creators across Egypt, making every gift meaningful."}
@@ -27,8 +27,8 @@ export function MissionStatementBar({ dict }: MissionStatementBarProps) {
         </div>
 
         {/* 4 Trust Pillars in Giftisan Brand Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white/70 border border-primary/5 shadow-2xs space-y-2 text-center md:text-start">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 md:gap-8 2xl:gap-10">
+          <div className="p-4 sm:p-5 2xl:p-6 rounded-2xl 2xl:rounded-3xl bg-white/70 border border-primary/5 shadow-2xs space-y-2 text-center md:text-start">
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto md:mx-0">
               <HeartHandshake className="w-5 h-5" />
             </div>

@@ -184,7 +184,7 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
 
       {/* Category Header */}
       <section className="pt-8 md:pt-12 pb-6 md:pb-8 text-center">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -221,7 +221,7 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
         style={stickyTop !== null ? { top: `${stickyTop}px` } : undefined}
         className="sticky top-[105px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2.5 md:py-3 border-y border-primary/5 mb-6 md:mb-8 transition-all"
       >
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           
           {/* Mobile Toolbar: Single Clean Row with Horizontal Swiping Pills & Filters Drawer Button */}
           <div className="flex md:hidden items-center gap-2 w-full">
@@ -483,7 +483,7 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
       </div>
 
       {/* Grid */}
-      <section className="pb-12 container mx-auto px-4 md:px-6">
+      <section className="pb-12 w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
         {filteredProducts.length === 0 ? (
           <div className="py-16 md:py-24 flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-14 h-14 md:w-16 md:h-16 bg-primary/5 rounded-full flex items-center justify-center text-primary/30">
@@ -514,7 +514,7 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 2xl:gap-6">
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, idx) => {
                 const reviews = product.reviews || [];
@@ -562,7 +562,7 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
                           <Heart className={cn("w-3.5 h-3.5 md:w-4 md:h-4", isFavorite(product.id) && "fill-current")} />
                         </button>
 
-                        {product.badge && !["handmade", "صناعة يدوية", "صنع يدوي", "best seller", "bestseller", "الأكثر طلباً", "الأكثر مبيعاً"].includes(product.badge.trim().toLowerCase()) && (
+                        {product.badge && !["handmade", "صناعة يدوية", "صنع يدوي", "best seller", "bestseller", "الأكثر طلباً", "الأكثر مبيعاً", "personalized", "personalizable", "مخصص", "مخصصة", "قابل للتخصيص", "قابلة للتخصيص", "custom", "customizable"].includes(product.badge.trim().toLowerCase()) && (
                           <span className="absolute bottom-2 start-2 text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/90 text-white backdrop-blur-xs">
                             {product.badge}
                           </span>
@@ -595,12 +595,6 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
                         <p className="text-xs sm:text-sm font-bold text-primary pt-0.5">
                           {currency} {Number(product.price).toFixed(2)}
                         </p>
-
-                        {(product.canPersonalize || product.requiresClientImage) && (
-                          <span className="inline-block mt-0.5 text-[9px] sm:text-[10px] font-bold text-accent px-1.5 py-0.2 bg-accent/10 rounded-md">
-                            {isAr ? "قابلة للتخصيص" : "Personalizable"}
-                          </span>
-                        )}
                       </div>
                     </Link>
                   </motion.div>

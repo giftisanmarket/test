@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 const CURATED_FEATURED_ARTISAN_SLUGS = [
   "ur-own-flower",
   "gl-crochet-m4of",
-  "-ev9y",
+  "rimo-crochet-handmade",
   "charm-threads-0e2u"
 ];
 

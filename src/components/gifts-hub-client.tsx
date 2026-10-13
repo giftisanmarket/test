@@ -209,7 +209,7 @@ export function GiftsHubClient({
 
       {/* 1. Etsy Editorial Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-b from-[#EFE9F6] via-[#F7F4FA] to-cream pt-8 sm:pt-12 md:pt-16 pb-10 sm:pb-14 border-b border-primary/5">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           
           {/* Header Title & Subtitle */}
           <div className="text-center max-w-3xl mx-auto mb-6 sm:mb-10 md:mb-12">
@@ -244,7 +244,7 @@ export function GiftsHubClient({
           <div
             ref={carouselRef}
             onScroll={handleCarouselScroll}
-            className="flex md:grid md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-4 lg:gap-3.5 max-w-7xl mx-auto overflow-x-auto md:overflow-visible pb-4 pt-1 px-4 -mx-4 md:px-0 md:mx-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
+            className="flex md:grid md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-4 lg:gap-3.5 2xl:gap-5 max-w-7xl 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto overflow-x-auto md:overflow-visible pb-4 pt-1 px-4 -mx-4 md:px-0 md:mx-auto snap-x snap-mandatory scrollbar-none scroll-smooth"
           >
             {recipientCards.map((card, idx) => (
               <motion.div
@@ -363,7 +363,7 @@ export function GiftsHubClient({
 
       {/* 4. Shop by Budget Section */}
       <section className="py-12 border-b border-primary/5">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <div className="flex items-end justify-between mb-6">
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-2">
@@ -421,7 +421,7 @@ export function GiftsHubClient({
 
       {/* 5. Trending Handcrafted Gifts Showcase (Preview Shelf) */}
       <section className="py-12 border-b border-primary/5">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-bold mb-2">
@@ -446,7 +446,7 @@ export function GiftsHubClient({
           </div>
 
           {/* Grid of Preview Products */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 2xl:gap-6">
             {previewProducts.map((product) => {
               const reviews = product.reviews || [];
               const ratingCount = reviews.length;
@@ -493,16 +493,6 @@ export function GiftsHubClient({
                         >
                           <Heart className={cn("w-3.5 h-3.5 md:w-4 md:h-4", isFavorite(product.id) && "fill-current")} />
                         </button>
-                      </div>
-
-                      {/* Badges */}
-                      <div className="absolute bottom-2 start-2 z-10 flex flex-col gap-1 items-start">
-                        {(product.canPersonalize || product.requiresClientImage) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur text-accent shadow-xs">
-                            <Sparkles className="w-2.5 h-2.5" />
-                            <span>{isAr ? "مخصص" : "Personalized"}</span>
-                          </span>
-                        )}
                       </div>
                     </div>
 

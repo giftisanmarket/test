@@ -149,7 +149,7 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
 
       {/* Breadcrumbs Strip */}
       <div className="bg-cream-dark/40 border-b border-primary/5 py-2.5">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16">
           <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs lg:text-sm text-charcoal/60">
             <Link href={`/${lang}`} className="hover:text-primary transition-colors">
               {dict.common?.home || (isAr ? "الرئيسية" : "Home")}
@@ -166,23 +166,23 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
         </div>
       </div>
 
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-6 sm:pt-8 lg:pt-10 pb-16 lg:pb-24">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 pt-6 sm:pt-8 lg:pt-10 2xl:pt-12 pb-16 lg:pb-24 2xl:pb-32">
         {/* Cover Banner */}
-        <div className="relative rounded-2xl sm:rounded-3xl lg:rounded-[2rem] overflow-hidden border border-primary/10 shadow-xs bg-cream-dark/30">
+        <div className="relative rounded-2xl sm:rounded-3xl lg:rounded-[2rem] 2xl:rounded-[2.5rem] overflow-hidden border border-primary/10 shadow-xs bg-cream-dark/30">
           {artisan.bannerImage ? (
-            <div className="relative h-44 sm:h-56 md:h-64 lg:h-80 xl:h-96 w-full">
+            <div className="relative h-44 sm:h-56 md:h-64 lg:h-80 xl:h-96 2xl:h-[420px] 3xl:h-[460px] w-full">
               <BespokeImage 
                 src={artisan.bannerImage} 
                 alt={`${displayName} banner`} 
                 fill 
                 className="object-cover" 
                 priority 
-                sizes="(max-width: 1600px) 100vw, 1600px"
+                sizes="(max-width: 1600px) 100vw, 1840px"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
             </div>
           ) : (
-            <div className="h-32 sm:h-40 md:h-48 lg:h-60 xl:h-72 w-full bg-gradient-to-r from-emerald-900/10 via-primary/5 to-amber-900/10 relative overflow-hidden flex items-center justify-end px-8 lg:px-12">
+            <div className="h-32 sm:h-40 md:h-48 lg:h-60 xl:h-72 2xl:h-80 3xl:h-96 w-full bg-gradient-to-r from-emerald-900/10 via-primary/5 to-amber-900/10 relative overflow-hidden flex items-center justify-end px-8 lg:px-12">
               <div className="absolute -end-10 -bottom-10 w-48 lg:w-72 h-48 lg:h-72 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
               <div className="hidden sm:flex items-center gap-3 text-primary/20">
                 <Sparkles className="w-8 h-8 lg:w-12 lg:h-12" />
@@ -192,12 +192,12 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
         </div>
 
         {/* Profile Card Header Info */}
-        <div className="relative -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 xl:-mt-24 px-4 sm:px-6 lg:px-8">
+        <div className="relative -mt-12 sm:-mt-14 md:-mt-16 lg:-mt-20 xl:-mt-24 2xl:-mt-28 px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 lg:gap-8">
             {/* Left: Avatar + Title & Meta */}
             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 lg:gap-8 text-center sm:text-start">
               {/* Avatar */}
-              <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 xl:w-44 xl:h-44 rounded-full overflow-hidden border-4 lg:border-[6px] border-white shadow-lg bg-white shrink-0 ring-1 ring-primary/10">
+              <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 xl:w-44 xl:h-44 2xl:w-48 2xl:h-48 3xl:w-52 3xl:h-52 rounded-full overflow-hidden border-4 lg:border-[6px] border-white shadow-lg bg-white shrink-0 ring-1 ring-primary/10">
                 <BespokeImage 
                   type="artisan" 
                   id={artisan.id} 
@@ -205,14 +205,14 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                   alt={displayName} 
                   fill 
                   className="object-cover" 
-                  sizes="(max-width: 640px) 96px, (max-width: 768px) 112px, (max-width: 1024px) 128px, 176px" 
+                  sizes="(max-width: 640px) 96px, (max-width: 768px) 112px, (max-width: 1024px) 128px, 208px" 
                 />
               </div>
 
               {/* Identity & Badges */}
               <div className="space-y-1.5 lg:space-y-2 pb-1">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 lg:gap-3">
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-5xl font-serif text-[#222222] font-semibold tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-5xl 2xl:text-5xl 3xl:text-6xl font-serif text-[#222222] font-semibold tracking-tight">
                     {displayName}
                   </h1>
                   {artisan.isVerified && (
@@ -287,8 +287,8 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
 
           {/* Bio Quote */}
           {artisan.bio && (
-            <div className="mt-5 lg:mt-7 pt-5 lg:pt-6 border-t border-primary/5">
-              <p className="text-sm sm:text-base lg:text-lg xl:text-xl text-charcoal/75 font-serif italic max-w-2xl lg:max-w-3xl xl:max-w-4xl leading-relaxed whitespace-pre-wrap">
+            <div className="mt-5 lg:mt-7 2xl:mt-8 pt-5 lg:pt-6 2xl:pt-8 border-t border-primary/5">
+              <p className="text-sm sm:text-base lg:text-lg xl:text-xl 2xl:text-2xl text-charcoal/75 font-serif italic max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl leading-relaxed whitespace-pre-wrap">
                 &ldquo;{artisan.bio}&rdquo;
               </p>
             </div>
@@ -296,57 +296,57 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
         </div>
 
         {/* Minimal Metrics Strip */}
-        <div className="bg-white rounded-2xl lg:rounded-3xl border border-primary/10 shadow-xs p-4 sm:p-5 lg:p-6 xl:p-8 mt-8 lg:mt-12 mb-12 lg:mb-16 grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8 divide-y md:divide-y-0 md:divide-x divide-primary/5 rtl:md:divide-x-reverse">
+        <div className="bg-white rounded-2xl lg:rounded-3xl 2xl:rounded-[2rem] border border-primary/10 shadow-xs p-4 sm:p-5 lg:p-6 xl:p-8 2xl:p-9 3xl:p-10 mt-8 lg:mt-12 2xl:mt-14 mb-12 lg:mb-16 2xl:mb-20 grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8 2xl:gap-10 divide-y md:divide-y-0 md:divide-x divide-primary/5 rtl:md:divide-x-reverse">
           <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-serif font-bold text-primary">{products.length}</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1">
+            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{products.length}</p>
+            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
               {dict.artisan_detail?.studio_creations || (isAr ? "منتجات المتجر" : "Shop Products")}
             </p>
           </div>
           <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-serif font-bold text-primary">{totalSales}</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1">
+            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{totalSales}</p>
+            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
               {dict.artisan_detail?.sales || (isAr ? "مبيعات مكتملة" : "Sales Completed")}
             </p>
           </div>
           <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-serif font-bold text-primary">{yearsExp}</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1">
+            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{yearsExp}</p>
+            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
               {dict.artisan_detail?.yrs_mastery || (isAr ? "سنوات الخبرة" : "Yrs Mastery")}
             </p>
           </div>
           <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-serif font-bold text-primary">{avgRating} ★</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1">
+            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{avgRating} ★</p>
+            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
               {totalReviews > 0 ? (isAr ? `${totalReviews} تقييم حقيقي` : `${totalReviews} Verified Reviews`) : (dict.artisan_detail?.curation_score || "Quality Rating")}
             </p>
           </div>
         </div>
 
         {/* Shop Catalog Section */}
-        <section className="mt-8 lg:mt-12">
+        <section className="mt-8 lg:mt-12 2xl:mt-16">
           {/* Section Header & Filter Tabs */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-6 border-b border-primary/10 gap-4 mb-8 lg:mb-10">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-6 border-b border-primary/10 gap-4 mb-8 lg:mb-10 2xl:mb-12">
             <div>
               <div className="flex items-center gap-3">
-                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif text-[#222222] font-semibold">
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl 2xl:text-5xl font-serif text-[#222222] font-semibold">
                   {dict.artisan_detail?.in_the_studio || (isAr ? "معروضات المتجر" : "In the Shop")}
                 </h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 lg:px-3 lg:py-1 rounded-full text-xs lg:text-sm font-semibold bg-primary/10 text-primary">
+                <span className="inline-flex items-center px-2.5 py-0.5 lg:px-3 lg:py-1 2xl:px-3.5 2xl:py-1.5 rounded-full text-xs lg:text-sm 2xl:text-base font-semibold bg-primary/10 text-primary">
                   {filteredProducts.length}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm lg:text-base text-charcoal/60 mt-1">
+              <p className="text-xs sm:text-sm lg:text-base 2xl:text-lg text-charcoal/60 mt-1 2xl:mt-2">
                 {dict.artisan_detail?.vault_exploring || (isAr ? "استكشف قطعاً فريدة مصنوعة يدوياً بحرفية مصرية أصيلة." : "Exploring the collection of handcrafted pieces.")}
               </p>
             </div>
 
             {/* Filter Pill Tabs */}
-            <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+            <div className="flex items-center gap-2 lg:gap-3 2xl:gap-3.5 shrink-0">
               <button
                 onClick={() => setFilter('all')}
                 className={cn(
-                  "px-3.5 py-1.5 lg:px-5 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-all",
+                  "px-3.5 py-1.5 lg:px-5 lg:py-2 2xl:px-6 2xl:py-2.5 rounded-full text-xs lg:text-sm 2xl:text-base font-medium transition-all",
                   filter === 'all'
                     ? "bg-primary text-white shadow-xs"
                     : "bg-white border border-primary/10 text-charcoal/70 hover:text-primary hover:border-primary/25"
@@ -357,7 +357,7 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
               <button
                 onClick={() => setFilter('available')}
                 className={cn(
-                  "px-3.5 py-1.5 lg:px-5 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-all",
+                  "px-3.5 py-1.5 lg:px-5 lg:py-2 2xl:px-6 2xl:py-2.5 rounded-full text-xs lg:text-sm 2xl:text-base font-medium transition-all",
                   filter === 'available'
                     ? "bg-primary text-white shadow-xs"
                     : "bg-white border border-primary/10 text-charcoal/70 hover:text-primary hover:border-primary/25"
@@ -369,7 +369,7 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                 <button
                   onClick={() => setFilter('soldout')}
                   className={cn(
-                    "px-3.5 py-1.5 lg:px-5 lg:py-2 rounded-full text-xs lg:text-sm font-medium transition-all",
+                    "px-3.5 py-1.5 lg:px-5 lg:py-2 2xl:px-6 2xl:py-2.5 rounded-full text-xs lg:text-sm 2xl:text-base font-medium transition-all",
                     filter === 'soldout'
                       ? "bg-primary text-white shadow-xs"
                       : "bg-white border border-primary/10 text-charcoal/70 hover:text-primary hover:border-primary/25"
@@ -383,7 +383,7 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
 
           {/* Products Grid: Responsive up to 6 columns on ultra-wide screens */}
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 3xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6 xl:gap-7 2xl:gap-7 3xl:gap-8">
               {filteredProducts.map((product: any) => (
                 <ProductCard
                   key={product.id}

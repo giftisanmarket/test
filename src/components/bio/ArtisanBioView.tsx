@@ -196,7 +196,7 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
       if (!b) return true;
       const lower = b.trim().toLowerCase();
       return (
-        ["handmade", "صناعة يدوية", "صنع يدوي", "best seller", "bestseller", "الأكثر طلباً", "الأكثر مبيعاً"].includes(lower) ||
+        ["handmade", "صناعة يدوية", "صنع يدوي", "best seller", "bestseller", "الأكثر طلباً", "الأكثر مبيعاً", "personalized", "personalizable", "مخصص", "مخصصة", "قابل للتخصيص", "قابلة للتخصيص", "custom", "customizable"].includes(lower) ||
         lower.startsWith("best seller") ||
         lower.startsWith("الأكثر مبيعاً") ||
         lower.startsWith("الأكثر طلباً")
@@ -222,13 +222,6 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
         label: isRtl ? "إصدار مميز" : "Spotlight",
         icon: "sparkles",
         bg: "bg-[#D97706]",
-      };
-    }
-    if (featuredProduct.canPersonalize) {
-      return {
-        label: isRtl ? "قابل للتخصيص" : "Customizable",
-        icon: "palette",
-        bg: "bg-purple-600",
       };
     }
     return {
@@ -442,11 +435,6 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
                       <p className="text-xs text-[#D97706] font-bold">
                         {featuredProduct.price} EGP
                       </p>
-                      {featuredProduct.canPersonalize && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                          {isRtl ? "قابل للتخصيص" : "Customizable"}
-                        </span>
-                      )}
                     </div>
                   </div>
 
@@ -562,11 +550,6 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
                           className="object-cover group-hover:scale-105 transition duration-300"
                           unoptimized
                         />
-                        {prod.canPersonalize && (
-                          <span className="absolute top-1.5 start-1.5 bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                            {isRtl ? "تفصيل" : "Custom"}
-                          </span>
-                        )}
                         {(prod.stock ?? 1) <= 0 && (
                           <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
                             <span className="bg-white/95 text-gray-800 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">

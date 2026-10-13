@@ -15,6 +15,9 @@
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
 
+  --breakpoint-3xl: 112.5rem;
+  --breakpoint-4xl: 130rem;
+
   --animate-shimmer: shimmer 1.8s infinite ease-in-out;
 
   @keyframes shimmer {

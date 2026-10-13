@@ -45,17 +45,17 @@ export default function ArtisansLoading() {
       {/* Sticky Navbar Skeleton */}
       <NavbarSkeleton />
 
-      <div className="container mx-auto px-4 pt-32 md:pt-40 pb-20">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 pt-32 md:pt-40 2xl:pt-44 pb-20 2xl:pb-28">
         {/* Header Skeleton */}
-        <div className="text-center mb-16 md:mb-20 space-y-6">
+        <div className="text-center mb-16 md:mb-20 2xl:mb-24 space-y-6">
           <Skeleton className="w-44 h-8 rounded-full mx-auto" />
-          <Skeleton className="w-72 md:w-96 h-12 md:h-16 rounded-2xl mx-auto" />
-          <Skeleton className="w-full max-w-xl h-5 rounded-md mx-auto" />
+          <Skeleton className="w-72 md:w-96 2xl:w-[480px] h-12 md:h-16 rounded-2xl mx-auto" />
+          <Skeleton className="w-full max-w-xl 2xl:max-w-2xl h-5 rounded-md mx-auto" />
         </div>
 
-        {/* Artisans Cards Grid Skeleton: 4 cols on desktop matching /artisans */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+        {/* Artisans Cards Grid Skeleton: 5 to 6 cols on big screens matching /artisans */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 2xl:gap-7">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
             <ArtisanCardSkeleton key={i} />
           ))}
         </div>

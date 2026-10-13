@@ -333,7 +333,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
       <main className="min-h-screen bg-cream">
         {/* Minimal Distraction-free Header */}
         <header className="w-full bg-white/80 backdrop-blur-md border-b border-primary/10 sticky top-0 z-50">
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
+          <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 h-16 sm:h-20 flex items-center justify-between">
             <Link href={`/${lang}`} className="flex items-center gap-2 group">
               <div className="relative w-8 h-8 md:w-9 md:h-9 overflow-hidden rounded-md shadow-sm">
                 <Image src="/icon.png" alt="Giftisan" fill className="object-cover" sizes="36px" />
@@ -376,7 +376,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
     <main className="min-h-screen bg-cream pb-24">
       {/* 1. Distraction-Free High-Trust Checkout Header */}
       <header className="w-full bg-white/90 backdrop-blur-md border-b border-primary/10 sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 h-16 sm:h-20 flex items-center justify-between">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 h-16 sm:h-20 flex items-center justify-between">
           {/* Brand Logo */}
           <Link href={`/${lang}`} className="flex items-center gap-2 group">
             <div className="relative w-8 h-8 md:w-9 md:h-9 overflow-hidden rounded-md shadow-sm">
@@ -517,7 +517,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
       </div>
 
       {/* 3. Main Checkout Grid (max-w-[1600px] matching rest of site) */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 pt-6 sm:pt-8 lg:pt-10">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 pt-6 sm:pt-8 lg:pt-10 2xl:pt-12">
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
           
           {/* Left Column: Delivery, Gifting & Payment Forms */}

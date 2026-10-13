@@ -201,18 +201,18 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
   ];
 
   return (
-    <section className="w-full max-w-[1520px] mx-auto px-4 md:px-8 py-8 md:py-12 border-t border-primary/5">
+    <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 py-8 md:py-12 2xl:py-16 border-t border-primary/5">
       {/* Header & Mode Switcher */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 md:mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 md:mb-8 2xl:mb-10">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-bold mb-2">
-            <Gift className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs 2xl:text-sm font-bold mb-2">
+            <Gift className="w-3.5 h-3.5 2xl:w-4 2xl:h-4" />
             <span>{isArabic ? "دليل الهدايا الذكي" : "Gift Discovery Concierge"}</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-primary tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl 2xl:text-[2.6rem] 3xl:text-5xl font-serif font-bold text-primary tracking-tight">
             {isArabic ? "من تحتفل معه اليوم؟" : "Find gifts that mean more."}
           </h2>
-          <p className="text-xs sm:text-sm text-charcoal/65 mt-1 max-w-xl">
+          <p className="text-xs sm:text-sm 2xl:text-base text-charcoal/65 mt-1 max-w-xl 2xl:max-w-2xl">
             {isArabic
               ? "ابحث حسب الشخص، المناسبة، أو الميزانية، وتصفح إبداعات حقيقية صُنعت خصيصاً لتفرح قلوب أحبائك."
               : "Discover one-of-a-kind Egyptian artisan gifts by recipient, occasion, or budget."}
@@ -223,7 +223,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
         <div className="flex items-center gap-1 p-1 bg-cream-dark/60 rounded-full border border-primary/10 self-start md:self-auto overflow-x-auto scrollbar-none max-w-full">
           <button
             onClick={() => setActiveTab("recipient")}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-4 2xl:px-5 py-2 2xl:py-2.5 rounded-full text-xs 2xl:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "recipient"
                 ? "bg-primary text-cream shadow-xs"
                 : "text-charcoal/70 hover:text-primary"
@@ -233,7 +233,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
           </button>
           <button
             onClick={() => setActiveTab("occasion")}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-4 2xl:px-5 py-2 2xl:py-2.5 rounded-full text-xs 2xl:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "occasion"
                 ? "bg-primary text-cream shadow-xs"
                 : "text-charcoal/70 hover:text-primary"
@@ -243,7 +243,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
           </button>
           <button
             onClick={() => setActiveTab("budget")}
-            className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-4 2xl:px-5 py-2 2xl:py-2.5 rounded-full text-xs 2xl:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "budget"
                 ? "bg-primary text-cream shadow-xs"
                 : "text-charcoal/70 hover:text-primary"
@@ -256,15 +256,15 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
 
       {/* Mode 1: By Recipient */}
       {activeTab === "recipient" && (
-        <div className="flex sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 overflow-x-auto sm:overflow-visible pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none scroll-smooth">
+        <div className="flex sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 2xl:gap-6 overflow-x-auto sm:overflow-visible pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none scroll-smooth">
           {recipients.map((rec) => (
             <Link
               key={rec.id}
               href={rec.href}
-              className="w-[62vw] max-w-[240px] sm:w-auto shrink-0 snap-start sm:snap-align-none group relative rounded-2xl overflow-hidden bg-white border border-primary/10 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col h-[235px] sm:h-[260px] md:h-[280px]"
+              className="w-[62vw] max-w-[240px] sm:w-auto shrink-0 snap-start sm:snap-align-none group relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-white border border-primary/10 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col h-[235px] sm:h-[260px] md:h-[280px] 2xl:h-[320px] 3xl:h-[350px]"
             >
               {/* Card Image */}
-              <div className="relative w-full h-[58%] sm:h-[60%] overflow-hidden bg-cream/40">
+              <div className="relative w-full h-[58%] sm:h-[60%] 2xl:h-[62%] overflow-hidden bg-cream/40">
                 <Image
                   src={rec.image}
                   alt={isArabic ? rec.nameAr : rec.nameEn}
@@ -272,24 +272,24 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
                   className="object-cover group-hover:scale-106 transition-transform duration-500 ease-out"
                   sizes="(max-width: 640px) 65vw, (max-width: 1024px) 33vw, 16vw"
                 />
-                <span className="absolute top-2.5 start-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#064E3B] text-white shadow-2xs">
+                <span className="absolute top-2.5 start-2.5 2xl:top-3.5 2xl:start-3.5 px-2 2xl:px-2.5 py-0.5 rounded-full text-[10px] 2xl:text-xs font-bold bg-[#064E3B] text-white shadow-2xs">
                   {isArabic ? rec.badgeAr : rec.badgeEn}
                 </span>
               </div>
 
               {/* Card Text */}
-              <div className="p-3 sm:p-3.5 flex flex-col justify-between flex-1 bg-white">
+              <div className="p-3 sm:p-3.5 2xl:p-4.5 flex flex-col justify-between flex-1 bg-white">
                 <div>
-                  <h3 className="font-heading font-bold text-xs sm:text-sm text-primary group-hover:text-accent transition-colors leading-tight">
+                  <h3 className="font-heading font-bold text-xs sm:text-sm 2xl:text-base text-primary group-hover:text-accent transition-colors leading-tight">
                     {isArabic ? rec.nameAr : rec.nameEn}
                   </h3>
-                  <p className="text-[10px] sm:text-[11px] text-charcoal/60 line-clamp-2 mt-1 leading-snug">
+                  <p className="text-[10px] sm:text-[11px] 2xl:text-xs text-charcoal/60 line-clamp-2 mt-1 leading-snug">
                     {isArabic ? rec.subAr : rec.subEn}
                   </p>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] font-bold text-accent pt-1 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
+                <div className="flex items-center gap-1 text-[11px] 2xl:text-xs font-bold text-accent pt-1 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
                   <span>{isArabic ? "تسوق الآن" : "Shop"}</span>
-                  <ArrowRight className="w-3 h-3 rtl:rotate-180" />
+                  <ArrowRight className="w-3 h-3 2xl:w-3.5 2xl:h-3.5 rtl:rotate-180" />
                 </div>
               </div>
             </Link>
@@ -299,31 +299,31 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
 
       {/* Mode 2: By Occasion */}
       {activeTab === "occasion" && (
-        <div className="flex sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 overflow-x-auto sm:overflow-visible pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none scroll-smooth">
+        <div className="flex sm:grid sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 2xl:gap-6 overflow-x-auto sm:overflow-visible pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none scroll-smooth">
           {occasions.map((occ) => {
             const Icon = occ.icon;
             return (
               <Link
                 key={occ.id}
                 href={occ.href}
-                className={`w-[50vw] max-w-[210px] sm:w-auto shrink-0 snap-start sm:snap-align-none group p-4 sm:p-5 rounded-2xl bg-gradient-to-b ${occ.color} border shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between h-[180px] sm:h-[200px]`}
+                className={`w-[50vw] max-w-[210px] sm:w-auto shrink-0 snap-start sm:snap-align-none group p-4 sm:p-5 2xl:p-6 rounded-2xl 2xl:rounded-3xl bg-gradient-to-b ${occ.color} border shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between h-[180px] sm:h-[200px] 2xl:h-[230px] 3xl:h-[250px]`}
               >
-                <div className="w-10 h-10 rounded-xl bg-white shadow-xs flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
-                  <Icon className="w-5 h-5" />
+                <div className="w-10 h-10 2xl:w-12 2xl:h-12 rounded-xl 2xl:rounded-2xl bg-white shadow-xs flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
+                  <Icon className="w-5 h-5 2xl:w-6 2xl:h-6" />
                 </div>
 
                 <div>
-                  <h3 className="font-heading font-bold text-xs sm:text-sm text-primary group-hover:text-accent transition-colors leading-snug">
+                  <h3 className="font-heading font-bold text-xs sm:text-sm 2xl:text-base text-primary group-hover:text-accent transition-colors leading-snug">
                     {isArabic ? occ.nameAr : occ.nameEn}
                   </h3>
-                  <p className="text-[10px] sm:text-[11px] text-charcoal/65 line-clamp-2 mt-1 leading-snug">
+                  <p className="text-[10px] sm:text-[11px] 2xl:text-xs text-charcoal/65 line-clamp-2 mt-1 leading-snug">
                     {isArabic ? occ.subAr : occ.subEn}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-1 text-[11px] font-bold text-primary/80 group-hover:text-accent group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
+                <div className="flex items-center gap-1 text-[11px] 2xl:text-xs font-bold text-primary/80 group-hover:text-accent group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
                   <span>{isArabic ? "استكشف الهدايا" : "Explore"}</span>
-                  <ArrowRight className="w-3 h-3 rtl:rotate-180" />
+                  <ArrowRight className="w-3 h-3 2xl:w-3.5 2xl:h-3.5 rtl:rotate-180" />
                 </div>
               </Link>
             );
@@ -333,31 +333,31 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
 
       {/* Mode 3: By Budget */}
       {activeTab === "budget" && (
-        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 overflow-x-auto sm:overflow-visible pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none scroll-smooth">
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5 2xl:gap-6 overflow-x-auto sm:overflow-visible pb-3 pt-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-none scroll-smooth">
           {budgets.map((b) => (
             <Link
               key={b.id}
               href={b.href}
-              className="w-[70vw] max-w-[280px] sm:w-auto shrink-0 snap-start sm:snap-align-none group p-5 sm:p-6 rounded-2xl bg-white border border-primary/10 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4"
+              className="w-[70vw] max-w-[280px] sm:w-auto shrink-0 snap-start sm:snap-align-none group p-5 sm:p-6 2xl:p-8 rounded-2xl 2xl:rounded-3xl bg-white border border-primary/10 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between space-y-4"
             >
-              <div className="space-y-2">
-                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#D97706]/15 text-[#B45309]">
+              <div className="space-y-2 2xl:space-y-3">
+                <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] 2xl:text-xs font-bold bg-[#D97706]/15 text-[#B45309]">
                   {isArabic ? b.tagAr : b.tagEn}
                 </span>
-                <h3 className="text-lg sm:text-xl font-serif font-bold text-primary group-hover:text-accent transition-colors">
+                <h3 className="text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl font-serif font-bold text-primary group-hover:text-accent transition-colors">
                   {isArabic ? b.titleAr : b.titleEn}
                 </h3>
-                <p className="text-xs text-charcoal/65 leading-relaxed">
+                <p className="text-xs 2xl:text-sm text-charcoal/65 leading-relaxed">
                   {isArabic ? b.subAr : b.subEn}
                 </p>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-primary/5">
-                <span className="text-xs font-bold text-primary group-hover:text-accent transition-colors">
+              <div className="flex items-center justify-between pt-2 2xl:pt-3 border-t border-primary/5">
+                <span className="text-xs 2xl:text-sm font-bold text-primary group-hover:text-accent transition-colors">
                   {isArabic ? "تصفح التشكيلة" : "Browse Gifts"}
                 </span>
-                <div className="w-8 h-8 rounded-full bg-cream flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                  <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                <div className="w-8 h-8 2xl:w-9 2xl:h-9 rounded-full bg-cream flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <ArrowRight className="w-4 h-4 2xl:w-4.5 2xl:h-4.5 rtl:rotate-180" />
                 </div>
               </div>
             </Link>

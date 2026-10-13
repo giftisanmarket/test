@@ -384,7 +384,7 @@ export function RecipientGiftsClient({
 
       {/* Breadcrumbs Strip */}
       <div className="bg-cream-dark/40 border-b border-primary/5 py-2.5">
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-charcoal/60">
             <Link href={`/${lang}`} className="hover:text-primary transition-colors">
               {dict.common?.home || (isAr ? "الرئيسية" : "Home")}
@@ -402,18 +402,18 @@ export function RecipientGiftsClient({
       </div>
 
       {/* Recipient Header */}
-      <section className="pt-6 sm:pt-8 pb-4 sm:pb-5 container mx-auto px-4 md:px-6">
+      <section className="pt-6 sm:pt-8 2xl:pt-10 pb-4 sm:pb-5 w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif text-[#222222] font-normal tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl 2xl:text-5xl font-serif text-[#222222] font-normal tracking-tight">
                 {pageMeta.title}
               </h1>
               <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary">
                 {filteredProducts.length} {isAr ? "هدية متاحة" : "gifts"}
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-charcoal/70 mt-1.5 font-normal max-w-2xl leading-relaxed">
+            <p className="text-xs sm:text-sm 2xl:text-base text-charcoal/70 mt-1.5 font-normal max-w-2xl 2xl:max-w-3xl leading-relaxed">
               {pageMeta.subtitle}
             </p>
           </div>
@@ -436,7 +436,7 @@ export function RecipientGiftsClient({
         style={stickyTop !== null ? { top: `${stickyTop}px` } : undefined}
         className="sticky top-[105px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2.5 md:py-3 border-y border-primary/5 mb-6 md:mb-8 transition-all"
       >
-        <div className="container mx-auto px-4 md:px-6">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           
           {/* Mobile Toolbar */}
           <div className="flex md:hidden items-center gap-2 w-full">
@@ -705,7 +705,7 @@ export function RecipientGiftsClient({
       </div>
 
       {/* Curated Gifts Product Grid */}
-      <section className="pb-16 container mx-auto px-4 md:px-6">
+      <section className="pb-16 2xl:pb-24 w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
         
         {/* Empty State */}
         {filteredProducts.length === 0 ? (
@@ -735,7 +735,7 @@ export function RecipientGiftsClient({
           </div>
         ) : (
           /* Products Grid (Etsy Style) */
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5 2xl:gap-6">
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, idx) => {
                 const reviews = product.reviews || [];
@@ -791,16 +791,6 @@ export function RecipientGiftsClient({
                               <Heart className={cn("w-3.5 h-3.5 md:w-4 md:h-4", isFavorite(product.id) && "fill-current")} />
                             </button>
                           </div>
-
-                          {/* Badges Overlay */}
-                          <div className="absolute bottom-2 start-2 z-10 flex flex-col gap-1 items-start">
-                            {(product.canPersonalize || product.requiresClientImage) && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/90 backdrop-blur text-accent shadow-xs">
-                                <Sparkles className="w-2.5 h-2.5" />
-                                <span>{isAr ? "مخصص" : "Personalized"}</span>
-                              </span>
-                            )}
-                          </div>
                         </div>
 
                         {/* Artisan Studio */}
@@ -840,7 +830,7 @@ export function RecipientGiftsClient({
       </section>
 
       {/* Explore More Gift Collections Bottom Banner */}
-      <section className="container mx-auto px-4 md:px-6 pb-16">
+      <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 pb-16 2xl:pb-24">
         <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-accent/5 rounded-3xl p-6 md:p-10 border border-primary/10 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="space-y-1.5 text-center sm:text-start">
             <h3 className="text-xl sm:text-2xl font-serif font-medium text-primary">

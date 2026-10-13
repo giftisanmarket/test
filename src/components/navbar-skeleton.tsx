@@ -5,15 +5,15 @@ export function NavbarSkeleton() {
     <div className="sticky top-0 z-50 w-full pointer-events-none select-none">
       <nav className="w-full glass border-b border-primary/10">
         {/* Tier 1: Top Navigation Bar */}
-        <div className="max-w-[1600px] mx-auto px-3.5 md:px-8 lg:px-12 h-14 md:h-20 flex items-center justify-between gap-2 md:gap-4 lg:gap-6 xl:gap-8">
+        <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-3.5 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 h-14 md:h-20 3xl:h-22 flex items-center justify-between gap-2 md:gap-4 lg:gap-6 xl:gap-8">
           {/* Logo Skeleton */}
-          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
-            <Skeleton className="w-8 h-8 md:w-10 md:h-10 rounded-md" />
-            <Skeleton className="w-20 md:w-24 h-6 md:h-7 rounded-lg" />
+          <div className="flex items-center gap-1.5 md:gap-2.5 shrink-0">
+            <Skeleton className="w-8 h-8 md:w-10 md:h-10 2xl:w-11 2xl:h-11 rounded-md" />
+            <Skeleton className="w-20 md:w-24 2xl:w-28 h-6 md:h-7 rounded-lg" />
           </div>
 
           {/* Desktop Search Bar */}
-          <div className="hidden md:flex flex-1 w-full max-w-2xl">
+          <div className="hidden md:flex flex-1 w-full max-w-2xl 2xl:max-w-3xl 3xl:max-w-4xl">
             <Skeleton className="w-full h-11 rounded-full" />
           </div>
 
@@ -43,10 +43,9 @@ export function NavbarSkeleton() {
           </div>
         </div>
 
-        {/* Tier 4: Desktop Categories Bar */}
-        <div className="hidden md:block border-t border-primary/5 py-3">
-          <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between gap-8">
-            <div className="flex items-center gap-6 lg:gap-10 overflow-hidden flex-1 py-1">
+        <div className="hidden md:block border-t border-primary/5 py-3 2xl:py-3.5">
+          <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 flex items-center justify-between gap-8">
+            <div className="flex items-center gap-5 lg:gap-8 2xl:gap-10 overflow-hidden flex-1 py-1">
               {[1, 2, 3, 4, 5, 6, 7].map((i) => (
                 <Skeleton key={i} className="h-4 w-16 lg:w-20 rounded" />
               ))}

@@ -7,8 +7,8 @@ export default function FavoritesLoading() {
       {/* Sticky Navbar Skeleton */}
       <NavbarSkeleton />
 
-      <div className="container mx-auto px-4 pt-32 md:pt-40 pb-20">
-        <div className="max-w-4xl mx-auto">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 pt-28 md:pt-36 2xl:pt-40 pb-20 2xl:pb-28">
+        <div className="max-w-4xl 2xl:max-w-5xl mx-auto">
           {/* Favorites Header Mockup */}
           <header className="mb-12 text-center md:text-start space-y-4">
             <Skeleton className="w-64 h-12 rounded-lg mx-auto md:mx-0" />

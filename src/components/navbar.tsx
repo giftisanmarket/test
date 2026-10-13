@@ -429,25 +429,25 @@ export function Navbar({ dict }: { dict?: any }) {
       <FoundingBanner dict={d} />
       <VerificationBanner dict={d} />
       <nav className="w-full glass border-b border-primary/10">
-        <div className="max-w-[1600px] mx-auto px-3.5 md:px-8 lg:px-12 h-14 md:h-20 flex items-center justify-between gap-2 md:gap-4 lg:gap-6 xl:gap-8">
+        <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-3.5 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 h-14 md:h-20 3xl:h-22 flex items-center justify-between gap-2 md:gap-4 lg:gap-6 xl:gap-8">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-1.5 md:gap-2 shrink-0 group">
-            <div className="relative w-8 h-8 md:w-10 md:h-10 overflow-hidden shadow-lg shadow-primary/5 rounded-md">
+          <Link href="/" className="flex items-center gap-1.5 md:gap-2.5 shrink-0 group">
+            <div className="relative w-8 h-8 md:w-10 md:h-10 2xl:w-11 2xl:h-11 overflow-hidden shadow-lg shadow-primary/5 rounded-md">
               <Image
                 src="/icon.png"
                 alt="Giftisan Logo"
                 fill
                 className="object-cover"
-                sizes="40px"
+                sizes="44px"
               />
             </div>
-            <span className="text-xl md:text-2xl font-heading font-black text-primary tracking-tighter">
+            <span className="text-xl md:text-2xl 2xl:text-[1.7rem] font-heading font-black text-primary tracking-tighter">
               Giftisan
             </span>
           </Link>
 
           {/* Search Bar - Desktop */}
-          <div ref={searchRef} className="hidden md:flex flex-1 w-full max-w-2xl relative">
+          <div ref={searchRef} className="hidden md:flex flex-1 w-full max-w-2xl 2xl:max-w-3xl 3xl:max-w-4xl relative">
             <form onSubmit={handleSearch} className="w-full relative group">
               <input
                 type="text"
@@ -780,9 +780,9 @@ export function Navbar({ dict }: { dict?: any }) {
 
 
         {/* Tier 4: Desktop Categories Bar */}
-        <div className="hidden md:block border-t border-primary/5 py-3">
-          <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 flex items-center justify-between gap-8">
-            <div className="flex items-center gap-6 lg:gap-10 overflow-x-auto no-scrollbar whitespace-nowrap flex-1 py-1">
+        <div className="hidden md:block border-t border-primary/5 py-3 2xl:py-3.5">
+          <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 flex items-center justify-between gap-6 2xl:gap-8">
+            <div className="flex items-center gap-5 lg:gap-7 2xl:gap-9 3xl:gap-10 overflow-x-auto no-scrollbar whitespace-nowrap flex-1 py-1">
               {navCategories.map((cat) => {
                 const isActive = pathname.includes(`/category/${cat.id}`);
                 return (
@@ -790,7 +790,7 @@ export function Navbar({ dict }: { dict?: any }) {
                     key={cat.id}
                     href={`/category/${cat.id}`}
                     className={cn(
-                      "text-[11px] lg:text-sm font-bold transition-all uppercase tracking-wide whitespace-nowrap",
+                      "text-[11px] lg:text-xs 2xl:text-sm font-bold transition-all uppercase tracking-wide whitespace-nowrap",
                       isActive
                         ? "text-accent font-black underline decoration-accent decoration-2 underline-offset-8"
                         : "text-charcoal/60 hover:text-primary hover:underline decoration-accent decoration-2 underline-offset-8"
@@ -803,7 +803,7 @@ export function Navbar({ dict }: { dict?: any }) {
             </div>
             <Link
               href="/categories"
-              className="text-[11px] lg:text-sm font-black text-accent hover:text-primary transition-all uppercase tracking-widest border-s border-primary/10 ps-6 whitespace-nowrap shrink-0"
+              className="text-[11px] lg:text-xs 2xl:text-sm font-black text-accent hover:text-primary transition-all uppercase tracking-widest border-s border-primary/10 ps-5 2xl:ps-6 whitespace-nowrap shrink-0"
             >
               {d.common.all_categories || "View All"} →
             </Link>

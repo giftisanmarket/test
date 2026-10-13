@@ -243,7 +243,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
     <main className="min-h-screen bg-cream overflow-x-hidden">
       <Navbar dict={dict} />
 
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-6 md:py-12">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 py-6 md:py-12 2xl:py-16">
         {/* Navigation Breadcrumb & Back Action */}
         <div className="mb-6 flex items-center justify-between gap-4">
           <button
@@ -357,7 +357,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
           </div>
         )}
 
-        <div className="grid lg:grid-cols-2 gap-8 md:gap-10 lg:gap-14 min-w-0">
+        <div className="grid lg:grid-cols-2 gap-8 md:gap-10 lg:gap-14 2xl:gap-16 3xl:gap-20 min-w-0">
           {/* Image Gallery */}
           <div className="space-y-6 min-w-0">
             <div className="relative group">
@@ -489,7 +489,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
             <div className="flex justify-between items-start gap-4">
               <div className="flex-1 min-w-0">
                 <p className="text-accent font-bold tracking-widest uppercase text-xs md:text-sm mb-1.5">{dict.common.categories_list?.[product.category.toLowerCase()] || product.category}</p>
-                <h1 className="text-2xl sm:text-4xl md:text-5xl font-heading font-bold text-primary mb-3 md:mb-4 leading-tight break-words">
+                <h1 className="text-2xl sm:text-4xl md:text-5xl 2xl:text-5xl 3xl:text-6xl font-heading font-bold text-primary mb-3 md:mb-4 2xl:mb-6 leading-tight break-words">
                   {product.name}
                 </h1>
                 <div className="flex items-center gap-2 mb-4 md:mb-6">
@@ -1039,7 +1039,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4 2xl:gap-5 3xl:gap-6">
               {relatedProducts.map((p) => (
                 <Link
                   key={p.id}

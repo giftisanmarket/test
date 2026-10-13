@@ -132,18 +132,18 @@ export function CategoriesClient({ categories, dict }: { categories: DepartmentD
       <Navbar dict={dict} />
       
       {/* Header (Etsy-Style Centered) */}
-      <section className="pt-8 md:pt-12 pb-6 text-center">
-        <div className="container mx-auto px-4 md:px-6">
+      <section className="pt-8 md:pt-12 2xl:pt-16 pb-6 text-center">
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <motion.div 
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
-            className="max-w-2xl mx-auto"
+            className="max-w-2xl 2xl:max-w-3xl mx-auto"
           >
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-primary tracking-tight font-normal">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl 2xl:text-6xl font-serif text-primary tracking-tight font-normal">
               {dict.common?.all_categories || "Browse All Categories"}
             </h1>
-            <p className="mt-2 md:mt-3 text-sm md:text-base text-charcoal/60 leading-relaxed font-normal max-w-xl mx-auto">
+            <p className="mt-2 md:mt-3 2xl:mt-4 text-sm md:text-base 2xl:text-lg text-charcoal/60 leading-relaxed font-normal max-w-xl 2xl:max-w-2xl mx-auto">
               {dict.home?.category_desc || "Explore our diverse range of handcrafted collections from authentic Egyptian artisans."}
             </p>
           </motion.div>
@@ -151,14 +151,14 @@ export function CategoriesClient({ categories, dict }: { categories: DepartmentD
       </section>
 
       {/* Filter Tabs (Etsy-Style Pills) */}
-      <section className="container mx-auto px-4 md:px-6 mb-8 md:mb-10">
-        <div className="flex flex-wrap items-center justify-center gap-2">
+      <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 mb-8 md:mb-10 2xl:mb-12">
+        <div className="flex flex-wrap items-center justify-center gap-2 2xl:gap-3">
           {categoryTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveFilter(tab.id)}
               className={cn(
-                "px-4 py-1.5 md:py-2 rounded-full text-xs font-semibold transition-all border shadow-xs active:scale-95",
+                "px-4 py-1.5 md:py-2 2xl:px-5 2xl:py-2.5 rounded-full text-xs 2xl:text-sm font-semibold transition-all border shadow-xs active:scale-95",
                 activeFilter === tab.id
                   ? "bg-primary text-white border-primary shadow-sm"
                   : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30 hover:text-primary"
@@ -171,8 +171,8 @@ export function CategoriesClient({ categories, dict }: { categories: DepartmentD
       </section>
 
       {/* Clean Minimalist Department Cards Grid (3 to 4 Columns) */}
-      <section className="container mx-auto px-4 md:px-6 pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 pb-20 2xl:pb-28">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6 2xl:gap-7 3xl:gap-8">
           {filteredCategories.map((cat, idx) => {
             const rawSlug = cat.slug || cat.name.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-");
             const Icon = departmentIconMap[cat.name] || departmentIconMap[rawSlug] || ShoppingBag;

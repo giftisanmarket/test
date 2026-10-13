@@ -40,8 +40,8 @@ export default function FavoritesClient({ dict, allArtisans = [] }: FavoritesCli
     <main className="min-h-screen bg-cream">
       <Navbar dict={dict} />
 
-      <div className="container mx-auto px-4 pt-32 md:pt-40 pb-20">
-        <div className="max-w-6xl mx-auto">
+      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 pt-28 md:pt-36 2xl:pt-40 pb-20 2xl:pb-28">
+        <div className="max-w-6xl 2xl:max-w-7xl mx-auto">
           {/* Header */}
           <header className="mb-10 text-center md:text-start">
             <h1 className="text-4xl md:text-5xl font-heading font-bold text-primary mb-3">

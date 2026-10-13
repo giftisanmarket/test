@@ -32,11 +32,11 @@ export function Footer({ dict }: FooterProps) {
   return (
     <footer className="w-full bg-[#F7F5EA] text-charcoal border-t border-primary/10 selection:bg-accent/20">
       {/* 1. Main Upper Section (Clean Etsy-inspired layout) */}
-      <div className="max-w-[1600px] mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-10 sm:pt-14 md:pt-18 pb-10 sm:pb-14">
+      <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-5 sm:px-8 md:px-12 lg:px-16 2xl:px-16 3xl:px-20 pt-10 sm:pt-14 md:pt-18 pb-10 sm:pb-14">
         
         {/* Confident Mission Headline — No redundant marketing subtitle */}
-        <div className="mb-8 sm:mb-10 md:mb-12 max-w-2xl">
-          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] font-medium text-primary leading-[1.18] sm:leading-[1.12] tracking-tight">
+        <div className="mb-8 sm:mb-10 md:mb-12 max-w-2xl 2xl:max-w-3xl">
+          <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-[2.75rem] 2xl:text-[3.25rem] 3xl:text-5xl font-medium text-primary leading-[1.18] sm:leading-[1.12] tracking-tight">
             {isArabic ? (
               <>
                 مهمتنا الحفاظ على
@@ -179,7 +179,7 @@ export function Footer({ dict }: FooterProps) {
 
       {/* 2. Etsy-Style Bottom Bar in Warm Giftisan Palette */}
       <div className="border-t border-primary/10 bg-[#EDE8D8] text-charcoal">
-        <div className="max-w-[1600px] mx-auto px-5 sm:px-8 md:px-12 lg:px-16 pt-5 pb-10 sm:py-4 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 text-[13px]">
+        <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-5 sm:px-8 md:px-12 lg:px-16 2xl:px-16 3xl:px-20 pt-5 pb-10 sm:py-4 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6 text-[13px] 2xl:text-sm">
           
           {/* Left: Egypt Localization Button & Social Icons */}
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4">

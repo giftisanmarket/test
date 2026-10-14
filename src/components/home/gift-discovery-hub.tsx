@@ -23,6 +23,7 @@ interface GiftDiscoveryHubProps {
 
 export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
   const isArabic = dict?.common?.home === "الرئيسية" || dict?.common?.search?.includes("ابحث");
+  const lang = isArabic ? "ar" : "en";
   const [activeTab, setActiveTab] = useState<"recipient" | "occasion" | "budget">("recipient");
 
   const recipients = [
@@ -33,7 +34,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subEn: "Jewelry, bags, scented candles & wraps",
       subAr: "حلي، حقائب، شموع معطرة، كروشيه فاخر",
       image: "/images/gifts/gifts-for-her.webp",
-      href: "/gifts/for-her",
+      href: `/${lang}/gifts/for-her`,
       badgeEn: "Most Popular",
       badgeAr: "الأكثر طلباً",
     },
@@ -44,7 +45,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subEn: "Handmade leather, desk accents & woodwork",
       subAr: "جلود طبيعية، مقتنيات مكتب، وأخشاب فخمة",
       image: "/images/gifts/gifts-for-him.webp",
-      href: "/gifts/for-him",
+      href: `/${lang}/gifts/for-him`,
       badgeEn: "Thoughtful",
       badgeAr: "مختارات مميزة",
     },
@@ -55,7 +56,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subEn: "Personalized keepsakes & home treasures",
       subAr: "تذكارات محفورة بالاسم وديكورات دافئة للبيت",
       image: "/images/categories/gift-boxes-sets.webp",
-      href: "/gifts/for-mom",
+      href: `/${lang}/gifts/for-mom`,
       badgeEn: "Heartfelt",
       badgeAr: "من القلب",
     },
@@ -66,7 +67,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subEn: "Custom plates, embroidery & luxury sets",
       subAr: "صواني خطوبة، طارات تطريز، وباقات للعروسين",
       image: "/images/categories/personalized.webp",
-      href: "/gifts/for-couples",
+      href: `/${lang}/gifts/for-couples`,
       badgeEn: "Keepsake",
       badgeAr: "ذكرى خاصة",
     },
@@ -77,7 +78,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subEn: "Mugs, quirky crochet & cute keychains",
       subAr: "أكواب خزفية، كروشيه مرح، وميداليات بالاسم",
       image: "/images/hero/hero-crochet-monster.webp",
-      href: "/gifts/for-friends",
+      href: `/${lang}/gifts/for-friends`,
       badgeEn: "Fun & Unique",
       badgeAr: "مرحة وفريدة",
     },
@@ -88,7 +89,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subEn: "Montessori wooden toys & plush knit dolls",
       subAr: "ألعاب خشبية تعليمية وعرائس كروشيه يدوية",
       image: "/images/gifts/gifts-for-kids.webp",
-      href: "/gifts/for-kids",
+      href: `/${lang}/gifts/for-kids`,
       badgeEn: "Safe & Sweet",
       badgeAr: "آمنة ومحبوبة",
     },
@@ -103,7 +104,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "هدايا مفرحة ومجهزة لتسعد قلوب أصحاب العيد",
       icon: Cake,
       color: "from-amber-500/10 to-amber-600/5 text-amber-700 border-amber-200/60",
-      href: "/search?q=birthday",
+      href: `/${lang}/search?q=birthday`,
     },
     {
       id: "wedding",
@@ -113,7 +114,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "صواني شبكة، علب دبل محفورة، وتذكارات كتب الكتاب",
       icon: Heart,
       color: "from-rose-500/10 to-rose-600/5 text-rose-700 border-rose-200/60",
-      href: "/search?q=wedding",
+      href: `/${lang}/search?q=wedding`,
     },
     {
       id: "graduation",
@@ -123,7 +124,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "تذكارات محفورة بالاسم والتواريخ لتخليد التخرج",
       icon: GraduationCap,
       color: "from-emerald-500/10 to-emerald-600/5 text-emerald-800 border-emerald-200/60",
-      href: "/search?q=graduation",
+      href: `/${lang}/search?q=graduation`,
     },
     {
       id: "baby",
@@ -133,7 +134,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "منسوجات قطنية ناعمة، تابلوهات بالاسم، وتذكارات السبوع",
       icon: Baby,
       color: "from-sky-500/10 to-sky-600/5 text-sky-800 border-sky-200/60",
-      href: "/search?q=baby",
+      href: `/${lang}/search?q=baby`,
     },
     {
       id: "housewarming",
@@ -143,7 +144,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "خزف يدوي، مجموعات كونكريت، وديكورات حائط أصيلة",
       icon: Home,
       color: "from-stone-500/10 to-stone-600/5 text-stone-700 border-stone-200/60",
-      href: "/category/home-and-living",
+      href: `/${lang}/category/home-and-living`,
     },
     {
       id: "anniversary",
@@ -153,7 +154,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "حلي منقوشة بالتواريخ وصناديق لحفظ أجمل الذكريات",
       icon: Sparkles,
       color: "from-purple-500/10 to-purple-600/5 text-purple-800 border-purple-200/60",
-      href: "/gifts/for-couples",
+      href: `/${lang}/gifts/for-couples`,
     },
   ];
 
@@ -166,7 +167,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "مفاجآت لطيفة، ميداليات مخصصة، وأكواب فنية",
       tagEn: "Budget Friendly",
       tagAr: "اقتصادي ولطيف",
-      href: "/gifts/all?price=UNDER_250",
+      href: `/${lang}/gifts/all?price=UNDER_250`,
     },
     {
       id: "UNDER_500",
@@ -176,7 +177,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "إكسسوارات يدوية، شموع طبيعية، وديكورات أنيقة",
       tagEn: "Best Value",
       tagAr: "الأكثر اختياراً",
-      href: "/gifts/all?price=UNDER_500",
+      href: `/${lang}/gifts/all?price=UNDER_500`,
     },
     {
       id: "UNDER_1000",
@@ -186,7 +187,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "حقائب كروشيه وجلود، فضة يدوية، وتذكارات خاصة",
       tagEn: "Artisan Craft",
       tagAr: "صناعة مميزة",
-      href: "/gifts/all?price=UNDER_1000",
+      href: `/${lang}/gifts/all?price=UNDER_1000`,
     },
     {
       id: "OVER_1000",
@@ -196,7 +197,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "صناديق هدايا ملكية، أخشاب مطعمة، وتحف تدوم لأجيال",
       tagEn: "Luxury Tier",
       tagAr: "فخامة استثنائية",
-      href: "/gifts/all?price=OVER_1000",
+      href: `/${lang}/gifts/all?price=OVER_1000`,
     },
   ];
 

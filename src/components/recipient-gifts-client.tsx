@@ -209,68 +209,121 @@ export function RecipientGiftsClient({
     if (target === "all") return true;
 
     const cat = (product.category || "").toLowerCase();
+    const subcat = (product.subcategory || "").toLowerCase();
     const name = (product.name || "").toLowerCase();
     const tags = Array.isArray(product.tags) ? product.tags.map((t: string) => t.toLowerCase()) : [];
-    const textCorpus = `${cat} ${name} ${tags.join(" ")}`;
+    const textCorpus = `${cat} ${subcat} ${name} ${tags.join(" ")}`;
 
-    if (target === "her") {
-      const herKeywords = [
-        "bag", "tote", "flower", "rose", "pearl", "necklace", "bracelet", "earring", "jewelry",
-        "clutch", "scarf", "dress", "beauty", "apothecary", "bath", "candle", "trinket", "dish",
-        "شنطة", "ورد", "بوكيه", "اسورة", "سلسلة", "حلق", "مجوهرات", "توت", "كروشيه", "مراءه", "مرآة",
-        "بينك", "زهور", "عروس", "خطوبة", "حريمي", "ستات", "مكياج", "كوستر", "فيونكه", "طرحة"
-      ];
-      const herCats = ["jewelry", "beauty-apothecary", "bath-and-beauty", "bags-and-purses", "textiles", "wedding"];
-      return herCats.some(c => cat.includes(c)) || herKeywords.some(kw => textCorpus.includes(kw));
-    }
+    // Negative exclusions for masculine gifts
+    const femaleExclusions = [
+      "lip stick", "lipstick", "comb", "bun", "hair clip", "hair accessory", "scrunchie",
+      "earring", "earrings", "necklace", "bracelet", "skirt", "dress", "heel",
+      "makeup", "blush", "pink heart", "ruby pearl", "pastel cloud",
+      "bouquet", "rose bouquet", "satin flower", "doll", "unicorn", "baby",
+      "صنيه شبكه", "صينية خطوبة", "بصمه كتب كتاب", "طارة تطريز", "منديل كتب كتاب",
+      "بوكيه", "حلق", "اسورة", "سلسلة", "عقد", "فستان", "روج", "مكياج", "مشط", "توكة",
+      "طرحة", "عروسة", "بينك", "حريمي", "ستاتي", "دميه", "دمية", "طفلة", "يونيكورن",
+      "flower", "flowers", "ورد", "زهور", "مرآة", "مراءه", "mirror", "trinket"
+    ];
 
     if (target === "him") {
+      // 1. Never match female items or floral jewelry
+      if (femaleExclusions.some(kw => textCorpus.includes(kw))) {
+        return false;
+      }
+
+      // 2. Positive matching for Him: leather, woodwork, desk, office, concrete, winter accessories, tech
       const himKeywords = [
-        "leather", "wallet", "card holder", "laptop", "sleeve", "wood", "desk", "stand", "mug",
-        "watch", "tie", "belt", "cufflink", "gadget", "keychain", "grooming",
-        "اباجورة", "استاند", "محفظة", "جلد", "خشب", "مقلمة", "حامل", "كارت", "لابتوب", "ميدالية",
-        "رجالي", "مكتب", "كونكريت"
+        "leather", "wallet", "card holder", "laptop", "sleeve", "wood", "wooden", "desk", "stand",
+        "mug", "cup", "watch", "tie", "belt", "cufflink", "gadget", "grooming", "pen", "pencil",
+        "organizer", "concrete", "coaster", "tableaux", "game", "board game", "chess", "gloves",
+        "winter", "art",
+        "اباجورة", "استاند", "محفظة", "جلد", "خشب", "خشبي", "مقلمة", "حامل", "كارت", "لابتوب",
+        "رجالي", "مكتب", "كونكريت", "تابلوه", "جوانتي", "شتاء", "دفتر", "شطرنج"
       ];
-      const himCats = ["woodwork", "leatherwork", "accessories", "gadgets", "electronics-and-accessories"];
-      return himCats.some(c => cat.includes(c)) || himKeywords.some(kw => textCorpus.includes(kw));
+      const himCats = [
+        "woodwork", "leatherwork", "accessories", "gadgets", "home-and-living",
+        "sculpture", "clothing", "games-puzzles"
+      ];
+
+      return himCats.some(c => cat === c || cat.includes(c)) && himKeywords.some(kw => textCorpus.includes(kw));
     }
 
     if (target === "kids") {
       const kidsKeywords = [
-        "doll", "toy", "octopus", "puzzle", "voodoo", "kid", "baby", "child", "game", "plush",
-        "beanie", "cat", "unicorn", "crochet doll", "blocks",
-        "دميه", "دمية", "لعبة", "اطفال", "طفل", "طفلة", "بيبي", "يونيكورن", "كيرلي", "ميدالية",
-        "أشكال", "كتكوت", "ألعاب", "تخرج"
+        "doll", "toy", "puzzle", "kid", "kids", "baby", "child", "plush", "unicorn", "blocks",
+        "montessori", "board game", "game", "x o",
+        "دميه", "دمية", "لعبة", "اطفال", "أطفال", "طفل", "طفلة", "بيبي", "يونيكورن", "ألعاب", "العاب"
       ];
-      const kidsCats = ["toys", "toys-games", "kids-baby", "baby-and-child-care"];
-      return kidsCats.some(c => cat.includes(c)) || kidsKeywords.some(kw => textCorpus.includes(kw));
-    }
+      const kidsCats = ["toys", "toys-and-games", "kids-and-baby", "kids-baby", "games-puzzles"];
+      const weddingExclusions = ["شبكة", "خطوبة", "زفاف", "كتب كتاب", "wedding", "engagement", "bride", "groom"];
+      if (weddingExclusions.some(kw => textCorpus.includes(kw))) return false;
 
-    if (target === "mom") {
-      const momKeywords = [
-        "mom", "mother", "candle", "tray", "vase", "ceramic", "coaster", "decor", "home", "flower",
-        "ماما", "أم", "أمي", "ست الحبايب", "صينية", "فازة", "شمع", "شمعة", "ديكور", "خزف", "ورد", "مفرش"
-      ];
-      const momCats = ["home-and-living", "ceramics", "decor", "gifts"];
-      return momCats.some(c => cat.includes(c)) || momKeywords.some(kw => textCorpus.includes(kw));
+      return kidsCats.some(c => cat === c || cat.includes(c)) || kidsKeywords.some(kw => textCorpus.includes(kw));
     }
 
     if (target === "couples") {
       const couplesKeywords = [
-        "wedding", "engagement", "bride", "groom", "ring", "plate", "box", "couple", "love",
-        "خطوبة", "زفاف", "عريس", "عروسة", "شبكة", "دبل", "طارة", "منديل", "صينية خطوبة", "تطريز"
+        "couple", "couples", "wedding", "engagement", "bride", "groom", "marriage", "anniversary",
+        "matching", "ring box", "engagement tray",
+        "خطوبة", "زفاف", "عريس", "عروسة", "شبكة", "دبل", "طارة", "منديل", "صنيه شبكه", "صينية خطوبة",
+        "بصمه كتب كتاب", "تطريز", "كابلز", "couple keychains"
       ];
-      const couplesCats = ["weddings", "wedding", "gifts-sets", "jewelry"];
-      return couplesCats.some(c => cat.includes(c)) || couplesKeywords.some(kw => textCorpus.includes(kw));
+      return couplesKeywords.some(kw => textCorpus.includes(kw));
+    }
+
+    if (target === "mom") {
+      const momExclusions = [
+        "دميه", "دمية", "doll", "طفلة", "baby", "بيبي", "تخرج", "graduation",
+        "صنيه شبكه", "صينية خطوبة", "بصمه كتب كتاب", "عريس", "groom", "رجالي",
+        "lip stick", "lipstick", "روج"
+      ];
+      if (momExclusions.some(kw => textCorpus.includes(kw))) return false;
+
+      const momKeywords = [
+        "mom", "mother", "candle", "tray", "vase", "ceramic", "coaster", "decor", "home",
+        "mirror", "comb", "bookmark", "trinket dish", "tapestry", "tableaux", "bouquet",
+        "ماما", "أم", "أمي", "ست الحبايب", "صينية", "فازة", "شمع", "شمعة", "ديكور", "خزف",
+        "مفرش", "مرآة", "مراءه", "تابلوه", "فاصل كتب", "كوستر", "ميدالية وَنَس", "بوكيه"
+      ];
+      const momCats = ["home-and-living", "ceramics", "fine-art-ceramics", "sculpture", "gifts-mementos", "gifts-sets"];
+      return momCats.some(c => cat === c || cat.includes(c)) && momKeywords.some(kw => textCorpus.includes(kw));
     }
 
     if (target === "friends") {
-      const friendsKeywords = [
-        "friend", "mug", "cup", "keychain", "crochet", "tote", "notebook", "journal", "pouch",
-        "كوب", "مج", "ميدالية", "كروشيه", "نوت بوك", "صديق", "صاحبتي", "أصدقاء", "محفظة"
+      const friendsExclusions = [
+        "صنيه شبكه", "صينية خطوبة", "بصمه كتب كتاب", "عريس", "groom", "شبكة"
       ];
-      const friendsCats = ["accessories", "stationery", "bags-and-purses", "gifts"];
-      return friendsCats.some(c => cat.includes(c)) || friendsKeywords.some(kw => textCorpus.includes(kw));
+      if (friendsExclusions.some(kw => textCorpus.includes(kw))) return false;
+
+      const friendsKeywords = [
+        "friend", "mug", "cup", "keychain", "bookmark", "notebook", "diary", "journal", "pouch",
+        "tote", "crochet", "board game", "x o", "tote bag", "mini bag", "graduation", "bundle",
+        "كوب", "مج", "ميدالية", "كروشيه", "نوت بوك", "صديق", "صديقة", "صحبتي", "أصدقاء", "محفظة",
+        "فاصل كتب", "بوك مارك", "تخرج", "دميه التخرج", "توت باج", "شنطة", "شنطه", "لعبة"
+      ];
+      const friendsCats = ["accessories", "stationery", "bags-and-purses", "paper", "fine-art-ceramics", "keychains-lanyards", "games-puzzles"];
+      return (friendsCats.some(c => cat === c || cat.includes(c)) && friendsKeywords.some(kw => textCorpus.includes(kw))) ||
+        name.toLowerCase().includes("friend") || name.toLowerCase().includes("صحبت") || name.toLowerCase().includes("صديق");
+    }
+
+    if (target === "her") {
+      if (name.includes("رجالي") || name.toLowerCase().includes("men's") || (cat === "woodwork" && name.includes("مقلمة"))) {
+        return false;
+      }
+      const herKeywords = [
+        "bag", "tote", "flower", "rose", "pearl", "necklace", "bracelet", "earring", "jewelry",
+        "clutch", "scarf", "dress", "beauty", "apothecary", "bath", "candle", "trinket", "dish",
+        "comb", "mirror", "hair", "clip", "bookmark", "diary", "notebook", "crochet",
+        "شنطة", "حقيبة", "ورد", "بوكيه", "اسورة", "سلسلة", "حلق", "مجوهرات", "توت", "كروشيه",
+        "مراءه", "مرآة", "بينك", "زهور", "عروس", "خطوبة", "حريمي", "ستات", "مكياج", "كوستر",
+        "فيونكه", "طرحة", "مشط", "توكة", "فاصل كتب"
+      ];
+      const herCats = [
+        "necklaces", "earrings", "bracelets", "jewelry", "bags-and-purses", "hair-accessories",
+        "pins-clips", "brooches-pins-clips", "beauty-apothecary", "gifts-mementos", "clothing"
+      ];
+      return herCats.some(c => cat === c || cat.includes(c)) || herKeywords.some(kw => textCorpus.includes(kw));
     }
 
     return true;

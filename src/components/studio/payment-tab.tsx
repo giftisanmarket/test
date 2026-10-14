@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -722,163 +723,167 @@ export function PaymentTab({
       </div>
 
       {/* Receipt PDF Generator Modal */}
-      <AnimatePresence>
-        {selectedReceipt && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedReceipt(null)}
-              className="absolute inset-0 bg-primary/40 backdrop-blur-md cursor-pointer"
-            />
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {selectedReceipt && (
+            <div className="fixed inset-0 z-[9999] overflow-y-auto flex items-center justify-center p-3 sm:p-4 md:p-6">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedReceipt(null)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
+              />
 
-            {/* Modal Body */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 25 } }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-primary/10 flex flex-col z-10 max-h-[90vh]"
-            >
-              {/* Header Actions */}
-              <div className="p-4 bg-cream/10 border-b border-primary/5 flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-primary/60">
-                  {isRTL ? "معاينة إيصال المعاملة" : "Transaction Receipt Preview"}
-                </span>
-                <button
-                  onClick={() => setSelectedReceipt(null)}
-                  className="p-1.5 hover:bg-cream rounded-full transition-colors cursor-pointer text-primary"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              {/* Modal Body */}
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 25 } }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="relative w-full max-w-lg bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden border border-primary/10 flex flex-col z-10 my-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)]"
+              >
+                {/* Header Actions */}
+                <div className="p-3.5 sm:p-4 bg-cream/15 border-b border-primary/10 flex items-center justify-between shrink-0">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-primary/70 truncate">
+                    {isRTL ? "معاينة إيصال المعاملة" : "Transaction Receipt Preview"}
+                  </span>
+                  <button
+                    onClick={() => setSelectedReceipt(null)}
+                    aria-label={isRTL ? "إغلاق" : "Close"}
+                    className="w-8 h-8 rounded-full hover:bg-primary/10 flex items-center justify-center transition-colors cursor-pointer text-primary/70 hover:text-primary shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-              {/* Printable Receipt Area */}
-              <div className="overflow-y-auto p-8 bg-cream/5 flex-1 flex justify-center">
-                <div 
-                  id="print-receipt-container"
-                  className="w-full max-w-md bg-white border border-primary/10 shadow-lg rounded-2xl p-6 md:p-8 space-y-6 text-start relative overflow-hidden"
-                  dir={isRTL ? "rtl" : "ltr"}
-                >
-                  {/* Decorative Border */}
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-accent to-primary" />
+                {/* Printable Receipt Area */}
+                <div className="overflow-y-auto p-3 sm:p-5 md:p-6 bg-cream/5 flex-1 min-h-0 flex flex-col items-center">
+                  <div 
+                    id="print-receipt-container"
+                    className="w-full max-w-md bg-white border border-primary/10 shadow-md sm:shadow-lg rounded-2xl p-4 sm:p-6 md:p-7 space-y-4 sm:space-y-5 text-start relative overflow-hidden my-auto"
+                    dir={isRTL ? "rtl" : "ltr"}
+                  >
+                    {/* Decorative Border */}
+                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-accent to-primary" />
 
-                  {/* Header */}
-                  <div className="flex justify-between items-start border-b border-primary/5 pb-4">
-                    <div>
-                      <h2 className="text-xl font-heading font-black text-primary leading-none">Giftisan</h2>
-                      <p className="text-[9px] text-accent font-bold uppercase tracking-widest mt-1">Handcrafted Mastery</p>
+                    {/* Header */}
+                    <div className="flex justify-between items-start border-b border-primary/5 pb-3 sm:pb-4 gap-2">
+                      <div>
+                        <h2 className="text-lg sm:text-xl font-heading font-black text-primary leading-none">Giftisan</h2>
+                        <p className="text-[9px] sm:text-[10px] text-accent font-bold uppercase tracking-widest mt-1">Handcrafted Mastery</p>
+                      </div>
+                      <div className="text-end shrink-0">
+                        <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-md text-[9px] sm:text-[10px] font-black uppercase tracking-wider">
+                          {isRTL ? "معاملة رسمية" : "Official"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-end">
-                      <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-md text-[9px] font-black uppercase tracking-wider">
-                        {isRTL ? "معاملة رسمية" : "Official"}
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Title */}
-                  <div className="space-y-1">
-                    <h3 className="text-base font-black text-primary">
-                      {selectedReceipt.type === "SALE" 
-                        ? (isRTL ? "إيصال أرباح مبيعات" : "Sale Proceeds Receipt")
-                        : (isRTL ? "إيصال تحويل مستحقات" : "Payout Transfer Receipt")
-                      }
-                    </h3>
-                    <p className="text-[10px] text-charcoal/40 font-mono">
-                      Ref: #{selectedReceipt.id}
-                    </p>
-                  </div>
-
-                  {/* Grid details */}
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-2 border-t border-b border-primary/5 py-4 text-xs font-medium text-charcoal/80">
-                    <div>
-                      <p className="text-[10px] text-primary/40 font-black uppercase tracking-wider mb-0.5">{isRTL ? "التاريخ والوقت" : "Date & Time"}</p>
-                      <p className="font-bold text-primary">
-                        {new Date(selectedReceipt.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
-                          year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
-                        })}
+                    {/* Title */}
+                    <div className="space-y-0.5">
+                      <h3 className="text-sm sm:text-base font-black text-primary">
+                        {selectedReceipt.type === "SALE" 
+                          ? (isRTL ? "إيصال أرباح مبيعات" : "Sale Proceeds Receipt")
+                          : (isRTL ? "إيصال تحويل مستحقات" : "Payout Transfer Receipt")
+                        }
+                      </h3>
+                      <p className="text-[10px] sm:text-xs text-charcoal/40 font-mono break-all">
+                        Ref: #{selectedReceipt.id}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-[10px] text-primary/40 font-black uppercase tracking-wider mb-0.5">{isRTL ? "حالة المعاملة" : "Transaction Status"}</p>
-                      <p className={cn(
-                        "font-bold",
-                        (selectedReceipt.status === "COMPLETED" || selectedReceipt.status === "CLEARED")
-                          ? "text-green-600"
-                          : selectedReceipt.status === "PENDING"
-                            ? "text-amber-600"
-                            : "text-red-600"
-                      )}>
+
+                    {/* Grid details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 border-t border-b border-primary/5 py-3 sm:py-4 text-xs font-medium text-charcoal/80">
+                      <div>
+                        <p className="text-[10px] text-primary/40 font-black uppercase tracking-wider mb-0.5">{isRTL ? "التاريخ والوقت" : "Date & Time"}</p>
+                        <p className="font-bold text-primary">
+                          {new Date(selectedReceipt.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                            year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-primary/40 font-black uppercase tracking-wider mb-0.5">{isRTL ? "حالة المعاملة" : "Transaction Status"}</p>
+                        <p className={cn(
+                          "font-bold",
+                          (selectedReceipt.status === "COMPLETED" || selectedReceipt.status === "CLEARED")
+                            ? "text-green-600"
+                            : selectedReceipt.status === "PENDING"
+                              ? "text-amber-600"
+                              : "text-red-600"
+                        )}>
+                          {isRTL 
+                            ? (selectedReceipt.status === "COMPLETED" ? "تم التحويل" : selectedReceipt.status === "CLEARED" ? "جاهز للسحب" : selectedReceipt.status === "PENDING" ? "في الانتظار" : (selectedReceipt.type === "SALE" ? "طلب ملغي" : "مرفوض"))
+                            : (selectedReceipt.status === "FAILED" ? (selectedReceipt.type === "SALE" ? "CANCELLED" : "FAILED") : selectedReceipt.status)
+                          }
+                        </p>
+                      </div>
+                      <div className="col-span-1 sm:col-span-2">
+                        <p className="text-[10px] text-primary/40 font-black uppercase tracking-wider mb-0.5">{isRTL ? "الوصف والتفاصيل" : "Description & Details"}</p>
+                        <p className="font-bold text-primary leading-relaxed text-xs break-words">
+                          {selectedReceipt.description || (selectedReceipt.type === "SALE" ? "Earnings Split" : "Withdrawal request")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Pricing / Total block */}
+                    <div className="bg-cream/20 rounded-xl p-3 sm:p-4 flex justify-between items-center gap-3 border border-primary/5">
+                      <span className="text-[11px] sm:text-xs font-black text-primary/60 uppercase tracking-wider shrink-0">{isRTL ? "المبلغ الإجمالي" : "Total Amount"}</span>
+                      <div className="text-end shrink-0">
+                        <span className={cn(
+                          "text-lg sm:text-xl font-black",
+                          selectedReceipt.status === "FAILED" ? "text-red-600 line-through" : "text-primary"
+                        )}>
+                          {selectedReceipt.amount > 0 ? "+" : ""}{selectedReceipt.amount.toFixed(2)} {isRTL ? "ج.م" : "EGP"}
+                        </span>
+                        {selectedReceipt.status === "FAILED" && (
+                          <span className="block text-[9px] font-bold text-red-500 uppercase tracking-widest mt-0.5">
+                            {isRTL ? "(تم إلغاء الطلب - 0.00 ج.م)" : "(Order Cancelled - 0.00 EGP)"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer message / Verification Code */}
+                    <div className="text-center pt-1 sm:pt-2 space-y-1.5 sm:space-y-2">
+                      <p className="text-[9px] sm:text-[10px] text-charcoal/40 font-medium italic leading-relaxed">
                         {isRTL 
-                          ? (selectedReceipt.status === "COMPLETED" ? "تم التحويل" : selectedReceipt.status === "CLEARED" ? "جاهز للسحب" : selectedReceipt.status === "PENDING" ? "في الانتظار" : (selectedReceipt.type === "SALE" ? "طلب ملغي" : "مرفوض"))
-                          : (selectedReceipt.status === "FAILED" ? (selectedReceipt.type === "SALE" ? "CANCELLED" : "FAILED") : selectedReceipt.status)
+                          ? "شكراً لكونك جزءاً من دائرة جيفتيزان الحرفية الإبداعية." 
+                          : "Thank you for being a vital part of the Giftisan artisan circle."
                         }
                       </p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-[10px] text-primary/40 font-black uppercase tracking-wider mb-0.5">{isRTL ? "الوصف والتفاصيل" : "Description & Details"}</p>
-                      <p className="font-bold text-primary leading-relaxed text-xs">
-                        {selectedReceipt.description || (selectedReceipt.type === "SALE" ? "Earnings Split" : "Withdrawal request")}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Pricing / Total block */}
-                  <div className="bg-cream/20 rounded-xl p-4 flex justify-between items-center border border-primary/5">
-                    <span className="text-xs font-black text-primary/60 uppercase tracking-wider">{isRTL ? "المبلغ الإجمالي" : "Total Amount"}</span>
-                    <div className="text-end">
-                      <span className={cn(
-                        "text-xl font-black",
-                        selectedReceipt.status === "FAILED" ? "text-red-600 line-through" : "text-primary"
-                      )}>
-                        {selectedReceipt.amount > 0 ? "+" : ""}{selectedReceipt.amount.toFixed(2)} {isRTL ? "ج.م" : "EGP"}
-                      </span>
-                      {selectedReceipt.status === "FAILED" && (
-                        <span className="block text-[9px] font-bold text-red-500 uppercase tracking-widest mt-0.5">
-                          {isRTL ? "(تم إلغاء الطلب - 0.00 ج.م)" : "(Order Cancelled - 0.00 EGP)"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Footer message / Verification Code */}
-                  <div className="text-center pt-2 space-y-2">
-                    <p className="text-[10px] text-charcoal/40 font-bold italic leading-relaxed">
-                      {isRTL 
-                        ? "شكراً لكونك جزءاً من دائرة جيفتيزان الحرفية الإبداعية." 
-                        : "Thank you for being a vital part of the Giftisan artisan circle."
-                      }
-                    </p>
-                    {/* Fake Barcode representation for beautiful tactile aesthetics */}
-                    <div className="pt-2 flex flex-col items-center gap-1 opacity-40">
-                      <div className="h-6 w-32 bg-[repeating-linear-gradient(90deg,currentColor,currentColor_1px,transparent_1px,transparent_4px,currentColor_4px,currentColor_6px,transparent_6px,transparent_8px)]" />
-                      <span className="text-[8px] font-mono tracking-widest">{selectedReceipt.id.toUpperCase()}</span>
+                      {/* Fake Barcode representation for beautiful tactile aesthetics */}
+                      <div className="pt-1 flex flex-col items-center gap-1 opacity-40">
+                        <div className="h-5 sm:h-6 w-28 sm:w-32 bg-[repeating-linear-gradient(90deg,currentColor,currentColor_1px,transparent_1px,transparent_4px,currentColor_4px,currentColor_6px,transparent_6px,transparent_8px)]" />
+                        <span className="text-[8px] font-mono tracking-widest break-all">{selectedReceipt.id.toUpperCase()}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Footer CTA */}
-              <div className="p-4 bg-cream/10 border-t border-primary/5 flex gap-2">
-                <button
-                  onClick={() => setSelectedReceipt(null)}
-                  className="flex-1 h-12 rounded-xl text-xs font-bold text-primary bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"
-                >
-                  {isRTL ? "إغلاق" : "Close"}
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="flex-1 h-12 bg-primary hover:bg-primary-light text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg transition-colors text-xs uppercase tracking-wider cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>{isRTL ? "طباعة / حفظ PDF" : "Print / Save PDF"}</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                {/* Footer CTA */}
+                <div className="p-3 sm:p-4 bg-cream/15 border-t border-primary/10 flex gap-2.5 shrink-0">
+                  <button
+                    onClick={() => setSelectedReceipt(null)}
+                    className="flex-1 h-11 sm:h-12 rounded-xl text-xs sm:text-sm font-bold text-primary bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"
+                  >
+                    {isRTL ? "إغلاق" : "Close"}
+                  </button>
+                  <button
+                    onClick={handlePrint}
+                    className="flex-1 h-11 sm:h-12 bg-primary hover:bg-primary-light text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors text-xs sm:text-sm uppercase tracking-wider cursor-pointer active:scale-95"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>{isRTL ? "طباعة / حفظ PDF" : "Print / Save PDF"}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

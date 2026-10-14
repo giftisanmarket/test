@@ -85,6 +85,7 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
 
   const isRtl = lang === "ar";
   const name = artisan.studioName || artisan.user.name || "Artisan";
+  const brandColor = artisan.brandColor?.trim() || "#064E3B";
   const bioUrl = typeof window !== "undefined" 
     ? `${window.location.origin}/bio/${artisan.slug || artisan.id}`
     : `https://giftisan.com/bio/${artisan.slug || artisan.id}`;
@@ -263,7 +264,10 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
   return (
     <div className="min-h-screen bg-[#FDFCF0] text-[#1F2937] flex flex-col items-center justify-between py-0 md:py-10 relative overflow-x-hidden font-sans selection:bg-[#064E3B] selection:text-white">
       {/* Background Soft Ambient Orbs */}
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-[#064E3B]/10 rounded-full blur-[140px] pointer-events-none" />
+      <div 
+        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[500px] rounded-full blur-[140px] pointer-events-none" 
+        style={{ backgroundColor: brandColor, opacity: 0.12 }}
+      />
       <div className="absolute top-1/3 -right-32 w-96 h-96 bg-amber-500/10 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Main Container - Sleek Elevated Card on Desktop, Edge-to-Edge on Mobile */}
@@ -311,8 +315,14 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
           {/* Profile Card Header */}
           <div className="flex flex-col items-center text-center w-full mt-2">
             <div className="relative group">
-              <div className="absolute -inset-1 rounded-full bg-[#064E3B]/20 blur-md opacity-70 transition duration-500 group-hover:opacity-100" />
-              <div className="relative w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-white ring-2 ring-[#064E3B]/15">
+              <div 
+                className="absolute -inset-1 rounded-full blur-md opacity-70 transition duration-500 group-hover:opacity-100" 
+                style={{ backgroundColor: brandColor }}
+              />
+              <div 
+                className="relative w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden bg-white ring-2"
+                style={{ borderColor: `${brandColor}40` }}
+              >
                 {artisan.avatar ? (
                   <Image
                     src={artisan.avatar}
@@ -452,7 +462,8 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
                           addToCart(featuredProduct);
                           toast.success(isRtl ? "تمت الإضافة للسلة!" : "Added to bag!");
                         }}
-                        className="bg-[#064E3B] hover:bg-[#064E3B]/90 text-white text-xs px-3.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-sm active:scale-95"
+                        className="text-white text-xs px-3.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1 shadow-sm active:scale-95"
+                        style={{ backgroundColor: brandColor }}
                       >
                         <ShoppingBag className="w-3.5 h-3.5" />
                         <span>{isRtl ? "شراء" : "Buy"}</span>
@@ -473,10 +484,14 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
             {/* Primary Action 1: Shop Full Collection with dynamic count */}
             <Link
               href={`/${lang}/artisans/${artisan.slug || artisan.id}`}
-              className="w-full p-3.5 sm:p-4 rounded-2xl bg-[#064E3B] hover:bg-[#064E3B]/95 text-white flex items-center justify-between transition group shadow-md active:scale-[0.99]"
+              className="w-full p-3.5 sm:p-4 rounded-2xl text-white flex items-center justify-between transition group shadow-md active:scale-[0.99]"
+              style={{
+                backgroundColor: brandColor,
+                boxShadow: `0 8px 25px -4px ${brandColor}40`
+              }}
             >
               <span className="flex items-center gap-3 text-sm font-bold truncate">
-                <span className="p-2.5 rounded-xl bg-white/10 text-amber-400 group-hover:scale-110 transition shrink-0">
+                <span className="p-2.5 rounded-xl bg-white/15 text-white group-hover:scale-110 transition shrink-0">
                   <Store className="w-4 h-4" />
                 </span>
                 <span className="truncate">
@@ -529,7 +544,8 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
                 </h2>
                 <Link 
                   href={`/${lang}/artisans/${artisan.slug || artisan.id}`}
-                  className="text-xs font-bold text-[#064E3B] hover:underline"
+                  className="text-xs font-bold hover:underline"
+                  style={{ color: brandColor }}
                 >
                   {isRtl ? "عرض الكل" : "View all"}
                 </Link>

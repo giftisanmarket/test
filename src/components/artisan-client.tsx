@@ -55,6 +55,7 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
   const isAr = lang === "ar" || dict?.common?.home === "الرئيسية";
   const products = artisan.products || [];
   const displayName = artisan.studioName || artisan.user?.name || (isAr ? "متجر الحرفي" : "Artisan Studio");
+  const brandColor = artisan.brandColor?.trim() || "#da7b5a";
 
   // Real Data Calculations
   const allReviews = useMemo(() => {
@@ -113,7 +114,7 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
         toast.success(
           (dict.artisan_detail?.now_following || (isAr ? "أنت الآن تتابع {name}" : "You are now following {name}")).replace('{name}', displayName),
           {
-            icon: '✨',
+            icon: <Check className="w-4 h-4 text-emerald-400" />,
             style: { borderRadius: '12px', background: '#064E3B', color: '#fff' }
           }
         );
@@ -182,9 +183,17 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
               <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
             </div>
           ) : (
-            <div className="h-32 sm:h-40 md:h-48 lg:h-60 xl:h-72 2xl:h-80 3xl:h-96 w-full bg-gradient-to-r from-emerald-900/10 via-primary/5 to-amber-900/10 relative overflow-hidden flex items-center justify-end px-8 lg:px-12">
-              <div className="absolute -end-10 -bottom-10 w-48 lg:w-72 h-48 lg:h-72 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
-              <div className="hidden sm:flex items-center gap-3 text-primary/20">
+            <div 
+              className="h-32 sm:h-40 md:h-48 lg:h-60 xl:h-72 2xl:h-80 3xl:h-96 w-full relative overflow-hidden flex items-center justify-end px-8 lg:px-12"
+              style={{
+                background: `linear-gradient(135deg, ${brandColor}22 0%, rgba(6,78,59,0.06) 50%, ${brandColor}15 100%)`
+              }}
+            >
+              <div 
+                className="absolute -end-10 -bottom-10 w-48 lg:w-72 h-48 lg:h-72 rounded-full blur-3xl pointer-events-none" 
+                style={{ backgroundColor: brandColor, opacity: 0.15 }}
+              />
+              <div className="hidden sm:flex items-center gap-3" style={{ color: `${brandColor}50` }}>
                 <Sparkles className="w-8 h-8 lg:w-12 lg:h-12" />
               </div>
             </div>
@@ -197,7 +206,12 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
             {/* Left: Avatar + Title & Meta */}
             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 lg:gap-8 text-center sm:text-start">
               {/* Avatar */}
-              <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 xl:w-44 xl:h-44 2xl:w-48 2xl:h-48 3xl:w-52 3xl:h-52 rounded-full overflow-hidden border-4 lg:border-[6px] border-white shadow-lg bg-white shrink-0 ring-1 ring-primary/10">
+              <div 
+                className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-36 lg:h-36 xl:w-44 xl:h-44 2xl:w-48 2xl:h-48 3xl:w-52 3xl:h-52 rounded-full overflow-hidden border-4 lg:border-[6px] border-white shadow-lg bg-white shrink-0 transition-shadow duration-300"
+                style={{
+                  boxShadow: `0 0 0 2px ${brandColor}35, 0 12px 30px -6px ${brandColor}30`
+                }}
+              >
                 <BespokeImage 
                   type="artisan" 
                   id={artisan.id} 
@@ -255,11 +269,13 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                 onClick={handleFollow}
                 disabled={isPending}
                 className={cn(
-                  "h-10 sm:h-11 lg:h-12 px-5 sm:px-6 lg:px-8 rounded-full text-xs sm:text-sm lg:text-base font-semibold transition-all shadow-xs flex items-center justify-center gap-2 active:scale-95",
-                  isFollowing
-                    ? "bg-emerald-700 text-white hover:bg-emerald-800"
-                    : "bg-primary text-white hover:bg-primary-light"
+                  "h-10 sm:h-11 lg:h-12 px-5 sm:px-6 lg:px-8 rounded-full text-xs sm:text-sm lg:text-base font-semibold transition-all shadow-xs flex items-center justify-center gap-2 active:scale-95 text-white",
+                  isFollowing ? "bg-emerald-700 hover:bg-emerald-800" : ""
                 )}
+                style={!isFollowing ? {
+                  backgroundColor: brandColor,
+                  boxShadow: `0 8px 25px -4px ${brandColor}40`
+                } : undefined}
               >
                 {isFollowing ? (
                   <>
@@ -278,7 +294,8 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
               <button
                 onClick={handleShare}
                 aria-label="Share"
-                className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-full border border-primary/15 bg-white text-charcoal/70 hover:text-primary hover:border-primary/30 flex items-center justify-center transition-all shadow-xs active:scale-90"
+                className="w-10 h-10 sm:w-11 sm:h-11 lg:w-12 lg:h-12 rounded-full border bg-white text-charcoal/70 hover:text-primary flex items-center justify-center transition-all shadow-xs active:scale-90"
+                style={{ borderColor: `${brandColor}35` }}
               >
                 <Share2 className="w-4 h-4 lg:w-5 lg:h-5" />
               </button>
@@ -287,7 +304,11 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
 
           {/* Bio Quote */}
           {artisan.bio && (
-            <div className="mt-5 lg:mt-7 2xl:mt-8 pt-5 lg:pt-6 2xl:pt-8 border-t border-primary/5">
+            <div className="mt-5 lg:mt-7 2xl:mt-8 pt-5 lg:pt-6 2xl:pt-8 border-t border-primary/5 flex items-start gap-3">
+              <div 
+                className="w-1 self-stretch rounded-full shrink-0 min-h-[24px]"
+                style={{ backgroundColor: brandColor }}
+              />
               <p className="text-sm sm:text-base lg:text-lg xl:text-xl 2xl:text-2xl text-charcoal/75 font-serif italic max-w-2xl lg:max-w-3xl xl:max-w-4xl 2xl:max-w-5xl leading-relaxed whitespace-pre-wrap">
                 &ldquo;{artisan.bio}&rdquo;
               </p>
@@ -332,7 +353,10 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                 <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl 2xl:text-5xl font-serif text-[#222222] font-semibold">
                   {dict.artisan_detail?.in_the_studio || (isAr ? "معروضات المتجر" : "In the Shop")}
                 </h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 lg:px-3 lg:py-1 2xl:px-3.5 2xl:py-1.5 rounded-full text-xs lg:text-sm 2xl:text-base font-semibold bg-primary/10 text-primary">
+                <span 
+                  className="inline-flex items-center px-2.5 py-0.5 lg:px-3 lg:py-1 2xl:px-3.5 2xl:py-1.5 rounded-full text-xs lg:text-sm 2xl:text-base font-semibold transition-colors"
+                  style={{ backgroundColor: `${brandColor}18`, color: brandColor }}
+                >
                   {filteredProducts.length}
                 </span>
               </div>
@@ -348,9 +372,14 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                 className={cn(
                   "px-3.5 py-1.5 lg:px-5 lg:py-2 2xl:px-6 2xl:py-2.5 rounded-full text-xs lg:text-sm 2xl:text-base font-medium transition-all",
                   filter === 'all'
-                    ? "bg-primary text-white shadow-xs"
+                    ? "text-white shadow-xs"
                     : "bg-white border border-primary/10 text-charcoal/70 hover:text-primary hover:border-primary/25"
                 )}
+                style={filter === 'all' ? {
+                  backgroundColor: brandColor,
+                  borderColor: brandColor,
+                  boxShadow: `0 8px 20px -4px ${brandColor}35`
+                } : undefined}
               >
                 {isAr ? "الكل" : "All"} ({products.length})
               </button>
@@ -359,9 +388,14 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                 className={cn(
                   "px-3.5 py-1.5 lg:px-5 lg:py-2 2xl:px-6 2xl:py-2.5 rounded-full text-xs lg:text-sm 2xl:text-base font-medium transition-all",
                   filter === 'available'
-                    ? "bg-primary text-white shadow-xs"
+                    ? "text-white shadow-xs"
                     : "bg-white border border-primary/10 text-charcoal/70 hover:text-primary hover:border-primary/25"
                 )}
+                style={filter === 'available' ? {
+                  backgroundColor: brandColor,
+                  borderColor: brandColor,
+                  boxShadow: `0 8px 20px -4px ${brandColor}35`
+                } : undefined}
               >
                 {dict.artisan_detail?.available || (isAr ? "متاح حالياً" : "Available")} ({availableProducts.length})
               </button>
@@ -371,9 +405,14 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                   className={cn(
                     "px-3.5 py-1.5 lg:px-5 lg:py-2 2xl:px-6 2xl:py-2.5 rounded-full text-xs lg:text-sm 2xl:text-base font-medium transition-all",
                     filter === 'soldout'
-                      ? "bg-primary text-white shadow-xs"
+                      ? "text-white shadow-xs"
                       : "bg-white border border-primary/10 text-charcoal/70 hover:text-primary hover:border-primary/25"
                   )}
+                  style={filter === 'soldout' ? {
+                    backgroundColor: brandColor,
+                    borderColor: brandColor,
+                    boxShadow: `0 8px 20px -4px ${brandColor}35`
+                  } : undefined}
                 >
                   {dict.artisan_detail?.archive || (isAr ? "أرشيف الأعمال" : "Archive")} ({soldOutProducts.length})
                 </button>
@@ -407,7 +446,11 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
               {filter !== 'all' && (
                 <button
                   onClick={() => setFilter('all')}
-                  className="mt-4 px-4 py-1.5 lg:px-5 lg:py-2 rounded-full text-xs lg:text-sm font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  className="mt-4 px-4 py-1.5 lg:px-5 lg:py-2 rounded-full text-xs lg:text-sm font-semibold transition-colors"
+                  style={{
+                    backgroundColor: `${brandColor}18`,
+                    color: brandColor
+                  }}
                 >
                   {isAr ? "عرض جميع المنتجات" : "View all pieces"}
                 </button>

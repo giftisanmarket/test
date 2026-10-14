@@ -316,34 +316,6 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
           )}
         </div>
 
-        {/* Minimal Metrics Strip */}
-        <div className="bg-white rounded-2xl lg:rounded-3xl 2xl:rounded-[2rem] border border-primary/10 shadow-xs p-4 sm:p-5 lg:p-6 xl:p-8 2xl:p-9 3xl:p-10 mt-8 lg:mt-12 2xl:mt-14 mb-12 lg:mb-16 2xl:mb-20 grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8 2xl:gap-10 divide-y md:divide-y-0 md:divide-x divide-primary/5 rtl:md:divide-x-reverse">
-          <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{products.length}</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
-              {dict.artisan_detail?.studio_creations || (isAr ? "منتجات المتجر" : "Shop Products")}
-            </p>
-          </div>
-          <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{totalSales}</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
-              {dict.artisan_detail?.sales || (isAr ? "مبيعات مكتملة" : "Sales Completed")}
-            </p>
-          </div>
-          <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{yearsExp}</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
-              {dict.artisan_detail?.yrs_mastery || (isAr ? "سنوات الخبرة" : "Yrs Mastery")}
-            </p>
-          </div>
-          <div className="text-center pt-2 md:pt-0">
-            <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-serif font-bold text-primary">{avgRating} ★</p>
-            <p className="text-[11px] sm:text-xs lg:text-sm 2xl:text-base text-charcoal/60 uppercase tracking-wider font-medium mt-0.5 lg:mt-1 2xl:mt-2">
-              {totalReviews > 0 ? (isAr ? `${totalReviews} تقييم حقيقي` : `${totalReviews} Verified Reviews`) : (dict.artisan_detail?.curation_score || "Quality Rating")}
-            </p>
-          </div>
-        </div>
-
         {/* Shop Catalog Section */}
         <section className="mt-8 lg:mt-12 2xl:mt-16">
           {/* Section Header & Filter Tabs */}

@@ -5,7 +5,7 @@ import { useAuthModal } from "@/context/auth-modal-context";
 import { login, signUp } from "@/lib/actions";
 import { useSession, signIn as socialSignIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { X, Lock, Mail, User, Eye, EyeOff, ArrowRight, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { isNativePlatform, performGoogleSignIn, triggerHaptic } from "@/lib/native";
@@ -21,6 +21,7 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
   const { isOpen, mode, closeAuthModal, setMode } = useAuthModal();
   const { update } = useSession();
   const router = useRouter();
+  const dragControls = useDragControls();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -117,6 +118,17 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
 
         {/* Modal / Bottom Sheet */}
         <motion.div
+          drag="y"
+          dragControls={dragControls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0.05, bottom: 0.7 }}
+          onDragEnd={(_, info) => {
+            if (info.offset.y > 60 || info.velocity.y > 300) {
+              triggerHaptic("light");
+              closeAuthModal();
+            }
+          }}
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
@@ -124,12 +136,21 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
           className="relative w-full max-w-lg bg-cream rounded-t-[2.2rem] md:rounded-[2.5rem] shadow-2xl border border-primary/10 overflow-hidden max-h-[92vh] flex flex-col z-[121]"
         >
           {/* Mobile Drag Indicator Handle */}
-          <div className="md:hidden pt-3 pb-1 flex justify-center">
-            <div className="w-12 h-1.5 bg-primary/20 rounded-full" />
+          <div 
+            onPointerDown={(e) => dragControls.start(e)}
+            className="md:hidden pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none flex flex-col items-center justify-center select-none w-full"
+          >
+            <div className="w-12 h-1.5 bg-primary/20 hover:bg-primary/30 rounded-full transition-colors" />
           </div>
 
           {/* Header Bar */}
-          <div className="px-6 pt-4 pb-3 flex items-center justify-between border-b border-primary/5">
+          <div 
+            onPointerDown={(e) => {
+              if ((e.target as HTMLElement).closest("button")) return;
+              dragControls.start(e);
+            }}
+            className="px-6 pt-1 md:pt-4 pb-3 flex items-center justify-between border-b border-primary/5 cursor-grab active:cursor-grabbing touch-none select-none"
+          >
             <div className="flex items-center gap-2">
               <div className="relative w-8 h-8 rounded-lg overflow-hidden shadow-sm">
                 <Image src="/icon.png" alt="Giftisan" fill className="object-cover" />

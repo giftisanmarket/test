@@ -18,6 +18,8 @@ import {
   Star,
   CheckCircle2,
   Package,
+  Gem,
+  Crown,
 } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -130,7 +132,8 @@ export function GiftsHubClient({
       subtitle: isAr ? "مفاجآت لطيفة، ميداليات مخصصة، وأكواب فنية" : "Sweet thoughtful tokens, keychains & mugs",
       href: `/${lang}/gifts/all?price=UNDER_250`,
       tag: isAr ? "اقتصادي ولطيف" : "Budget Friendly",
-      accent: "from-amber-500/10 to-amber-600/5 border-amber-200/60 text-amber-800",
+      icon: Coins,
+      color: "bg-amber-50 text-amber-800 border-amber-200/60",
     },
     {
       id: "under-500",
@@ -138,7 +141,8 @@ export function GiftsHubClient({
       subtitle: isAr ? "إكسسوارات يدوية، شموع طبيعية، وديكورات أنيقة" : "Handcrafted accessories, candles & concrete sets",
       href: `/${lang}/gifts/all?price=UNDER_500`,
       tag: isAr ? "الأكثر اختياراً" : "Best Value",
-      accent: "from-teal-500/10 to-teal-600/5 border-teal-200/60 text-teal-800",
+      icon: Sparkles,
+      color: "bg-teal-50 text-teal-800 border-teal-200/60",
     },
     {
       id: "under-1000",
@@ -146,15 +150,17 @@ export function GiftsHubClient({
       subtitle: isAr ? "حقائب كروشيه وجلود، فضة يدوية، وتذكارات خاصة" : "Fine crochet bags, silver jewelry & bespoke gifts",
       href: `/${lang}/gifts/all?price=UNDER_1000`,
       tag: isAr ? "صناعة مميزة" : "Artisan Craft",
-      accent: "from-rose-500/10 to-rose-600/5 border-rose-200/60 text-rose-800",
+      icon: Gem,
+      color: "bg-rose-50 text-rose-800 border-rose-200/60",
     },
     {
       id: "over-1000",
-      title: isAr ? "هدايا فاخرة ومقتنيات" : `Luxury Keepsakes (1,000+ ${currency})`,
+      title: isAr ? `أكثر من 1,000 ${currency}` : `Over 1,000 ${currency}`,
       subtitle: isAr ? "صناديق هدايا ملكية، أخشاب مطعمة، ومجموعات راقية" : "Luxury gift sets, heirloom wood & custom art",
       href: `/${lang}/gifts/all?price=OVER_1000`,
-      tag: isAr ? "فخامة استثنائية" : "Luxury Tier",
-      accent: "from-emerald-500/10 to-emerald-600/5 border-emerald-200/60 text-emerald-800",
+      tag: isAr ? "فخامة استثنائية" : "Luxury Keepsakes",
+      icon: Crown,
+      color: "bg-purple-50 text-purple-800 border-purple-200/60",
     },
   ];
 
@@ -362,59 +368,46 @@ export function GiftsHubClient({
       </section>
 
       {/* 4. Shop by Budget Section */}
-      <section className="py-12 border-b border-primary/5">
-        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
-          <div className="flex items-end justify-between mb-6">
+      <section className="py-8 border-b border-primary/5 bg-white/60 backdrop-blur-xs">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold mb-2">
-                <Coins className="w-3.5 h-3.5" />
-                <span>{isAr ? "ميزانيات مدروسة" : "Friendly Budgets"}</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-serif text-[#222222] font-normal">
+              <h2 className="text-lg sm:text-xl font-serif text-[#222222] font-medium">
                 {isAr ? "اختر الهدية حسب ميزانيتك" : "Find Gifts in Your Price Range"}
               </h2>
-              <p className="text-xs sm:text-sm text-charcoal/65 mt-1">
-                {isAr ? "قطع فريدة مصنوعة يدوياً تناسب كل ميزانية دون التنازل عن القيمة والأناقة." : "Handmade treasures for every budget without compromising craft or care."}
+              <p className="text-xs text-charcoal/60">
+                {isAr ? "قطع فريدة مصنوعة يدوياً تناسب كل ميزانية دون التنازل عن القيمة والأناقة" : "Handmade treasures for every budget without compromising craft or care"}
               </p>
             </div>
-
             <Link
               href={`/${lang}/gifts/all`}
-              className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+              className="text-xs font-bold text-primary hover:underline flex items-center gap-1 self-start sm:self-auto"
             >
               <span>{isAr ? "عرض كل الأسعار" : "View all prices"}</span>
               <ArrowIcon className="w-3 h-3" />
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {budgetCards.map((b) => (
-              <Link
-                key={b.id}
-                href={b.href}
-                className={cn(
-                  "group p-5 rounded-2xl border bg-gradient-to-br transition-all hover:shadow-md flex flex-col justify-between h-full active:scale-[0.98]",
-                  b.accent
-                )}
-              >
-                <div>
-                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/80 backdrop-blur-xs mb-3 shadow-2xs">
-                    {b.tag}
-                  </span>
-                  <h3 className="text-lg font-bold font-heading text-charcoal group-hover:text-primary transition-colors">
-                    {b.title}
-                  </h3>
-                  <p className="text-xs text-charcoal/70 mt-1 leading-relaxed">
-                    {b.subtitle}
-                  </p>
-                </div>
-
-                <div className="pt-4 flex items-center gap-1.5 font-bold text-xs text-primary group-hover:underline">
-                  <span>{isAr ? "استكشف الهدايا" : "Explore gifts"}</span>
-                  <ArrowIcon className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
-                </div>
-              </Link>
-            ))}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+            {budgetCards.map((b) => {
+              const Icon = b.icon;
+              return (
+                <Link
+                  key={b.id}
+                  href={b.href}
+                  className={cn(
+                    "p-3 rounded-2xl border transition-all flex items-center gap-2.5 hover:shadow-xs active:scale-95 group",
+                    b.color
+                  )}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-bold truncate block group-hover:underline">{b.title}</span>
+                    <span className="text-[10px] opacity-75 truncate block font-medium">{b.tag}</span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

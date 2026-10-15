@@ -1477,7 +1477,9 @@
     "section4_title": "4. Security Measures",
     "section4_desc": "We implement robust security protocols, including encryption and secure server environments, to protect your sensitive data from unauthorized access.",
     "section5_title": "5. Your Privacy Rights",
-    "section5_desc": "You have the right to access, correct, or delete your personal information at any time. You can manage your notification preferences directly in your profile settings."
+    "section5_desc": "You have the right to access, correct, or delete your personal information at any time. You can manage your notification preferences directly in your profile settings.",
+    "section6_title": "6. Account & Data Deletion",
+    "section6_desc": "You may permanently delete your account and associated personal data at any time directly within the application under Profile Settings > Delete Account. Alternatively, you can submit an account deletion request by emailing support@giftisan.com or contacting us through our online support form. Upon deletion, your profile, authentication credentials, addresses, and saved preferences are permanently removed."
   },
   "terms": {
     "title_base": "Terms of",

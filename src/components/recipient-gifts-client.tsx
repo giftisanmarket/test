@@ -67,15 +67,16 @@ export function RecipientGiftsClient({
   }, [slug]);
 
   // Filter States
-  const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
-  const [showPersonalizedOnly, setShowPersonalizedOnly] = useState(false);
-  const [showSetsOnly, setShowSetsOnly] = useState(false);
+  const [showPicksOnly, setShowPicksOnly] = useState(false);
   const defaultPriceRange = initialPrice && ["UNDER_250", "UNDER_500", "UNDER_1000", "OVER_1000"].includes(initialPrice)
     ? initialPrice
     : "ALL";
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>(defaultPriceRange);
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "price-low" | "price-high">("popular");
-  const [openDropdown, setOpenDropdown] = useState<"price" | "sort" | null>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState<string>(recipientTarget);
+  const [selectedOccasion, setSelectedOccasion] = useState<string>("ALL");
+  const [selectedCraft, setSelectedCraft] = useState<string>("ALL");
+  const [openDropdown, setOpenDropdown] = useState<"price" | "sort" | "recipient" | "occasion" | "craft" | null>(null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [stickyTop, setStickyTop] = useState<number | null>(null);
 
@@ -83,31 +84,35 @@ export function RecipientGiftsClient({
   const { clearPersistedFilters } = useFilterPersistence({
     key: `giftisan_filters_gifts_${slug}`,
     values: {
-      showVerifiedOnly,
-      showPersonalizedOnly,
-      showSetsOnly,
+      showPicksOnly,
       selectedPriceRange,
+      selectedRecipient,
+      selectedOccasion,
+      selectedCraft,
       sortBy,
     },
     setters: {
-      showVerifiedOnly: setShowVerifiedOnly,
-      showPersonalizedOnly: setShowPersonalizedOnly,
-      showSetsOnly: setShowSetsOnly,
+      showPicksOnly: setShowPicksOnly,
       selectedPriceRange: setSelectedPriceRange,
+      selectedRecipient: setSelectedRecipient,
+      selectedOccasion: setSelectedOccasion,
+      selectedCraft: setSelectedCraft,
       sortBy: setSortBy,
     },
     defaultValues: {
-      showVerifiedOnly: false,
-      showPersonalizedOnly: false,
-      showSetsOnly: false,
+      showPicksOnly: false,
       selectedPriceRange: defaultPriceRange,
+      selectedRecipient: recipientTarget,
+      selectedOccasion: "ALL",
+      selectedCraft: "ALL",
       sortBy: "popular" as const,
     },
     paramMapping: {
-      showVerifiedOnly: "verified",
-      showPersonalizedOnly: "personalized",
-      showSetsOnly: "sets",
+      showPicksOnly: "picks",
       selectedPriceRange: "price",
+      selectedRecipient: "recipient",
+      selectedOccasion: "occasion",
+      selectedCraft: "craft",
       sortBy: "sort",
     },
   });
@@ -171,6 +176,36 @@ export function RecipientGiftsClient({
     };
   }, []);
 
+  const recipientOptions = [
+    { id: "all", label: isAr ? "جميع المستلمين" : "All Recipients", shortLabel: isAr ? "الكل" : "All" },
+    { id: "her", label: hubDict.for_her_title || (isAr ? "هدايا لها" : "Gifts for Her"), shortLabel: isAr ? "لها" : "For Her" },
+    { id: "him", label: hubDict.for_him_title || (isAr ? "هدايا له" : "Gifts for Him"), shortLabel: isAr ? "له" : "For Him" },
+    { id: "mom", label: hubDict.for_mom_title || (isAr ? "هدايا لست الحبايب" : "Gifts for Mom"), shortLabel: isAr ? "لست الحبايب" : "For Mom" },
+    { id: "couples", label: hubDict.for_couples_title || (isAr ? "هدايا للعروسين" : "Couples & Weddings"), shortLabel: isAr ? "للعروسين" : "Couples" },
+    { id: "friends", label: hubDict.for_friends_title || (isAr ? "هدايا للأصدقاء" : "Gifts for Friends"), shortLabel: isAr ? "للأصدقاء" : "For Friends" },
+    { id: "kids", label: hubDict.for_kids_title || (isAr ? "هدايا للأطفال" : "Gifts for Kids"), shortLabel: isAr ? "للأطفال" : "For Kids" },
+  ];
+
+  const occasionOptions = [
+    { id: "ALL", label: isAr ? "جميع المناسبات" : "All Occasions" },
+    { id: "birthday", label: isAr ? "أعياد الميلاد" : "Birthday" },
+    { id: "wedding", label: isAr ? "الخطوبة والزفاف" : "Wedding & Engagement" },
+    { id: "mom", label: isAr ? "عيد الأم والتكريم" : "Mother's Day & Gratitude" },
+    { id: "graduation", label: isAr ? "التخرج والنجاح" : "Graduation" },
+    { id: "housewarming", label: isAr ? "مباركة البيت الجديد" : "Housewarming" },
+    { id: "baby", label: isAr ? "السبوع والمواليد" : "Baby & Sebou'" },
+  ];
+
+  const craftOptions = [
+    { id: "ALL", label: isAr ? "جميع الحرف" : "All Crafts" },
+    { id: "jewelry", label: isAr ? "مجوهرات وحلي" : "Jewelry & Accessories" },
+    { id: "bags-crochet", label: isAr ? "حقائب وكروشيه" : "Bags & Crochet" },
+    { id: "home-decor", label: isAr ? "ديكور وخزف" : "Ceramics & Home Decor" },
+    { id: "candles", label: isAr ? "شموع وعطور طبيعية" : "Candles & Apothecary" },
+    { id: "wood-leather", label: isAr ? "أخشاب وجلود" : "Woodwork & Leather" },
+    { id: "toys", label: isAr ? "ألعاب وعرائس يدوية" : "Dolls & Toys" },
+  ];
+
   const priceRanges = [
     { id: "ALL", label: isAr ? "جميع الأسعار" : "All Prices" },
     { id: "UNDER_250", label: hubDict.gifts_under_250 || (isAr ? "أقل من 250 ج.م" : `Under 250 ${currency}`), min: 0, max: 250 },
@@ -187,20 +222,24 @@ export function RecipientGiftsClient({
   ];
 
   const resetAllFilters = () => {
-    setShowVerifiedOnly(false);
-    setShowPersonalizedOnly(false);
-    setShowSetsOnly(false);
+    setShowPicksOnly(false);
     setSelectedPriceRange(defaultPriceRange);
+    setSelectedRecipient(slug === "all" ? "all" : recipientTarget);
+    setSelectedOccasion("ALL");
+    setSelectedCraft("ALL");
     setSortBy("popular");
     setOpenDropdown(null);
     clearPersistedFilters();
   };
 
+  const isRecipientFilterActive = slug === "all" ? selectedRecipient !== "all" : selectedRecipient !== recipientTarget;
+
   const activeFiltersCount =
-    (showVerifiedOnly ? 1 : 0) +
-    (showPersonalizedOnly ? 1 : 0) +
-    (showSetsOnly ? 1 : 0) +
-    (selectedPriceRange !== "ALL" ? 1 : 0);
+    (showPicksOnly ? 1 : 0) +
+    (selectedPriceRange !== "ALL" ? 1 : 0) +
+    (isRecipientFilterActive ? 1 : 0) +
+    (selectedOccasion !== "ALL" ? 1 : 0) +
+    (selectedCraft !== "ALL" ? 1 : 0);
 
 
 
@@ -329,43 +368,128 @@ export function RecipientGiftsClient({
     return true;
   };
 
+  // Helper function for Occasion Matching
+  const matchesOccasion = (product: any, occasion: string): boolean => {
+    if (occasion === "ALL") return true;
+
+    const cat = (product.category || "").toLowerCase();
+    const subcat = (product.subcategory || "").toLowerCase();
+    const name = (product.name || "").toLowerCase();
+    const desc = (product.description || "").toLowerCase();
+    const tags = Array.isArray(product.tags) ? product.tags.map((t: string) => t.toLowerCase()) : [];
+    const textCorpus = `${cat} ${subcat} ${name} ${desc} ${tags.join(" ")}`;
+
+    switch (occasion) {
+      case "birthday": {
+        const keywords = [
+          "birthday", "عيد ميلاد", "ميلاد", "happy birthday", "party", "cake",
+          "ميدالية", "مج", "كوب", "سلسلة", "اسورة", "شنطة", "كروشيه", "لعبة", "عروسة", "توت باج", "شمع"
+        ];
+        return keywords.some(kw => textCorpus.includes(kw));
+      }
+      case "wedding": {
+        const keywords = [
+          "wedding", "engagement", "bride", "groom", "bridal", "couples", "marriage",
+          "خطوبة", "زفاف", "عريس", "عروسة", "شبكة", "دبل", "طارة", "منديل", "صنيه شبكه",
+          "صينية خطوبة", "بصمه كتب كتاب", "تطريز", "كابلز", "كتب كتاب", "صينية"
+        ];
+        return cat.includes("wedding") || cat.includes("weddings") || keywords.some(kw => textCorpus.includes(kw));
+      }
+      case "mom": {
+        const keywords = [
+          "mom", "mother", "ماما", "أم", "أمي", "ست الحبايب", "صينية", "فازة", "شمع", "شمعة",
+          "ديكور", "خزف", "مفرش", "مرآة", "مراءه", "تابلوه", "فاصل كتب", "كوستر", "ميدالية وَنَس", "بوكيه", "ورد"
+        ];
+        return keywords.some(kw => textCorpus.includes(kw));
+      }
+      case "graduation": {
+        const keywords = [
+          "graduation", "graduate", "تخرج", "تخرجنا", "دفعة", "مبارك التخرج", "مهندس", "دكتور",
+          "دميه التخرج", "دمية التخرج", "طاقية تخرج", "قبعة تخرج", "وشاح"
+        ];
+        return keywords.some(kw => textCorpus.includes(kw));
+      }
+      case "housewarming": {
+        const keywords = [
+          "housewarming", "home", "living", "بيت", "مبارك البيت", "منزل", "أثاث", "ديكور",
+          "فازة", "كوستر", "مبخرة", "incense", "coaster", "tableaux", "تابلوه", "ceramics", "خزف", "مفرش", "اباجورة"
+        ];
+        return cat.includes("home") || keywords.some(kw => textCorpus.includes(kw));
+      }
+      case "baby": {
+        const keywords = [
+          "baby", "sebou", "سبوع", "مولود", "طفل", "طفلة", "نونو", "بيبي", "بافتة", "مهاد",
+          "nursery", "doll", "دمية", "دميه", "ألعاب", "العاب", "تطريز اسم"
+        ];
+        return cat.includes("kids") || cat.includes("baby") || cat.includes("toys") || keywords.some(kw => textCorpus.includes(kw));
+      }
+      default:
+        return true;
+    }
+  };
+
+  // Helper function for Craft Type Matching
+  const matchesCraft = (product: any, craft: string): boolean => {
+    if (craft === "ALL") return true;
+
+    const cat = (product.category || "").toLowerCase();
+    const subcat = (product.subcategory || "").toLowerCase();
+    const name = (product.name || "").toLowerCase();
+    const tags = Array.isArray(product.tags) ? product.tags.map((t: string) => t.toLowerCase()) : [];
+    const textCorpus = `${cat} ${subcat} ${name} ${tags.join(" ")}`;
+
+    switch (craft) {
+      case "jewelry": {
+        const keywords = ["jewelry", "necklace", "bracelet", "earring", "ring", "pendant", "فضة", "حلق", "سلسلة", "عقد", "خاتم", "اسورة", "مجوهرات"];
+        return cat.includes("jewelry") || keywords.some(k => textCorpus.includes(k));
+      }
+      case "bags-crochet": {
+        const keywords = ["crochet", "bag", "tote", "purse", "clutch", "حقيبة", "شنطة", "شنطه", "كروشيه", "توت باج", "خيوط", "هاندميد"];
+        return cat.includes("bags") || keywords.some(k => textCorpus.includes(k));
+      }
+      case "home-decor": {
+        const keywords = ["decor", "home", "ceramic", "pottery", "coaster", "vase", "mirror", "frame", "خزف", "فخار", "ديكور", "فازة", "كوستر", "مراءه", "مرآة", "تابلوه"];
+        return cat.includes("home") || cat.includes("ceramic") || keywords.some(k => textCorpus.includes(k));
+      }
+      case "candles": {
+        const keywords = ["candle", "wax", "scent", "diffuser", "apothecary", "soap", "شمع", "شمعة", "معطر", "فواحة", "صابون", "مسك", "عود"];
+        return cat.includes("beauty") || cat.includes("apothecary") || keywords.some(k => textCorpus.includes(k));
+      }
+      case "wood-leather": {
+        const keywords = ["wood", "wooden", "leather", "wallet", "organizer", "خشب", "خشبي", "جلد", "طبيعي", "محفظة", "استاند"];
+        return cat.includes("wood") || cat.includes("leather") || keywords.some(k => textCorpus.includes(k));
+      }
+      case "toys": {
+        const keywords = ["toy", "doll", "game", "puzzle", "montessori", "عروسة", "دمية", "دميه", "لعبة", "العاب", "ألعاب", "كروشيه اطفال"];
+        return cat.includes("toys") || cat.includes("kids") || keywords.some(k => textCorpus.includes(k));
+      }
+      default:
+        return true;
+    }
+  };
+
   // Filter and Sort Products
   const filteredProducts = useMemo(() => {
     return initialProducts
       .filter(p => {
         // Recipient filter
-        if (recipientTarget !== "all" && !matchesRecipient(p, recipientTarget)) {
+        if (selectedRecipient !== "all" && !matchesRecipient(p, selectedRecipient)) {
           return false;
         }
 
-        // Verified Artisan filter
-        if (showVerifiedOnly && !p.artisan?.isVerified) {
+        // Occasion filter
+        if (selectedOccasion !== "ALL" && !matchesOccasion(p, selectedOccasion)) {
           return false;
         }
 
-        // Personalized filter
-        if (showPersonalizedOnly) {
-          const isPersonalized =
-            p.canPersonalize ||
-            p.requiresClientImage ||
-            (p.category || "").toLowerCase().includes("personalized") ||
-            (p.name || "").includes("إسم") ||
-            (p.name || "").includes("اسم") ||
-            (p.name || "").includes("حرف");
-          if (!isPersonalized) return false;
+        // Craft / Category filter
+        if (selectedCraft !== "ALL" && !matchesCraft(p, selectedCraft)) {
+          return false;
         }
 
-        // Gift Sets & Boxes filter
-        if (showSetsOnly) {
-          const isSet =
-            (p.category || "").toLowerCase().includes("gift-boxes") ||
-            (p.category || "").toLowerCase().includes("gifts-sets") ||
-            (p.name || "").toLowerCase().includes("set") ||
-            (p.name || "").toLowerCase().includes("box") ||
-            (p.name || "").includes("طقم") ||
-            (p.name || "").includes("بوكيه") ||
-            (p.name || "").includes("صندوق");
-          if (!isSet) return false;
+        // Giftisan's Picks filter: products from verified artisans
+        if (showPicksOnly && !p.artisan?.isVerified) {
+          return false;
         }
 
         // Price range filter
@@ -385,7 +509,7 @@ export function RecipientGiftsClient({
         // Default "popular"
         return (b.views || b.reviews?.length || 0) - (a.views || a.reviews?.length || 0);
       });
-  }, [initialProducts, recipientTarget, showVerifiedOnly, showPersonalizedOnly, showSetsOnly, selectedPriceRange, sortBy]);
+  }, [initialProducts, selectedRecipient, selectedOccasion, selectedCraft, showPicksOnly, selectedPriceRange, sortBy]);
 
   // Page Header Copy
   const pageMeta = useMemo(() => {
@@ -515,6 +639,34 @@ export function RecipientGiftsClient({
             <div className="h-5 w-px bg-primary/10 shrink-0" />
 
             <div className="flex-1 overflow-x-auto scrollbar-none flex items-center gap-1.5 whitespace-nowrap py-0.5">
+              {/* Quick Recipient Toggle: For Her */}
+              <button
+                type="button"
+                onClick={() => setSelectedRecipient(prev => prev === "her" ? (slug === "all" ? "all" : recipientTarget) : "her")}
+                className={cn(
+                  "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
+                  selectedRecipient === "her"
+                    ? "bg-primary text-white border-primary shadow-xs"
+                    : "bg-white text-charcoal/80 border-primary/15"
+                )}
+              >
+                <span>{isAr ? "لها" : "For Her"}</span>
+              </button>
+
+              {/* Quick Recipient Toggle: For Him */}
+              <button
+                type="button"
+                onClick={() => setSelectedRecipient(prev => prev === "him" ? (slug === "all" ? "all" : recipientTarget) : "him")}
+                className={cn(
+                  "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
+                  selectedRecipient === "him"
+                    ? "bg-primary text-white border-primary shadow-xs"
+                    : "bg-white text-charcoal/80 border-primary/15"
+                )}
+              >
+                <span>{isAr ? "له" : "For Him"}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setSelectedPriceRange(prev => prev === "UNDER_250" ? "ALL" : "UNDER_250")}
@@ -543,30 +695,16 @@ export function RecipientGiftsClient({
 
               <button
                 type="button"
-                onClick={() => setShowPersonalizedOnly(!showPersonalizedOnly)}
+                onClick={() => setShowPicksOnly(!showPicksOnly)}
                 className={cn(
-                  "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
-                  showPersonalizedOnly
-                    ? "bg-accent text-white border-accent"
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
+                  showPicksOnly
+                    ? "bg-accent text-white border-accent shadow-xs"
                     : "bg-white text-charcoal/80 border-primary/15"
                 )}
               >
-                <Sparkles className="w-3 h-3" />
-                <span>{hubDict.personalized_gifts || (isAr ? "مخصصة" : "Personalized")}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowSetsOnly(!showSetsOnly)}
-                className={cn(
-                  "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
-                  showSetsOnly
-                    ? "bg-accent text-white border-accent"
-                    : "bg-white text-charcoal/80 border-primary/15"
-                )}
-              >
-                <Package className="w-3 h-3" />
-                <span>{hubDict.gift_sets || (isAr ? "أطقم" : "Sets")}</span>
+                <Sparkles className={cn("w-3 h-3", showPicksOnly ? "text-white" : "text-accent")} />
+                <span>{isAr ? "مختارات جيفتيزان" : "Giftisan's Picks"}</span>
               </button>
 
               {activeFiltersCount > 0 && (
@@ -586,7 +724,115 @@ export function RecipientGiftsClient({
           <div className="hidden md:flex items-center justify-between gap-3 w-full">
             <div className="flex flex-wrap items-center gap-2">
               
-              {/* Price Dropdown Pill */}
+              {/* 1. Recipient Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(prev => prev === "recipient" ? null : "recipient")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-xs active:scale-95",
+                    isRecipientFilterActive
+                      ? "bg-primary text-white border-primary shadow-xs"
+                      : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30 hover:text-primary"
+                  )}
+                >
+                  <Heart className="w-3.5 h-3.5" />
+                  <span>
+                    {isRecipientFilterActive
+                      ? (recipientOptions.find(r => r.id === selectedRecipient)?.label || (isAr ? "المهدى له" : "Recipient"))
+                      : (isAr ? "المهدى له" : "Recipient")}
+                  </span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", openDropdown === "recipient" && "rotate-180")} />
+                </button>
+
+                <AnimatePresence>
+                  {openDropdown === "recipient" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute start-0 top-full mt-2 w-56 bg-white border border-primary/10 shadow-xl rounded-2xl p-1.5 z-[100]"
+                    >
+                      {recipientOptions.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedRecipient(option.id);
+                            setOpenDropdown(null);
+                          }}
+                          className={cn(
+                            "w-full text-start px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between",
+                            selectedRecipient === option.id
+                              ? "bg-primary/5 text-primary font-bold"
+                              : "text-charcoal/70 hover:bg-cream hover:text-primary"
+                          )}
+                        >
+                          <span>{option.label}</span>
+                          {selectedRecipient === option.id && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 2. Occasion Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(prev => prev === "occasion" ? null : "occasion")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-xs active:scale-95",
+                    selectedOccasion !== "ALL"
+                      ? "bg-primary text-white border-primary shadow-xs"
+                      : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30 hover:text-primary"
+                  )}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>
+                    {selectedOccasion !== "ALL"
+                      ? (occasionOptions.find(o => o.id === selectedOccasion)?.label || (isAr ? "المناسبة" : "Occasion"))
+                      : (isAr ? "المناسبة" : "Occasion")}
+                  </span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", openDropdown === "occasion" && "rotate-180")} />
+                </button>
+
+                <AnimatePresence>
+                  {openDropdown === "occasion" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute start-0 top-full mt-2 w-56 bg-white border border-primary/10 shadow-xl rounded-2xl p-1.5 z-[100]"
+                    >
+                      {occasionOptions.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedOccasion(option.id);
+                            setOpenDropdown(null);
+                          }}
+                          className={cn(
+                            "w-full text-start px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between",
+                            selectedOccasion === option.id
+                              ? "bg-primary/5 text-primary font-bold"
+                              : "text-charcoal/70 hover:bg-cream hover:text-primary"
+                          )}
+                        >
+                          <span>{option.label}</span>
+                          {selectedOccasion === option.id && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 3. Price Dropdown Pill */}
               <div className="relative">
                 <button
                   type="button"
@@ -639,52 +885,75 @@ export function RecipientGiftsClient({
                 </AnimatePresence>
               </div>
 
-              {/* Personalized Gifts Pill */}
+              {/* 4. Craft / Category Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(prev => prev === "craft" ? null : "craft")}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-xs active:scale-95",
+                    selectedCraft !== "ALL"
+                      ? "bg-primary text-white border-primary shadow-xs"
+                      : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30 hover:text-primary"
+                  )}
+                >
+                  <span>
+                    {selectedCraft !== "ALL"
+                      ? (craftOptions.find(c => c.id === selectedCraft)?.label || (isAr ? "نوع الحرفة" : "Craft Type"))
+                      : (isAr ? "نوع الحرفة" : "Craft Type")}
+                  </span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", openDropdown === "craft" && "rotate-180")} />
+                </button>
+
+                <AnimatePresence>
+                  {openDropdown === "craft" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute start-0 top-full mt-2 w-56 bg-white border border-primary/10 shadow-xl rounded-2xl p-1.5 z-[100]"
+                    >
+                      {craftOptions.map(option => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCraft(option.id);
+                            setOpenDropdown(null);
+                          }}
+                          className={cn(
+                            "w-full text-start px-3 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-between",
+                            selectedCraft === option.id
+                              ? "bg-primary/5 text-primary font-bold"
+                              : "text-charcoal/70 hover:bg-cream hover:text-primary"
+                          )}
+                        >
+                          <span>{option.label}</span>
+                          {selectedCraft === option.id && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* 5. Giftisan's Picks Pill */}
               <button
                 type="button"
-                onClick={() => setShowPersonalizedOnly(!showPersonalizedOnly)}
+                onClick={() => setShowPicksOnly(!showPicksOnly)}
                 className={cn(
                   "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-xs active:scale-95",
-                  showPersonalizedOnly
+                  showPicksOnly
                     ? "bg-accent text-white border-accent shadow-sm shadow-accent/20"
                     : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30 hover:text-primary"
                 )}
               >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{hubDict.personalized_gifts || (isAr ? "هدايا مخصصة" : "Personalized")}</span>
+                <Sparkles className={cn("w-3.5 h-3.5", showPicksOnly ? "text-white" : "text-accent")} />
+                <span>{isAr ? "مختارات جيفتيزان" : "Giftisan's Picks"}</span>
               </button>
 
-              {/* Gift Sets Pill */}
-              <button
-                type="button"
-                onClick={() => setShowSetsOnly(!showSetsOnly)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-xs active:scale-95",
-                  showSetsOnly
-                    ? "bg-accent text-white border-accent shadow-sm shadow-accent/20"
-                    : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30 hover:text-primary"
-                )}
-              >
-                <Package className="w-3.5 h-3.5" />
-                <span>{hubDict.gift_sets || (isAr ? "أطقم هدايا" : "Gift Sets")}</span>
-              </button>
-
-              {/* Verified Artisans Pill */}
-              <button
-                type="button"
-                onClick={() => setShowVerifiedOnly(!showVerifiedOnly)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all border shadow-xs active:scale-95",
-                  showVerifiedOnly
-                    ? "bg-accent text-white border-accent shadow-sm shadow-accent/20"
-                    : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30 hover:text-primary"
-                )}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{dict.home?.artisans_tab || (isAr ? "حرفيون موثقون" : "Verified Artisans")}</span>
-              </button>
-
-              {/* Sort Dropdown */}
+              {/* 8. Sort Dropdown */}
               <div className="relative">
                 <button
                   type="button"
@@ -753,6 +1022,102 @@ export function RecipientGiftsClient({
               <span>{isAr ? "هدية متاحة" : (filteredProducts.length === 1 ? "gift available" : "gifts available")}</span>
             </div>
           </div>
+
+          {/* Active Filter Chips Strip */}
+          {activeFiltersCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-2.5 border-t border-primary/10 mt-2.5 animate-in fade-in duration-200">
+              <div className="text-[11px] font-bold text-charcoal/60 flex items-center gap-1 shrink-0">
+                <SlidersHorizontal className="w-3 h-3" />
+                <span>{isAr ? "الفلاتر النشطة:" : "Active filters:"}</span>
+              </div>
+
+              {/* Recipient chip */}
+              {isRecipientFilterActive && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
+                  <span>{recipientOptions.find(r => r.id === selectedRecipient)?.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRecipient(slug === "all" ? "all" : recipientTarget)}
+                    className="hover:bg-primary/20 rounded-full p-0.5 transition-colors ms-0.5"
+                    aria-label="Remove recipient filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+
+              {/* Occasion chip */}
+              {selectedOccasion !== "ALL" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
+                  <span>{occasionOptions.find(o => o.id === selectedOccasion)?.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOccasion("ALL")}
+                    className="hover:bg-accent/20 rounded-full p-0.5 transition-colors ms-0.5"
+                    aria-label="Remove occasion filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+
+              {/* Craft chip */}
+              {selectedCraft !== "ALL" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold border border-teal-200">
+                  <span>{craftOptions.find(c => c.id === selectedCraft)?.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCraft("ALL")}
+                    className="hover:bg-teal-200/50 rounded-full p-0.5 transition-colors ms-0.5"
+                    aria-label="Remove craft filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+
+              {/* Price chip */}
+              {selectedPriceRange !== "ALL" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
+                  <span>{priceRanges.find(r => r.id === selectedPriceRange)?.label}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPriceRange("ALL")}
+                    className="hover:bg-amber-200/50 rounded-full p-0.5 transition-colors ms-0.5"
+                    aria-label="Remove price filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+
+              {/* Giftisan's Picks chip */}
+              {showPicksOnly && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
+                  <Sparkles className="w-3 h-3 text-accent" />
+                  <span>{isAr ? "مختارات جيفتيزان" : "Giftisan's Picks"}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPicksOnly(false)}
+                    className="hover:bg-accent/20 rounded-full p-0.5 transition-colors ms-0.5"
+                    aria-label="Remove Giftisan's Picks filter"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+
+              {/* Clear all button */}
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="inline-flex items-center gap-1 text-xs font-bold text-accent hover:underline ms-auto px-2 py-0.5"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>{hubDict.clear_filters || (isAr ? "مسح الكل" : "Clear all")}</span>
+              </button>
+            </div>
+          )}
 
         </div>
       </div>
@@ -984,7 +1349,79 @@ export function RecipientGiftsClient({
               {/* Drawer Content */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
                 
+                {/* Section: Recipient */}
+                <div>
+                  <label className="text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <Heart className="w-3.5 h-3.5 text-primary" />
+                    <span>{isAr ? "المهدى له" : "Who is it for?"}</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {recipientOptions.map(option => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setSelectedRecipient(option.id)}
+                        className={cn(
+                          "px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all",
+                          selectedRecipient === option.id
+                            ? "bg-primary text-white border-primary shadow-xs"
+                            : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
+                {/* Section: Occasion */}
+                <div>
+                  <label className="text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-accent" />
+                    <span>{isAr ? "المناسبة" : "Occasion"}</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {occasionOptions.map(option => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setSelectedOccasion(option.id)}
+                        className={cn(
+                          "px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all",
+                          selectedOccasion === option.id
+                            ? "bg-primary text-white border-primary shadow-xs"
+                            : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Section: Craft Type */}
+                <div>
+                  <label className="text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-2.5 block">
+                    {isAr ? "نوع الحرفة" : "Craft Type"}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {craftOptions.map(option => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => setSelectedCraft(option.id)}
+                        className={cn(
+                          "px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all",
+                          selectedCraft === option.id
+                            ? "bg-primary text-white border-primary shadow-xs"
+                            : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Section: Budget */}
                 <div>
@@ -1010,61 +1447,27 @@ export function RecipientGiftsClient({
                   </div>
                 </div>
 
-                {/* Section: Special Features */}
+                {/* Section: Curated Highlights */}
                 <div>
                   <label className="text-xs font-bold text-charcoal/70 uppercase tracking-wider mb-2.5 block">
-                    {hubDict.special_features || (isAr ? "خيارات مميزة" : "Special Features")}
+                    {isAr ? "مختارات مميزة" : "Curated Selection"}
                   </label>
-                  <div className="space-y-2">
+                  <div>
                     <button
                       type="button"
-                      onClick={() => setShowPersonalizedOnly(!showPersonalizedOnly)}
+                      onClick={() => setShowPicksOnly(!showPicksOnly)}
                       className={cn(
-                        "w-full p-3 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between",
-                        showPersonalizedOnly
-                          ? "bg-accent/10 text-accent border-accent"
+                        "w-full p-3.5 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between",
+                        showPicksOnly
+                          ? "bg-accent text-white border-accent shadow-sm"
                           : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30"
                       )}
                     >
                       <div className="flex items-center gap-2.5">
-                        <Sparkles className="w-4 h-4 text-accent" />
-                        <span>{hubDict.personalized_gifts || (isAr ? "هدايا مخصصة بالاسم" : "Personalized Gifts")}</span>
+                        <Sparkles className={cn("w-4 h-4", showPicksOnly ? "text-white" : "text-accent")} />
+                        <span>{isAr ? "مختارات جيفتيزان" : "Giftisan's Picks"}</span>
                       </div>
-                      {showPersonalizedOnly && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowSetsOnly(!showSetsOnly)}
-                      className={cn(
-                        "w-full p-3 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between",
-                        showSetsOnly
-                          ? "bg-accent/10 text-accent border-accent"
-                          : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Package className="w-4 h-4 text-accent" />
-                        <span>{hubDict.gift_sets || (isAr ? "صناديق وأطقم هدايا" : "Gift Boxes & Sets")}</span>
-                      </div>
-                      {showSetsOnly && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowVerifiedOnly(!showVerifiedOnly)}
-                      className={cn(
-                        "w-full p-3 rounded-2xl text-xs font-bold border transition-all flex items-center justify-between",
-                        showVerifiedOnly
-                          ? "bg-accent/10 text-accent border-accent"
-                          : "bg-white text-charcoal/80 border-primary/15 hover:border-primary/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-accent" />
-                        <span>{dict.home?.artisans_tab || (isAr ? "حرفيون موثقون فقط" : "Verified Artisans Only")}</span>
-                      </div>
-                      {showVerifiedOnly && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                      {showPicksOnly && <CheckCircle2 className="w-4 h-4 text-white" />}
                     </button>
                   </div>
                 </div>

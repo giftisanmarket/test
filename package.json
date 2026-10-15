@@ -15,6 +15,7 @@
     "cap:sync": "cap sync",
     "cap:assets": "tsx scripts/generate-native-assets.ts",
     "cap:graphic": "tsx scripts/generate-play-store-graphic.ts",
+    "cap:screenshots": "tsx scripts/generate-play-store-screenshots.ts",
     "cap:bundle:android": "tsx scripts/build-android.ts bundleRelease",
     "cap:apk:android": "tsx scripts/build-android.ts assembleDebug",
     "cap:android": "cap open android",

@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import Link from "next/link";
-import { ShieldCheck, Eye, Lock, Database, ChevronRight } from "lucide-react";
+import { ShieldCheck, Eye, Lock, Database, ChevronRight, UserX } from "lucide-react";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
@@ -20,29 +20,40 @@ export default async function PrivacyPage({ params }: { params: Promise<{ lang: 
   const dict = await getDictionary(lang as any);
   const sections = [
     {
+      id: "info-collect",
       title: dict.privacy.section1_title,
       content: dict.privacy.section1_desc,
       icon: <Database className="w-6 h-6" />
     },
     {
+      id: "use-data",
       title: dict.privacy.section2_title,
       content: dict.privacy.section2_desc,
       icon: <Eye className="w-6 h-6" />
     },
     {
+      id: "data-sharing",
       title: dict.privacy.section3_title,
       content: dict.privacy.section3_desc,
       icon: <ShieldCheck className="w-6 h-6" />
     },
     {
+      id: "security",
       title: dict.privacy.section4_title,
       content: dict.privacy.section4_desc,
       icon: <Lock className="w-6 h-6" />
     },
     {
+      id: "privacy-rights",
       title: dict.privacy.section5_title,
       content: dict.privacy.section5_desc,
       icon: <ShieldCheck className="w-6 h-6" />
+    },
+    {
+      id: "account-deletion",
+      title: dict.privacy.section6_title || "6. Account & Data Deletion",
+      content: dict.privacy.section6_desc || "You can permanently delete your account and personal data anytime in settings or by contacting support.",
+      icon: <UserX className="w-6 h-6" />
     }
   ];
 
@@ -66,7 +77,7 @@ export default async function PrivacyPage({ params }: { params: Promise<{ lang: 
 
         <div className="space-y-12">
           {sections.map((section, i) => (
-            <div key={i} className="group">
+            <div key={i} id={section.id} className="group scroll-mt-24">
               <div className="flex items-start gap-6 border-b border-primary/5 pb-10 transition-colors group-hover:border-primary/20">
                 <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-primary shadow-sm border border-primary/5 shrink-0">
                   {section.icon}

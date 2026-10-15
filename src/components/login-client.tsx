@@ -8,7 +8,7 @@ import { BespokeImage } from "@/components/bespoke-image";
 import { login } from "@/lib/actions";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
-import { signIn as socialSignIn } from "next-auth/react";
+import { performGoogleSignIn } from "@/lib/native";
 import { toast } from "react-hot-toast";
 
 export function LoginClient({ dict }: { dict: any }) {
@@ -107,7 +107,7 @@ export function LoginClient({ dict }: { dict: any }) {
           <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
             <button 
               type="button"
-              onClick={() => socialSignIn("google", { callbackUrl: "/" })}
+              onClick={() => performGoogleSignIn("/")}
               className="w-full py-4 md:py-5 bg-white border border-primary/10 text-primary font-bold rounded-xl md:rounded-2xl hover:bg-primary/5 transition-all shadow-sm flex items-center justify-center gap-3 group text-xs md:text-base active:scale-95"
             >
               <FcGoogle className="w-5 h-5 md:w-6 md:h-6" />

@@ -94,9 +94,62 @@ export async function initNativeApp(onNavigateBack?: () => void): Promise<void> 
         App.exitApp();
       }
     });
+
+    // 4. Handle OAuth Deep Link Return from Chrome Custom Tabs
+    App.addListener("appUrlOpen", async ({ url }) => {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.close();
+      } catch {
+        // Browser might not have been open
+      }
+
+      if (url && typeof window !== "undefined") {
+        try {
+          const parsed = new URL(url);
+          if (parsed.pathname) {
+            window.location.href = parsed.pathname + parsed.search;
+          }
+        } catch {
+          // Fallback if URL parsing fails
+        }
+      }
+    });
   } catch (error) {
     console.warn("Failed to initialize native app plugins:", error);
   }
+}
+
+/**
+ * Performs Google Sign-In: uses Chrome Custom Tabs on native Android to share phone accounts,
+ * or standard NextAuth signin on web.
+ */
+export async function performGoogleSignIn(callbackUrl: string = "/"): Promise<void> {
+  const { signIn } = await import("next-auth/react");
+
+  if (isNativePlatform()) {
+    try {
+      const res = await signIn("google", {
+        redirect: false,
+        callbackUrl: "https://www.giftisan.com",
+      });
+
+      if (res?.url) {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({
+          url: res.url,
+          windowName: "_blank",
+          presentationStyle: "popover",
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn("Native browser auth error, falling back:", err);
+    }
+  }
+
+  // Web fallback or direct browser signin
+  await signIn("google", { callbackUrl });
 }
 
 /**

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, Mail, User, Eye, EyeOff, ArrowRight, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { isNativePlatform } from "@/lib/native";
+import { isNativePlatform, performGoogleSignIn } from "@/lib/native";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -92,7 +92,7 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
 
   const handleGoogleSignIn = async () => {
     try {
-      await socialSignIn("google", { callbackUrl: window.location.href });
+      await performGoogleSignIn(window.location.href);
     } catch {
       toast.error(isArabic ? "تعذر الاتصال بـ Google" : "Unable to initiate Google Sign-In.");
     }

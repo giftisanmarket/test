@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { useRouter } from "next/navigation";
-import { Heart, Share2, Star, Truck, ShieldCheck, Clock, MapPin, ArrowRight, ArrowLeft, ChevronRight, CheckCircle2, Sparkles, Camera, ImagePlus, X, Video, Radio, MessageSquare, XCircle } from "lucide-react";
+import { Heart, Share2, Star, Truck, ShieldCheck, Clock, MapPin, ArrowRight, ArrowLeft, ChevronRight, CheckCircle2, Sparkles, Camera, ImagePlus, X, Video, Radio, MessageSquare, XCircle, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -12,12 +12,14 @@ import { useCart } from "@/context/cart-context";
 import { useFavorites } from "@/context/favorites-context";
 import { addReview, trackProductView } from "@/lib/actions";
 import { useSession } from "next-auth/react";
+import { useIsNative, triggerHaptic } from "@/lib/native";
 import { BespokeImage } from "./bespoke-image";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 
 export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, isOwner }: { product: any, relatedProducts: any[], dict: any, lang: string, isAdmin?: boolean, isOwner?: boolean }) {
   const router = useRouter();
+  const isNative = useIsNative();
   const isAr = lang === "ar" || dict?.common?.home === "الرئيسية";
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -236,6 +238,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
       customImage: customImage || undefined
     };
     addToCart(productToCart, personalization.trim(), skipOpen, customImage || undefined);
+    triggerHaptic("medium");
     return true;
   };
 
@@ -249,6 +252,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
           <button
             type="button"
             onClick={() => {
+              triggerHaptic("light");
               if (typeof window !== "undefined" && window.history.length > 1) {
                 router.back();
               } else {
@@ -453,6 +457,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                   <button
                     key={idx}
                     onClick={() => {
+                      triggerHaptic("light");
                       setSelectedImage(idx);
                       // Clear variant image override when user manually clicks a gallery thumbnail
                       if (selectedVariant?.image) {
@@ -546,7 +551,10 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                       {opt.values.map((val: string, j: number) => (
                         <button
                           key={j}
-                          onClick={() => setSelectedOptions(prev => ({ ...prev, [opt.name]: val }))}
+                          onClick={() => {
+                            triggerHaptic("light");
+                            setSelectedOptions(prev => ({ ...prev, [opt.name]: val }));
+                          }}
                           disabled={!isOptionValueAvailable(opt.name, val)}
                           className={cn(
                             "px-4 py-2 rounded-xl text-xs font-bold border transition-all relative overflow-hidden",
@@ -722,7 +730,10 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                   {(displayStock || 0) > 0 ? `${dict.product.add_to_cart} — ${dict.product.currency} ${displayPrice}` : dict.product.sold_out}
                 </button>
                 <button
-                  onClick={() => toggleFavorite(product)}
+                  onClick={() => {
+                    triggerHaptic("light");
+                    toggleFavorite(product);
+                  }}
                   className={cn(
                     "w-16 py-5 border rounded-2xl transition-all flex items-center justify-center shrink-0 active:scale-95",
                     isFavorite(product.id)
@@ -735,6 +746,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
               </div>
               <button 
                 onClick={() => {
+                  triggerHaptic("medium");
                   const ok = executeAddToCart(true);
                   if (ok) {
                     window.location.href = "/checkout";
@@ -1169,21 +1181,44 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
       <Footer dict={dict} />
 
       {/* Sticky Mobile Add to Cart Bar */}
-      <div className="fixed bottom-0 start-0 end-0 z-40 md:hidden bg-white/95 backdrop-blur-xl border-t border-primary/10 p-3 md:p-4 safe-area-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
-        <div className="flex items-center justify-between gap-3">
+      <div className={cn(
+        "fixed bottom-0 start-0 end-0 z-40 md:hidden border-t px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] transition-colors",
+        isNative 
+          ? "bg-[#FDFCF0]/95 backdrop-blur-2xl border-primary/10 shadow-[0_-12px_40px_rgba(6,78,59,0.08)]" 
+          : "bg-white/95 backdrop-blur-xl border-primary/10 shadow-[0_-10px_40px_rgba(0,0,0,0.08)]"
+      )}>
+        <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+          <button
+            onClick={() => {
+              triggerHaptic("light");
+              toggleFavorite(product);
+            }}
+            aria-label="Favorite"
+            className={cn(
+              "w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 transition-all active:scale-90",
+              isFavorite(product.id)
+                ? "border-red-200 bg-red-50 text-red-500 shadow-inner"
+                : "border-primary/10 bg-white/80 text-primary hover:bg-white"
+            )}
+          >
+            <Heart className={cn("w-5 h-5 transition-transform duration-300", isFavorite(product.id) && "fill-current scale-110")} />
+          </button>
+
           <div className="shrink-0 min-w-0">
             <p className="text-[9px] font-black uppercase tracking-widest text-primary/40 leading-tight mb-0.5">{dict.common.price || "Price"}</p>
             <p className="text-base sm:text-lg font-heading font-bold text-primary leading-tight">{dict.product.currency} {displayPrice}</p>
           </div>
+
           <button
             onClick={() => executeAddToCart(false)}
             disabled={(displayStock || 0) <= 0}
             className={cn(
               "flex-1 h-12 bg-primary text-white font-bold rounded-xl transition-all shadow-lg active:scale-95 text-xs flex items-center justify-center gap-2",
-              (displayStock || 0) > 0 ? "shadow-primary/20 hover:bg-primary-light" : "opacity-30 grayscale"
+              (displayStock || 0) > 0 ? "shadow-primary/25 hover:bg-primary-light" : "opacity-30 grayscale"
             )}
           >
-            {(displayStock || 0) > 0 ? dict.product.add_to_cart : dict.product.sold_out}
+            <ShoppingBag className="w-4 h-4" />
+            <span>{(displayStock || 0) > 0 ? dict.product.add_to_cart : dict.product.sold_out}</span>
           </button>
         </div>
       </div>

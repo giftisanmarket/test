@@ -26,7 +26,11 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
   const isArabic = lang === "ar" || pathname.startsWith("/ar");
   const allFavoritesCount = totalFavorites + (totalFavoriteArtisans || 0);
 
-  if (!isNative) return null;
+  // In Etsy style: hide the bottom tab bar on Product Detail and Checkout screens so the buy/checkout button takes full focus
+  const isProductDetail = Boolean(pathname.match(/\/(products|product)\/[^/]+/));
+  const isCheckout = pathname.includes("/checkout");
+
+  if (!isNative || isProductDetail || isCheckout) return null;
 
   const isHomeActive =
     pathname === "/" ||

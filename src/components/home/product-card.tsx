@@ -58,7 +58,7 @@ export function ProductCard({ product, dict }: ProductCardProps) {
                 "p-1.5 md:p-2 rounded-full transition-all scale-95 active:scale-75 shadow-md",
                 isFavorite(product.id)
                   ? "bg-red-50 text-red-500 opacity-100"
-                  : "bg-white/90 backdrop-blur text-primary opacity-0 group-hover:opacity-100 hover:bg-white"
+                  : "bg-white/90 backdrop-blur text-primary opacity-80 md:opacity-0 md:group-hover:opacity-100 hover:bg-white"
               )}
               aria-label="Save to favorites"
             >

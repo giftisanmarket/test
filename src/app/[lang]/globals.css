@@ -363,4 +363,23 @@ aside::-webkit-scrollbar-thumb:hover,
 body.is-native-app main {
   padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)) !important;
 }
+
+/* Native App Touch Physics & Feel */
+body.is-native-app {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  overscroll-behavior-y: contain;
+}
+
+body.is-native-app input,
+body.is-native-app textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Fluid momentum scrolling */
+* {
+  -webkit-overflow-scrolling: touch;
+}
 

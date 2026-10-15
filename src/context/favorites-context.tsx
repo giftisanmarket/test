@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { Product } from "@/lib/data";
 import { useSession } from "next-auth/react";
 import { toggleFavoriteAction, getUserFavorites, getProductsByIds } from "@/lib/actions";
+import { triggerHaptic } from "@/lib/native";
 
 interface FavoritesContextType {
   favorites: Product[];
@@ -104,6 +105,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   }, [favoriteArtisans, isInitialized]);
 
   const toggleFavorite = async (product: any) => {
+    triggerHaptic("light");
     const isAdding = !favorites.some((p) => p.id === product.id);
 
     // Optimistic update
@@ -147,6 +149,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const toggleFavoriteArtisan = (artisan: any) => {
+    triggerHaptic("light");
     const artisanId = typeof artisan === "string" ? artisan : artisan.id;
     setFavoriteArtisans((prev) => {
       const exists = prev.some((a) =>

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '@/lib/data';
 import toast from 'react-hot-toast';
+import { triggerHaptic } from '@/lib/native';
 
 interface CartItem extends Product {
   quantity: number;
@@ -150,10 +151,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         },
       ];
     });
+    triggerHaptic("medium");
     if (!skipOpen) setIsCartOpen(true);
   };
 
   const removeFromCart = (productId: string, personalization?: string, variantId?: string | null, customImage?: string) => {
+    triggerHaptic("light");
     setCart((prevCart) =>
       prevCart.filter((item) => !isSameCartItem(item, productId, personalization, variantId, customImage))
     );
@@ -161,6 +164,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const updateQuantity = (productId: string, quantity: number, personalization?: string, variantId?: string | null, customImage?: string) => {
     if (quantity < 1) return;
+    triggerHaptic("light");
 
     const targetItem = cart.find((item) =>
       isSameCartItem(item, productId, personalization, variantId, customImage)

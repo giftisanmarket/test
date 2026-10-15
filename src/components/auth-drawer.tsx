@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Lock, Mail, User, Eye, EyeOff, ArrowRight, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { isNativePlatform, performGoogleSignIn } from "@/lib/native";
+import { isNativePlatform, performGoogleSignIn, triggerHaptic } from "@/lib/native";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -43,6 +43,7 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
       if (res?.error) {
         toast.error(res.error, { id: "auth-modal-error" });
       } else if (res?.success) {
+        triggerHaptic("medium");
         toast.success(isArabic ? "تم تسجيل الدخول بنجاح! مرحباً بعودتك" : "Welcome back! Signed in successfully.", { id: "auth-modal-success" });
         await update();
         router.refresh();
@@ -75,6 +76,7 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
       if (res?.error) {
         toast.error(res.error, { id: "auth-modal-error" });
       } else if (res?.success) {
+        triggerHaptic("medium");
         toast.success(isArabic ? "تم إنشاء الحساب بنجاح! أهلاً بك في جفتيزان" : "Welcome to Giftisan! Your account is ready.", { id: "auth-modal-success" });
         await update();
         router.refresh();
@@ -91,6 +93,7 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
   };
 
   const handleGoogleSignIn = async () => {
+    triggerHaptic("medium");
     try {
       await performGoogleSignIn(window.location.href);
     } catch {
@@ -135,7 +138,10 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
             </div>
             <button
               type="button"
-              onClick={closeAuthModal}
+              onClick={() => {
+                triggerHaptic("light");
+                closeAuthModal();
+              }}
               className="w-9 h-9 rounded-full bg-primary/5 hover:bg-primary/10 text-primary flex items-center justify-center transition-all active:scale-95"
               aria-label="Close"
             >
@@ -167,7 +173,10 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
             <div className="flex p-1 bg-primary/5 rounded-2xl border border-primary/10">
               <button
                 type="button"
-                onClick={() => setMode("login")}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setMode("login");
+                }}
                 className={`flex-1 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all ${
                   mode === "login"
                     ? "bg-white text-primary shadow-sm"
@@ -178,7 +187,10 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setMode("signup")}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setMode("signup");
+                }}
                 className={`flex-1 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all ${
                   mode === "signup"
                     ? "bg-white text-primary shadow-sm"

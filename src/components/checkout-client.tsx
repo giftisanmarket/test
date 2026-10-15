@@ -34,6 +34,7 @@ import { GovernorateSelect } from "@/components/ui/governorate-select";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "react-hot-toast";
+import { isNativePlatform } from "@/lib/native";
 
 export function CheckoutClient({ dict }: { dict: any }) {
   const params = useParams();
@@ -309,8 +310,23 @@ export function CheckoutClient({ dict }: { dict: any }) {
       setIsRedirecting(true);
       clearCart();
       if (res.paymentUrl && paymentMethod === 'paymob') {
-        // Paymob: redirect to payment gateway (no order yet — webhook will create it on success)
-        window.location.href = res.paymentUrl;
+        if (isNativePlatform()) {
+          const { Browser } = await import("@capacitor/browser");
+          // Reset loading state if the user manually dismisses the in-app payment sheet without completing payment
+          Browser.addListener("browserFinished", () => {
+            setIsRedirecting(false);
+            setIsProcessing(false);
+          });
+          await Browser.open({
+            url: res.paymentUrl,
+            windowName: "_blank",
+            presentationStyle: "popover",
+            toolbarColor: "#064E3B",
+          });
+        } else {
+          // Paymob: redirect to payment gateway on web
+          window.location.href = res.paymentUrl;
+        }
       } else if (res.orderId) {
         // COD: order already created, go to success page
         router.push(`/${lang}/checkout/success?orderId=${res.orderId}`);

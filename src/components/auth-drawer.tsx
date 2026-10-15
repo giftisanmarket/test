@@ -190,29 +190,25 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
             </div>
 
             {/* Google Quick Sign-In */}
-            {!isNativePlatform() && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  className="w-full py-3.5 px-4 bg-white border border-primary/15 hover:border-primary/30 rounded-2xl text-primary font-bold text-xs md:text-sm flex items-center justify-center gap-3 shadow-xs hover:bg-primary/5 transition-all active:scale-[0.98]"
-                >
-                  <FcGoogle className="w-5 h-5 shrink-0" />
-                  <span>{isArabic ? "المتابعة باستخدام Google" : "Continue with Google"}</span>
-                </button>
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full py-3.5 px-4 bg-white border border-primary/15 hover:border-primary/30 rounded-2xl text-primary font-bold text-xs md:text-sm flex items-center justify-center gap-3 shadow-xs hover:bg-primary/5 transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <FcGoogle className="w-5 h-5 shrink-0" />
+              <span>{isArabic ? "المتابعة باستخدام Google" : "Continue with Google"}</span>
+            </button>
 
-                <div className="relative py-1">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-primary/10" />
-                  </div>
-                  <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
-                    <span className="bg-cream px-3 text-primary/30">
-                      {isArabic ? "أو عبر البريد الإلكتروني" : "Or with email"}
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-primary/10" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-black">
+                <span className="bg-cream px-3 text-primary/30">
+                  {isArabic ? "أو عبر البريد الإلكتروني" : "Or with email"}
+                </span>
+              </div>
+            </div>
 
             {/* Form */}
             <form onSubmit={mode === "login" ? handleLogin : handleSignUp} className="space-y-4">

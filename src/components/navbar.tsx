@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ShieldCheck, Package } from "lucide-react";
+import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useNotifications } from "./notification-provider";
 import { useFavorites } from "@/context/favorites-context";
 import { useAuthModal } from "@/context/auth-modal-context";
+import { useIsNative, triggerHaptic } from "@/lib/native";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -53,6 +54,7 @@ export function Navbar({ dict }: { dict?: any }) {
     }
   };
   const { data: session, update } = useSession();
+  const isNative = useIsNative();
   const { setIsCartOpen, totalItems } = useCart();
   const { totalFavorites, totalFavoriteArtisans } = useFavorites();
   const allFavoritesCount = totalFavorites + (totalFavoriteArtisans || 0);
@@ -425,6 +427,100 @@ export function Navbar({ dict }: { dict?: any }) {
       </div>
     );
   };
+
+  if (isNative) {
+    const isSubPage = pathname !== "/" && pathname !== "/en" && pathname !== "/ar" && pathname !== "/en/" && pathname !== "/ar/";
+    const isArabic = pathname.startsWith("/ar");
+
+    return (
+      <header className="sticky top-0 z-40 w-full pt-safe bg-[#FDFCF0]/95 backdrop-blur-md border-b border-primary/10 shadow-xs select-none">
+        <div className="px-3.5 h-14 flex items-center justify-between gap-2.5">
+          {/* Leading: Back Button on subpage OR Giftisan Brand on home */}
+          {isSubPage ? (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                router.back();
+              }}
+              aria-label="Go back"
+              className="p-2 -ms-1 text-primary hover:bg-primary/5 rounded-full active:scale-95 transition-all cursor-pointer"
+            >
+              {isArabic ? (
+                <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+              ) : (
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              )}
+            </button>
+          ) : (
+            <Link
+              href="/"
+              onClick={() => triggerHaptic("light")}
+              className="flex items-center gap-1.5 shrink-0"
+            >
+              <div className="relative w-7 h-7 overflow-hidden rounded-md shadow-xs">
+                <Image
+                  src="/icon.png"
+                  alt="Giftisan Logo"
+                  fill
+                  className="object-cover"
+                  sizes="28px"
+                />
+              </div>
+              <span className="text-lg font-heading font-black text-primary tracking-tighter">
+                Giftisan
+              </span>
+            </Link>
+          )}
+
+          {/* Search Pill (Etsy Style) */}
+          <div ref={mobileSearchRef} className="flex-1 relative">
+            <form onSubmit={handleSearch} className="w-full relative group">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowResults(true);
+                }}
+                onFocus={() => setShowResults(true)}
+                placeholder={d.common.search_placeholder}
+                className="w-full py-2 ps-9 pe-8 bg-white border border-primary/15 rounded-full focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent text-primary text-xs font-medium placeholder:text-primary/40 shadow-xs transition-all"
+              />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-charcoal/40 w-3.5 h-3.5 group-focus-within:text-accent transition-colors" />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-charcoal/30 hover:text-charcoal p-1 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {renderSearchOverlay(true)}
+            </form>
+          </div>
+
+          {/* Trailing: Language Switcher Pill */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                const nextLang = pathname.startsWith("/en") ? "ar" : "en";
+                document.cookie = `NEXT_LOCALE=${nextLang}; path=/; max-age=31536000`;
+                const nextPath = pathname.replace(/^\/(en|ar)/, `/${nextLang}`);
+                router.push(nextPath);
+              }}
+              className="px-2.5 py-1 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary hover:text-accent active:scale-95 transition-all cursor-pointer"
+            >
+              {pathname.startsWith("/en") ? "عربي" : "EN"}
+            </button>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <div className="sticky top-0 z-50 w-full pt-safe">

@@ -358,4 +358,9 @@ aside::-webkit-scrollbar-thumb:hover,
 .pr-safe {
   padding-right: env(safe-area-inset-right, 0px);
 }
+
+/* Native App Shell spacing to prevent content overlap with bottom tab bar */
+body.is-native-app main {
+  padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px)) !important;
+}
 

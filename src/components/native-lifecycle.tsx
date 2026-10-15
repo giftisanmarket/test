@@ -8,6 +8,11 @@ export function NativeLifecycle() {
   const router = useRouter();
 
   useEffect(() => {
+    const isPreview = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("preview") === "app";
+    if (isNativePlatform() || isPreview) {
+      document.body.classList.add("is-native-app");
+    }
+
     if (!isNativePlatform()) return;
 
     // Initialize status bar, splash screen, and Android hardware back button

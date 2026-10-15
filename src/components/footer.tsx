@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Globe, Mail } from "lucide-react";
+import { useIsNative } from "@/lib/native";
 
 interface FooterProps {
   dict: any;
@@ -13,6 +14,7 @@ export function Footer({ dict }: FooterProps) {
   const router = useRouter();
   const pathname = usePathname() || "";
   const isArabic = dict?.common?.home === "الرئيسية" || dict?.common?.search?.includes("ابحث");
+  const isNative = useIsNative();
 
   const handleToggleLanguage = () => {
     const isCurrentAr = pathname.startsWith("/ar") || isArabic;
@@ -28,6 +30,36 @@ export function Footer({ dict }: FooterProps) {
 
     router.push(nextPath);
   };
+
+  if (isNative) {
+    return (
+      <footer className="w-full bg-[#F7F5EA] text-charcoal border-t border-primary/10 py-6 px-4 text-center select-none pb-24">
+        <p className="font-serif text-sm font-medium text-primary">
+          {isArabic ? "مهمتنا الحفاظ على التجارة إنسانية" : "On a mission to keep commerce human"}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-charcoal/60 mt-2 font-medium">
+          <Link href="/terms" className="hover:text-primary">
+            {dict?.common?.terms || (isArabic ? "الشروط والأحكام" : "Terms")}
+          </Link>
+          <span>•</span>
+          <Link href="/privacy" className="hover:text-primary">
+            {dict?.common?.privacy || (isArabic ? "الخصوصية" : "Privacy")}
+          </Link>
+          <span>•</span>
+          <Link href="/shipping" className="hover:text-primary">
+            {dict?.common?.shipping || (isArabic ? "الشحن" : "Shipping")}
+          </Link>
+          <span>•</span>
+          <Link href="/refund" className="hover:text-primary">
+            {dict?.common?.refund || (isArabic ? "الاسترجاع" : "Refund")}
+          </Link>
+        </div>
+        <p className="text-[10px] text-charcoal/40 mt-2">
+          © {new Date().getFullYear()} Giftisan. {dict?.home?.proudly_handcrafted || (isArabic ? "صنع بكل فخر وحب في مصر." : "Proudly Handcrafted in Egypt.")}
+        </p>
+      </footer>
+    );
+  }
 
   return (
     <footer className="w-full bg-[#F7F5EA] text-charcoal border-t border-primary/10 selection:bg-accent/20">

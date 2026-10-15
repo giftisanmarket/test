@@ -6,6 +6,7 @@ import { FavoritesProvider } from "@/context/favorites-context";
 import { AuthModalProvider } from "@/context/auth-modal-context";
 import { CartDrawer } from "@/components/cart-drawer";
 import { AuthDrawer } from "@/components/auth-drawer";
+import { NativeBottomNav } from "@/components/native-bottom-nav";
 import Script from "next/script";
 
 const outfit = Outfit({
@@ -253,6 +254,7 @@ export default async function RootLayout({
                   {children}
                   <CartDrawer dict={dict} lang={lang} />
                   <AuthDrawer dict={dict} lang={lang} />
+                  <NativeBottomNav dict={dict} lang={lang} />
                 </AuthModalProvider>
               </CartProvider>
             </FavoritesProvider>

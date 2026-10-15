@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useNotifications } from "./notification-provider";
 import { useFavorites } from "@/context/favorites-context";
+import { useAuthModal } from "@/context/auth-modal-context";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -55,6 +56,7 @@ export function Navbar({ dict }: { dict?: any }) {
   const { setIsCartOpen, totalItems } = useCart();
   const { totalFavorites, totalFavoriteArtisans } = useFavorites();
   const allFavoritesCount = totalFavorites + (totalFavoriteArtisans || 0);
+  const { openAuthModal } = useAuthModal();
   const { unreadCount } = useNotifications();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -425,7 +427,7 @@ export function Navbar({ dict }: { dict?: any }) {
   };
 
   return (
-    <div className="sticky top-0 z-50 w-full">
+    <div className="sticky top-0 z-50 w-full pt-safe">
       <FoundingBanner dict={d} />
       <VerificationBanner dict={d} />
       <nav className="w-full glass border-b border-primary/10">
@@ -705,20 +707,23 @@ export function Navbar({ dict }: { dict?: any }) {
               </>
             ) : (
               <>
-                <Link
-                  href="/login"
-                  className="hidden md:flex items-center gap-2 h-9 px-4 rounded-full text-xs font-bold text-primary hover:text-accent border border-primary/15 hover:border-primary/30 transition-all bg-white shadow-xs active:scale-95"
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
+                  className="hidden md:flex items-center gap-2 h-9 px-4 rounded-full text-xs font-bold text-primary hover:text-accent border border-primary/15 hover:border-primary/30 transition-all bg-white shadow-xs active:scale-95 cursor-pointer"
                 >
                   <User className="w-4 h-4 text-primary/60" />
                   <span>{d.common.sign_in}</span>
-                </Link>
-                <Link
-                  href="/login"
-                  className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-charcoal/70 hover:text-primary active:scale-95"
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openAuthModal("login")}
+                  className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-charcoal/70 hover:text-primary active:scale-95 cursor-pointer"
                   title={d.common.sign_in}
+                  aria-label={d.common.sign_in}
                 >
                   <User className="w-4 h-4" />
-                </Link>
+                </button>
               </>
             )}
 
@@ -922,14 +927,17 @@ export function Navbar({ dict }: { dict?: any }) {
             ) : (
               <div className="space-y-4">
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest">{d.common.join_the_circle}</p>
-                <Link
-                  href="/login"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="flex items-center justify-between p-4 bg-white rounded-2xl border border-primary/5 text-primary font-bold active:scale-95 transition-transform"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    openAuthModal("login");
+                  }}
+                  className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-primary/5 text-primary font-bold active:scale-95 transition-transform text-start cursor-pointer"
                 >
-                  {d.common.sign_in}
-                  <span className="text-accent">→</span>
-                </Link>
+                  <span>{d.common.sign_in}</span>
+                  <span className="text-accent rtl:rotate-180">→</span>
+                </button>
               </div>
             )}
 

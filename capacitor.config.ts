@@ -18,6 +18,8 @@ const config: CapacitorConfig = {
       '*.bosta.co',
       '*.cloudinary.com',
       'res.cloudinary.com',
+      'accounts.google.com',
+      '*.google.com',
     ],
   },
   plugins: {

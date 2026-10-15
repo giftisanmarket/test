@@ -58,6 +58,7 @@ export async function initNativeApp(onNavigateBack?: () => void): Promise<void> 
     // 1. Configure Native Status Bar
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setStyle({ style: Style.Dark });
+    await StatusBar.setOverlaysWebView({ overlay: false });
     if (Capacitor.getPlatform() === "android") {
       await StatusBar.setBackgroundColor({ color: "#064E3B" }); // Brand forest green
     }

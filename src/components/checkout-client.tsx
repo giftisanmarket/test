@@ -348,7 +348,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
     return (
       <main className="min-h-screen bg-cream">
         {/* Minimal Distraction-free Header */}
-        <header className="w-full bg-white/80 backdrop-blur-md border-b border-primary/10 sticky top-0 z-50">
+        <header className="w-full bg-white/80 backdrop-blur-md border-b border-primary/10 sticky top-0 z-50 pt-safe">
           <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 h-16 sm:h-20 flex items-center justify-between">
             <Link href={`/${lang}`} className="flex items-center gap-2 group">
               <div className="relative w-8 h-8 md:w-9 md:h-9 overflow-hidden rounded-md shadow-sm">
@@ -391,7 +391,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
   return (
     <main className="min-h-screen bg-cream pb-24">
       {/* 1. Distraction-Free High-Trust Checkout Header */}
-      <header className="w-full bg-white/90 backdrop-blur-md border-b border-primary/10 sticky top-0 z-50">
+      <header className="w-full bg-white/90 backdrop-blur-md border-b border-primary/10 sticky top-0 z-50 pt-safe">
         <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 h-16 sm:h-20 flex items-center justify-between">
           {/* Brand Logo */}
           <Link href={`/${lang}`} className="flex items-center gap-2 group">
@@ -420,7 +420,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
       </header>
 
       {/* 2. Mobile Collapsible Order Summary Accordion (Screens < lg) */}
-      <div className="lg:hidden bg-white border-b border-primary/10 sticky top-16 z-40">
+      <div className="lg:hidden bg-white border-b border-primary/10 sticky top-[calc(4rem+env(safe-area-inset-top,0px))] sm:top-[calc(5rem+env(safe-area-inset-top,0px))] z-40">
         <button
           type="button"
           onClick={() => setIsMobileSummaryOpen(!isMobileSummaryOpen)}

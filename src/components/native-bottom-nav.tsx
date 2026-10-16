@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Home, Compass, Heart, ShoppingBag, User } from "lucide-react";
+import { Home, Compass, Heart, ShoppingBag, User, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useFavorites } from "@/context/favorites-context";
@@ -19,11 +19,12 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
   const pathname = usePathname() || "";
   const router = useRouter();
   const { data: session } = useSession();
-  const { setIsCartOpen, totalItems } = useCart();
+  const { setIsCartOpen, totalItems, isCartOpen } = useCart();
   const { totalFavorites, totalFavoriteArtisans } = useFavorites();
   const { openAuthModal } = useAuthModal();
 
   const isArabic = lang === "ar" || pathname.startsWith("/ar");
+  const isArtisan = session?.user?.role === "ARTISAN";
   const allFavoritesCount = totalFavorites + (totalFavoriteArtisans || 0);
 
   // In Etsy style: hide the bottom tab bar on Product Detail and Checkout screens so the buy/checkout button takes full focus
@@ -33,22 +34,27 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
   if (!isNative || isProductDetail || isCheckout) return null;
 
   const isHomeActive =
-    pathname === "/" ||
-    pathname === `/${lang}` ||
-    pathname === `/${lang}/`;
+    !isCartOpen &&
+    (pathname === "/" ||
+      pathname === `/${lang}` ||
+      pathname === `/${lang}/`);
 
   const isExploreActive =
-    pathname.includes("/categories") ||
-    pathname.includes("/category") ||
-    pathname.includes("/gifts") ||
-    pathname.includes("/products") ||
-    pathname.includes("/search");
+    !isCartOpen &&
+    (pathname.includes("/categories") ||
+      pathname.includes("/category") ||
+      pathname.includes("/gifts") ||
+      pathname.includes("/products") ||
+      pathname.includes("/search") ||
+      pathname.includes("/artisans"));
 
-  const isFavoritesActive = pathname.includes("/favorites");
+  const isFavoritesActive = !isCartOpen && pathname.includes("/favorites");
 
   const isYouActive =
-    pathname.includes("/profile") ||
-    pathname.includes("/studio");
+    !isCartOpen &&
+    (isArtisan
+      ? pathname.includes("/studio") || pathname.includes("/profile")
+      : pathname.includes("/profile"));
 
   const handleTabClick = (action: () => void) => {
     triggerHaptic("light");
@@ -62,7 +68,11 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
       icon: Home,
       isActive: isHomeActive,
       badge: null,
-      onClick: () => handleTabClick(() => router.push(`/${lang}`)),
+      onClick: () =>
+        handleTabClick(() => {
+          if (isCartOpen) setIsCartOpen(false);
+          router.push(`/${lang}`);
+        }),
     },
     {
       id: "explore",
@@ -70,7 +80,11 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
       icon: Compass,
       isActive: isExploreActive,
       badge: null,
-      onClick: () => handleTabClick(() => router.push(`/${lang}/categories`)),
+      onClick: () =>
+        handleTabClick(() => {
+          if (isCartOpen) setIsCartOpen(false);
+          router.push(`/${lang}/categories`);
+        }),
     },
     {
       id: "favorites",
@@ -78,31 +92,49 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
       icon: Heart,
       isActive: isFavoritesActive,
       badge: allFavoritesCount > 0 ? allFavoritesCount : null,
-      onClick: () => handleTabClick(() => router.push(`/${lang}/favorites`)),
+      onClick: () =>
+        handleTabClick(() => {
+          if (isCartOpen) setIsCartOpen(false);
+          router.push(`/${lang}/favorites`);
+        }),
     },
     {
       id: "cart",
       label: dict?.common?.cart || (isArabic ? "السلة" : "Cart"),
       icon: ShoppingBag,
-      isActive: false,
+      isActive: isCartOpen,
       badge: totalItems > 0 ? totalItems : null,
-      onClick: () => handleTabClick(() => setIsCartOpen(true)),
+      onClick: () => handleTabClick(() => setIsCartOpen(!isCartOpen)),
     },
-    {
-      id: "you",
-      label: isArabic ? "حسابك" : "You",
-      icon: User,
-      isActive: isYouActive,
-      badge: null,
-      onClick: () =>
-        handleTabClick(() => {
-          if (session?.user) {
-            router.push(`/${lang}/profile`);
-          } else {
-            openAuthModal("login");
-          }
-        }),
-    },
+    isArtisan
+      ? {
+          id: "studio",
+          label: dict?.common?.pro_studio || (isArabic ? "المتجر" : "Shop"),
+          icon: Store,
+          isActive: isYouActive,
+          badge: null,
+          onClick: () =>
+            handleTabClick(() => {
+              if (isCartOpen) setIsCartOpen(false);
+              router.push(`/${lang}/studio`);
+            }),
+        }
+      : {
+          id: "you",
+          label: dict?.common?.your_account || (isArabic ? "حسابك" : "You"),
+          icon: User,
+          isActive: isYouActive,
+          badge: null,
+          onClick: () =>
+            handleTabClick(() => {
+              if (isCartOpen) setIsCartOpen(false);
+              if (session?.user) {
+                router.push(`/${lang}/profile`);
+              } else {
+                openAuthModal("login");
+              }
+            }),
+        },
   ];
 
   return (

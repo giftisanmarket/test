@@ -44,10 +44,10 @@ export function SignupClient({ dict }: { dict: any }) {
   };
 
   return (
-    <main className="min-h-screen bg-cream flex flex-col justify-center items-center py-12 px-6 md:p-20 relative">
+    <main className="min-h-screen bg-cream flex flex-col justify-center items-center py-12 px-6 md:p-20 relative pt-[calc(3rem+env(safe-area-inset-top,0px))]">
       <Link 
         href={`/${lang}`} 
-        className="absolute top-12 start-12 flex items-center gap-2 text-primary/60 hover:text-primary font-bold transition-all group z-10"
+        className="absolute top-[calc(1.5rem+env(safe-area-inset-top,0px))] start-6 md:start-12 flex items-center gap-2 text-primary/60 hover:text-primary font-bold transition-all group z-10"
       >
         <div className="w-8 h-8 rounded-full border border-primary/10 flex items-center justify-center group-hover:bg-primary/5">
           <ArrowLeft className="w-4 h-4" />

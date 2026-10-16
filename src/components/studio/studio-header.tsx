@@ -145,7 +145,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
   const publicShopUrl = isVerified && artisan?.slug ? `/${lang}/artisans/${artisan.slug}` : null;
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-primary/10 shadow-xs">
+    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-primary/10 shadow-xs pt-safe">
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-6">
         
         {/* Brand Logo + Shop Subtitle (Stacked layout matching Admin branding) */}

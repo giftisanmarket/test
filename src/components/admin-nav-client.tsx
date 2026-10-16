@@ -168,7 +168,7 @@ export function AdminNavClient({
       {/* =========================================================================
           MOBILE TOP APP BAR (Modern, touch-friendly, glassmorphic header)
          ========================================================================= */}
-      <header className="lg:hidden fixed top-0 start-0 end-0 h-16 bg-primary/95 text-white flex items-center justify-between px-3.5 sm:px-5 z-40 border-b border-white/10 backdrop-blur-xl shadow-lg no-print">
+      <header className="lg:hidden fixed top-0 start-0 end-0 h-[calc(4rem+env(safe-area-inset-top,0px))] pt-safe bg-primary/95 text-white flex items-center justify-between px-3.5 sm:px-5 z-40 border-b border-white/10 backdrop-blur-xl shadow-lg no-print">
         {/* Left: Drawer Toggle & Brand/Current Page */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <button
@@ -245,7 +245,7 @@ export function AdminNavClient({
               animate={{ x: 0 }}
               exit={{ x: isAr ? "100%" : "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 280 }}
-              className="lg:hidden fixed top-0 bottom-0 start-0 w-[84%] max-w-sm bg-primary text-white z-50 flex flex-col shadow-2xl border-e border-white/10 no-print"
+              className="lg:hidden fixed top-0 bottom-0 start-0 w-[84%] max-w-sm bg-primary text-white z-50 flex flex-col shadow-2xl border-e border-white/10 pt-safe no-print"
             >
               {/* Drawer Header */}
               <div className="p-5 border-b border-white/10 flex items-center justify-between">
@@ -549,7 +549,7 @@ export function AdminNavClient({
       {/* =========================================================================
           MAIN CONTENT AREA (Responsive margins and padding for phones & desktops)
          ========================================================================= */}
-      <main className="flex-1 lg:ms-80 pt-20 lg:pt-0 min-w-0 pb-28 lg:pb-12 overflow-x-hidden">
+      <main className="flex-1 lg:ms-80 pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-0 min-w-0 pb-28 lg:pb-12 overflow-x-hidden">
         <div className="p-4 sm:p-6 md:p-8 lg:p-12 min-w-0 max-w-7xl mx-auto">
           {children}
         </div>

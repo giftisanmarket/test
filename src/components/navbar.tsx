@@ -926,7 +926,7 @@ export function Navbar({ dict }: { dict?: any }) {
           onClick={() => setIsMenuOpen(false)}
         />
         <div className={cn(
-          "absolute end-0 top-0 h-[100dvh] w-[80%] max-w-sm bg-cream shadow-2xl transition-transform duration-500 flex flex-col",
+          "absolute end-0 top-0 h-[100dvh] w-[80%] max-w-sm bg-cream shadow-2xl transition-transform duration-500 flex flex-col pt-safe",
           isMenuOpen ? "translate-x-0" : (pathname.startsWith('/ar') ? "-translate-x-full" : "translate-x-full")
         )}>
           <div className="p-6 border-b border-primary/10 flex justify-between items-center">

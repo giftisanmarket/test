@@ -78,10 +78,10 @@ export function LoginClient({ dict }: { dict: any }) {
       </div>
 
       {/* Form Side */}
-      <div className="flex flex-col justify-center items-center py-16 px-6 md:p-20 relative">
+      <div className="flex flex-col justify-center items-center py-16 px-6 md:p-20 relative pt-[calc(4rem+env(safe-area-inset-top,0px))]">
         <Link 
           href="/" 
-          className="md:absolute md:top-12 md:start-12 flex items-center gap-2 text-primary/60 hover:text-primary font-bold transition-all group z-10 mb-8 md:mb-0 self-start md:self-auto"
+          className="md:absolute md:top-[calc(3rem+env(safe-area-inset-top,0px))] md:start-12 flex items-center gap-2 text-primary/60 hover:text-primary font-bold transition-all group z-10 mb-8 md:mb-0 self-start md:self-auto"
         >
           <div className="w-8 h-8 rounded-full border border-primary/10 flex items-center justify-center group-hover:bg-primary/5 active:scale-90">
             <ArrowLeft className="w-4 h-4" />

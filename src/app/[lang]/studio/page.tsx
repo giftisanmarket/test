@@ -137,7 +137,7 @@ export default async function StudioPage({
   return (
     <div className="relative">
       {isAdmin && artisanUserId && (
-        <div className="bg-accent text-white py-2 px-4 text-center text-[10px] font-black uppercase tracking-widest sticky top-0 z-[100] shadow-lg">
+        <div className="bg-accent text-white py-2 px-4 text-center text-[10px] font-black uppercase tracking-widest sticky top-[calc(4rem+env(safe-area-inset-top,0px))] md:top-[calc(5rem+env(safe-area-inset-top,0px))] z-[100] shadow-lg">
           ADMIN PREVIEW MODE: Viewing {artisan.studioName || artisan.user.name}&apos;s Studio
         </div>
       )}

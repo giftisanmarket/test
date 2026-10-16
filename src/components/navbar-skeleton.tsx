@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/skeleton";
 
 export function NavbarSkeleton() {
   return (
-    <div className="sticky top-0 z-50 w-full pointer-events-none select-none">
+    <div className="sticky top-0 z-50 w-full pointer-events-none select-none pt-safe bg-[#FDFCF0]/95 backdrop-blur-md">
       <nav className="w-full glass border-b border-primary/10">
         {/* Tier 1: Top Navigation Bar */}
         <div className="max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-3.5 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 h-14 md:h-20 3xl:h-22 flex items-center justify-between gap-2 md:gap-4 lg:gap-6 xl:gap-8">

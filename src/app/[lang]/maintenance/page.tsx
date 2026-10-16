@@ -109,7 +109,7 @@ export default function MaintenancePage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className={`absolute top-6 ${isAr ? "left-6" : "right-6"} z-20`}
+        className={`absolute top-[calc(1.5rem+env(safe-area-inset-top,0px))] ${isAr ? "left-6" : "right-6"} z-20`}
       >
         <Link
           href={isAr ? "/en/maintenance" : "/ar/maintenance"}

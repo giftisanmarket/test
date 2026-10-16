@@ -32,7 +32,7 @@ export function CartDrawer({ dict, lang }: { dict: any; lang?: string }) {
             animate={{ x: 0 }}
             exit={{ x: lang === 'ar' ? "-100%" : "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed end-0 top-0 h-[100dvh] w-full max-w-md bg-cream shadow-2xl z-[101] flex flex-col"
+            className="fixed end-0 top-0 h-[100dvh] w-full max-w-md bg-cream shadow-2xl z-[101] flex flex-col pt-safe"
           >
             <div className="p-4 md:p-6 border-b border-primary/10 flex justify-between items-center bg-cream/50 backdrop-blur-md sticky top-0 z-20">
               <h2 className="text-xl md:text-2xl font-heading font-bold text-primary flex items-center gap-2">
@@ -180,7 +180,7 @@ export function CartDrawer({ dict, lang }: { dict: any; lang?: string }) {
             </div>
 
             {cart.length > 0 && (
-              <div className="p-5 md:p-8 border-t border-primary/10 bg-white space-y-4 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+              <div className="p-5 md:p-8 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] border-t border-primary/10 bg-white space-y-4 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
                 <div className="flex justify-between items-center">
                   <span className="text-charcoal/40 font-bold uppercase tracking-widest text-[10px]">{dict.cart.subtotal}</span>
                   <span className="font-heading font-bold text-primary text-2xl md:text-3xl">{dict.product.currency} {totalPrice}.00</span>

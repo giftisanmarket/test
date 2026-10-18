@@ -58,8 +58,8 @@ export const SENDER_FINANCE = "Giftisan Finance <payouts@giftisan.com>";
 export const SENDER_STUDIO = "Giftisan Studio <studio@giftisan.com>";
 
 // Fallback aliases
-const SENDER = SENDER_SUPPORT;
-const AUTH_SENDER = SENDER_AUTH;
+export const SENDER = SENDER_SUPPORT;
+export const AUTH_SENDER = SENDER_AUTH;
 
 const getBaseUrl = () => {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL;
@@ -1523,7 +1523,7 @@ export const sendRefundResolvedEmail = async ({
   });
 };
 
-export const sendAbandonedCheckoutNotification = async (data: {
+export const sendAbandonedCheckoutNotification = async (_data: {
   customerName: string;
   customerEmail: string;
   customerPhone: string;

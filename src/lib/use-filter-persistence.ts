@@ -25,11 +25,15 @@ export function useFilterPersistence<T extends Record<string, any>>({
   const isRestoringRef = useRef(false);
   const isMountedRef = useRef(false);
   const settersRef = useRef(setters);
-  settersRef.current = setters;
   const defaultValuesRef = useRef(defaultValues);
-  defaultValuesRef.current = defaultValues;
   const paramMappingRef = useRef(paramMapping);
-  paramMappingRef.current = paramMapping;
+
+  // Keep refs in sync with latest props without mutating refs during render (React 19 compliance)
+  useEffect(() => {
+    settersRef.current = setters;
+    defaultValuesRef.current = defaultValues;
+    paramMappingRef.current = paramMapping;
+  });
 
   // 1. Initial restoration on mount or when storage key changes
   useEffect(() => {

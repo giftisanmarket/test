@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ReceiptText,
   Plus,
@@ -93,6 +94,23 @@ export function AdminExpensesClient({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll on mobile when any modal is open
+  useEffect(() => {
+    if (isAddModalOpen || deletingId || previewImage) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isAddModalOpen, deletingId, previewImage]);
 
   // Form fields state
   const [formTitle, setFormTitle] = useState("");
@@ -939,401 +957,425 @@ export function AdminExpensesClient({
         </>
       )}
 
-      {/* Add / Edit Expense Modal */}
-      <AnimatePresence>
-        {isAddModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md overflow-y-auto p-2 sm:p-4 md:p-6 flex justify-center items-center min-h-screen"
-            onClick={() => !isSubmitting && setIsAddModalOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 16 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-xl bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 md:p-8 shadow-2xl border border-primary/5 my-auto space-y-4 sm:space-y-6 shrink-0 max-h-[92dvh] overflow-y-auto custom-scrollbar"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-accent">
-                    {isAr ? "إدارة التكاليف التشغيلية" : "Platform Financial Operations"}
-                  </span>
-                  <h3 className="text-lg sm:text-xl md:text-2xl font-heading font-black text-primary mt-0.5 leading-snug">
-                    {editingExpense
-                      ? (isAr ? "تعديل بيانات المصروف" : "Edit Expense Entry")
-                      : (isAr ? "تسجيل مصروف أو مشترى جديد" : "Log New Platform Expense")}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-cream hover:bg-primary/5 flex items-center justify-center text-charcoal/60 hover:text-primary transition-all cursor-pointer shrink-0"
-                >
-                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                </button>
-              </div>
+      {/* Portaled Modals (renders at document.body with z-[99999] so never overlapped by mobile header or bottom nav) */}
+      {mounted && typeof document !== "undefined" && createPortal(
+        <>
+          {/* Add / Edit Expense Modal */}
+          <AnimatePresence>
+            {isAddModalOpen && (
+              <div className="fixed inset-0 z-[99999] overflow-hidden">
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => !isSubmitting && setIsAddModalOpen(false)}
+                  className="fixed inset-0 bg-black/75 backdrop-blur-md cursor-pointer"
+                />
 
-              <form onSubmit={handleSaveExpense} className="space-y-4">
-                {/* Title */}
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                    {isAr ? "اسم أو وصف المصروف *" : "Expense Description *"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder={isAr ? "مثال: كراتين وتغليف 500 قطعة، إعلانات فيسبوك، شحن..." : "e.g. 500 packaging boxes, Meta ads campaign, Vercel server..."}
-                    className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
-                  />
-                </div>
-
-                {/* Category & Amount Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Custom Category Dropdown */}
-                  <div className="relative">
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                      {isAr ? "القسم / نوع النفقة *" : "Expense Category *"}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsFormCategoryOpen(!isFormCategoryOpen);
-                        setIsFormPaymentOpen(false);
-                      }}
-                      className="w-full h-11 px-3.5 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-bold text-primary flex items-center justify-between hover:border-accent transition-all shadow-sm cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2 truncate">
-                        {(() => {
-                          const info = categoryLabels[formCategory] || categoryLabels.OTHER;
-                          const Icon = info.icon;
-                          return (
-                            <>
-                              <Icon className={cn("w-4 h-4 shrink-0", info.color)} />
-                              <span className="truncate">{info[isAr ? "ar" : "en"]}</span>
-                            </>
-                          );
-                        })()}
-                      </span>
-                      <ChevronDown className={cn("w-4 h-4 text-primary/40 transition-transform duration-200 shrink-0", isFormCategoryOpen && "rotate-180")} />
-                    </button>
-
-                    <AnimatePresence>
-                      {isFormCategoryOpen && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setIsFormCategoryOpen(false)} />
-                          <motion.div
-                            initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto space-y-0.5"
-                          >
-                            {(Object.keys(categoryLabels) as ExpenseCategoryType[]).map((catKey) => {
-                              const info = categoryLabels[catKey];
-                              const Icon = info.icon;
-                              const isSelected = formCategory === catKey;
-
-                              return (
-                                <button
-                                  key={catKey}
-                                  type="button"
-                                  onClick={() => {
-                                    setFormCategory(catKey);
-                                    setIsFormCategoryOpen(false);
-                                  }}
-                                  className={cn(
-                                    "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-start",
-                                    isSelected ? "bg-primary text-white shadow-sm" : "text-primary/80 hover:bg-cream"
-                                  )}
-                                >
-                                  <span className="flex items-center gap-2.5">
-                                    <Icon className={cn("w-4 h-4", isSelected ? "text-white" : info.color)} />
-                                    <span>{info[isAr ? "ar" : "en"]}</span>
-                                  </span>
-                                  {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
-                                </button>
-                              );
-                            })}
-                          </motion.div>
-                        </>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                      {isAr ? "المبلغ (جنيه مصري) *" : "Amount (EGP) *"}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      required
-                      value={formAmount}
-                      onChange={(e) => setFormAmount(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-bold text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Date & Paid By Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                      {isAr ? "تاريخ الدفع *" : "Payment Date *"}
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formDate}
-                      onChange={(e) => setFormDate(e.target.value)}
-                      className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                      {isAr ? "دُفع بواسطة / المصدر" : "Paid By / Source"}
-                    </label>
-                    <input
-                      type="text"
-                      value={formPaidBy}
-                      onChange={(e) => setFormPaidBy(e.target.value)}
-                      placeholder={isAr ? "مثال: محمد، كارت الشركة، فودافون كاش..." : "e.g. Mohamed, Company Card, Vodafone Cash..."}
-                      className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Custom Payment Method Dropdown */}
-                <div className="relative">
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                    {isAr ? "وسيلة الدفع" : "Payment Method"}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsFormPaymentOpen(!isFormPaymentOpen);
-                      setIsFormCategoryOpen(false);
-                    }}
-                    className="w-full h-11 px-3.5 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-bold text-primary flex items-center justify-between hover:border-accent transition-all shadow-sm cursor-pointer"
+                {/* Modal Container with Safe-Area Margins for iPhone Notch and Bottom Tabs */}
+                <div className="fixed inset-0 flex items-center justify-center p-2.5 sm:p-4 md:p-6 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pointer-events-none">
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0, y: 16 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 16 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="relative w-full max-w-xl bg-white rounded-2xl sm:rounded-[2rem] shadow-2xl border border-primary/10 flex flex-col max-h-full pointer-events-auto overflow-hidden my-auto"
                   >
-                    <span className="flex items-center gap-2 truncate">
-                      {(() => {
-                        const info = paymentMethodLabels[formPaymentMethod] || paymentMethodLabels.OTHER;
-                        const Icon = info.icon;
-                        return (
-                          <>
-                            <Icon className="w-4 h-4 text-accent shrink-0" />
-                            <span className="truncate">{info[isAr ? "ar" : "en"]}</span>
-                          </>
-                        );
-                      })()}
-                    </span>
-                    <ChevronDown className={cn("w-4 h-4 text-primary/40 transition-transform duration-200 shrink-0", isFormPaymentOpen && "rotate-180")} />
-                  </button>
-
-                  <AnimatePresence>
-                    {isFormPaymentOpen && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setIsFormPaymentOpen(false)} />
-                        <motion.div
-                          initial={{ opacity: 0, y: -6, scale: 0.96 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 space-y-0.5 overflow-hidden"
-                        >
-                          {Object.entries(paymentMethodLabels).map(([methodKey, info]) => {
-                            const Icon = info.icon;
-                            const isSelected = formPaymentMethod === methodKey;
-
-                            return (
-                              <button
-                                key={methodKey}
-                                type="button"
-                                onClick={() => {
-                                  setFormPaymentMethod(methodKey);
-                                  setIsFormPaymentOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-start",
-                                  isSelected ? "bg-primary text-white shadow-sm" : "text-primary/80 hover:bg-cream"
-                                )}
-                              >
-                                <span className="flex items-center gap-2.5">
-                                  <Icon className={cn("w-4 h-4", isSelected ? "text-white" : "text-accent")} />
-                                  <span>{info[isAr ? "ar" : "en"]}</span>
-                                </span>
-                                {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
-                              </button>
-                            );
-                          })}
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Receipt Image Upload */}
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                    {isAr ? "صورة الفاتورة أو الإيصال (اختياري)" : "Receipt / Invoice Photo (Optional)"}
-                  </label>
-                  
-                  {formReceiptImage ? (
-                    <div className="flex items-center gap-3 p-3 bg-cream/30 rounded-xl border border-primary/10">
-                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-primary/10 shrink-0">
-                        <img src={formReceiptImage} alt="Receipt preview" className="w-full h-full object-cover" />
+                    {/* Sticky Modal Header */}
+                    <div className="flex items-start justify-between gap-3 p-4 sm:p-6 border-b border-primary/5 bg-white shrink-0">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-accent">
+                          {isAr ? "إدارة التكاليف التشغيلية" : "Platform Financial Operations"}
+                        </span>
+                        <h3 className="text-base sm:text-xl md:text-2xl font-heading font-black text-primary mt-0.5 leading-snug">
+                          {editingExpense
+                            ? (isAr ? "تعديل بيانات المصروف" : "Edit Expense Entry")
+                            : (isAr ? "تسجيل مصروف أو مشترى جديد" : "Log New Platform Expense")}
+                        </h3>
                       </div>
-                      <span className="text-xs text-primary/70 font-medium truncate flex-1">
-                        {isAr ? "تم إرفاق صورة الإيصال" : "Receipt image attached"}
-                      </span>
                       <button
                         type="button"
-                        onClick={() => setFormReceiptImage("")}
-                        className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors font-bold cursor-pointer"
+                        disabled={isSubmitting}
+                        onClick={() => setIsAddModalOpen(false)}
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-cream hover:bg-primary/5 flex items-center justify-center text-charcoal/60 hover:text-primary transition-all cursor-pointer shrink-0"
                       >
-                        {isAr ? "إزالة" : "Remove"}
+                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                     </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center p-4 bg-cream/20 border-2 border-dashed border-primary/10 rounded-xl hover:border-accent/40 transition-colors cursor-pointer">
-                      <UploadCloud className="w-6 h-6 text-primary/40 mb-1" />
-                      <span className="text-xs font-bold text-primary">
-                        {isAr ? "اضغط لرفع صورة الفاتورة" : "Click to upload receipt photo"}
-                      </span>
-                      <span className="text-[10px] text-charcoal/40 mt-0.5">PNG, JPG, WEBP (Max 5MB)</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
-                </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
-                    {isAr ? "ملاحظات إضافية" : "Additional Notes"}
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={formNotes}
-                    onChange={(e) => setFormNotes(e.target.value)}
-                    placeholder={isAr ? "أي تفاصيل تخص المورد، رقم الفاتورة، الغرض..." : "Vendor details, invoice number, or operational purpose..."}
-                    className="w-full p-3 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
-                  />
-                </div>
+                    <form onSubmit={handleSaveExpense} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                      {/* Scrollable Form Body */}
+                      <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
+                        {/* Title */}
+                        <div>
+                          <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                            {isAr ? "اسم أو وصف المصروف *" : "Expense Description *"}
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={formTitle}
+                            onChange={(e) => setFormTitle(e.target.value)}
+                            placeholder={isAr ? "مثال: كراتين وتغليف 500 قطعة، إعلانات فيسبوك، شحن..." : "e.g. 500 packaging boxes, Meta ads campaign, Vercel server..."}
+                            className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
+                          />
+                        </div>
 
-                {/* Submit Buttons */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-primary/5">
-                  <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => setIsAddModalOpen(false)}
-                    className="px-5 py-2.5 bg-cream hover:bg-primary/5 text-primary font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
+                        {/* Category & Amount Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Custom Category Dropdown */}
+                          <div className="relative">
+                            <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                              {isAr ? "القسم / نوع النفقة *" : "Expense Category *"}
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsFormCategoryOpen(!isFormCategoryOpen);
+                                setIsFormPaymentOpen(false);
+                              }}
+                              className="w-full h-11 px-3.5 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-bold text-primary flex items-center justify-between hover:border-accent transition-all shadow-sm cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2 truncate">
+                                {(() => {
+                                  const info = categoryLabels[formCategory] || categoryLabels.OTHER;
+                                  const Icon = info.icon;
+                                  return (
+                                    <>
+                                      <Icon className={cn("w-4 h-4 shrink-0", info.color)} />
+                                      <span className="truncate">{info[isAr ? "ar" : "en"]}</span>
+                                    </>
+                                  );
+                                })()}
+                              </span>
+                              <ChevronDown className={cn("w-4 h-4 text-primary/40 transition-transform duration-200 shrink-0", isFormCategoryOpen && "rotate-180")} />
+                            </button>
+
+                            <AnimatePresence>
+                              {isFormCategoryOpen && (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={() => setIsFormCategoryOpen(false)} />
+                                  <motion.div
+                                    initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 max-h-56 overflow-y-auto space-y-0.5"
+                                  >
+                                    {(Object.keys(categoryLabels) as ExpenseCategoryType[]).map((catKey) => {
+                                      const info = categoryLabels[catKey];
+                                      const Icon = info.icon;
+                                      const isSelected = formCategory === catKey;
+
+                                      return (
+                                        <button
+                                          key={catKey}
+                                          type="button"
+                                          onClick={() => {
+                                            setFormCategory(catKey);
+                                            setIsFormCategoryOpen(false);
+                                          }}
+                                          className={cn(
+                                            "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-start",
+                                            isSelected ? "bg-primary text-white shadow-sm" : "text-primary/80 hover:bg-cream"
+                                          )}
+                                        >
+                                          <span className="flex items-center gap-2.5">
+                                            <Icon className={cn("w-4 h-4", isSelected ? "text-white" : info.color)} />
+                                            <span>{info[isAr ? "ar" : "en"]}</span>
+                                          </span>
+                                          {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </motion.div>
+                                </>
+                              )}
+                            </AnimatePresence>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                              {isAr ? "المبلغ (جنيه مصري) *" : "Amount (EGP) *"}
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              required
+                              value={formAmount}
+                              onChange={(e) => setFormAmount(e.target.value)}
+                              placeholder="0.00"
+                              className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-bold text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Date & Paid By Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                              {isAr ? "تاريخ الدفع *" : "Payment Date *"}
+                            </label>
+                            <input
+                              type="date"
+                              required
+                              value={formDate}
+                              onChange={(e) => setFormDate(e.target.value)}
+                              className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                              {isAr ? "دُفع بواسطة / المصدر" : "Paid By / Source"}
+                            </label>
+                            <input
+                              type="text"
+                              value={formPaidBy}
+                              onChange={(e) => setFormPaidBy(e.target.value)}
+                              placeholder={isAr ? "مثال: محمد، كارت الشركة، فودافون كاش..." : "e.g. Mohamed, Company Card, Vodafone Cash..."}
+                              className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Custom Payment Method Dropdown */}
+                        <div className="relative">
+                          <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                            {isAr ? "وسيلة الدفع" : "Payment Method"}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsFormPaymentOpen(!isFormPaymentOpen);
+                              setIsFormCategoryOpen(false);
+                            }}
+                            className="w-full h-11 px-3.5 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-bold text-primary flex items-center justify-between hover:border-accent transition-all shadow-sm cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2 truncate">
+                              {(() => {
+                                const info = paymentMethodLabels[formPaymentMethod] || paymentMethodLabels.OTHER;
+                                const Icon = info.icon;
+                                return (
+                                  <>
+                                    <Icon className="w-4 h-4 text-accent shrink-0" />
+                                    <span className="truncate">{info[isAr ? "ar" : "en"]}</span>
+                                  </>
+                                );
+                              })()}
+                            </span>
+                            <ChevronDown className={cn("w-4 h-4 text-primary/40 transition-transform duration-200 shrink-0", isFormPaymentOpen && "rotate-180")} />
+                          </button>
+
+                          <AnimatePresence>
+                            {isFormPaymentOpen && (
+                              <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsFormPaymentOpen(false)} />
+                                <motion.div
+                                  initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                                  exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                                  transition={{ duration: 0.15 }}
+                                  className="absolute left-0 right-0 top-full mt-1.5 bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 space-y-0.5 overflow-hidden"
+                                >
+                                  {Object.entries(paymentMethodLabels).map(([methodKey, info]) => {
+                                    const Icon = info.icon;
+                                    const isSelected = formPaymentMethod === methodKey;
+
+                                    return (
+                                      <button
+                                        key={methodKey}
+                                        type="button"
+                                        onClick={() => {
+                                          setFormPaymentMethod(methodKey);
+                                          setIsFormPaymentOpen(false);
+                                        }}
+                                        className={cn(
+                                          "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-start",
+                                          isSelected ? "bg-primary text-white shadow-sm" : "text-primary/80 hover:bg-cream"
+                                        )}
+                                      >
+                                        <span className="flex items-center gap-2.5">
+                                          <Icon className={cn("w-4 h-4", isSelected ? "text-white" : "text-accent")} />
+                                          <span>{info[isAr ? "ar" : "en"]}</span>
+                                        </span>
+                                        {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                                      </button>
+                                    );
+                                  })}
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Receipt Image Upload */}
+                        <div>
+                          <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                            {isAr ? "صورة الفاتورة أو الإيصال (اختياري)" : "Receipt / Invoice Photo (Optional)"}
+                          </label>
+                          
+                          {formReceiptImage ? (
+                            <div className="flex items-center gap-3 p-3 bg-cream/30 rounded-xl border border-primary/10">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden border border-primary/10 shrink-0">
+                                <img src={formReceiptImage} alt="Receipt preview" className="w-full h-full object-cover" />
+                              </div>
+                              <span className="text-xs text-primary/70 font-medium truncate flex-1">
+                                {isAr ? "تم إرفاق صورة الإيصال" : "Receipt image attached"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setFormReceiptImage("")}
+                                className="px-2.5 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors font-bold cursor-pointer"
+                              >
+                                {isAr ? "إزالة" : "Remove"}
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center p-4 bg-cream/20 border-2 border-dashed border-primary/10 rounded-xl hover:border-accent/40 transition-colors cursor-pointer">
+                              <UploadCloud className="w-6 h-6 text-primary/40 mb-1" />
+                              <span className="text-xs font-bold text-primary">
+                                {isAr ? "اضغط لرفع صورة الفاتورة" : "Click to upload receipt photo"}
+                              </span>
+                              <span className="text-[10px] text-charcoal/40 mt-0.5">PNG, JPG, WEBP (Max 5MB)</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        {/* Notes */}
+                        <div>
+                          <label className="block text-[11px] font-black uppercase tracking-wider text-primary/70 mb-1">
+                            {isAr ? "ملاحظات إضافية" : "Additional Notes"}
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={formNotes}
+                            onChange={(e) => setFormNotes(e.target.value)}
+                            placeholder={isAr ? "أي تفاصيل تخص المورد، رقم الفاتورة، الغرض..." : "Vendor details, invoice number, or operational purpose..."}
+                            className="w-full p-3 bg-cream/30 border border-primary/10 rounded-xl text-xs md:text-sm font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Sticky Submit Buttons Action Bar */}
+                      <div className="p-3 sm:p-5 border-t border-primary/5 bg-cream/30 shrink-0 flex items-center justify-end gap-2.5 sm:gap-3">
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => setIsAddModalOpen(false)}
+                          className="px-4 sm:px-5 py-2.5 bg-white border border-primary/10 hover:bg-cream text-primary font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer active:scale-95"
+                        >
+                          {isAr ? "إلغاء" : "Cancel"}
+                        </button>
+
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="px-5 sm:px-6 py-2.5 bg-primary hover:bg-brand text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>{isSubmitting ? (isAr ? "جاري الحفظ..." : "Saving...") : (isAr ? "حفظ المصروف" : "Save Expense")}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                </div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Delete Confirmation Modal */}
+          <AnimatePresence>
+            {deletingId && (
+              <div className="fixed inset-0 z-[99999] overflow-hidden">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => !isSubmitting && setDeletingId(null)}
+                  className="fixed inset-0 bg-black/75 backdrop-blur-md cursor-pointer"
+                />
+                <div className="fixed inset-0 flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pointer-events-none">
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl border border-primary/5 text-center relative z-10 pointer-events-auto"
                   >
-                    {isAr ? "إلغاء" : "Cancel"}
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-2.5 bg-primary hover:bg-brand text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>{isSubmitting ? (isAr ? "جاري الحفظ..." : "Saving...") : (isAr ? "حفظ المصروف" : "Save Expense")}</span>
-                  </button>
+                    <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                      <Trash2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-primary">
+                        {isAr ? "تأكيد حذف المصروف" : "Delete Expense Record"}
+                      </h4>
+                      <p className="text-xs text-charcoal/50 mt-1">
+                        {isAr ? "هل أنت متأكد من حذف هذا المصروف؟ لن تتمكن من استرجاعه لاحقاً." : "Are you sure you want to permanently delete this expense?"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => setDeletingId(null)}
+                        className="flex-1 py-2.5 bg-cream hover:bg-primary/5 text-primary font-bold rounded-xl text-xs cursor-pointer active:scale-95 transition-all"
+                      >
+                        {isAr ? "إلغاء" : "Cancel"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={handleDeleteExpense}
+                        className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md disabled:opacity-50 active:scale-95 transition-all"
+                      >
+                        {isSubmitting ? (isAr ? "جاري الحذف..." : "Deleting...") : (isAr ? "نعم، حذف" : "Yes, Delete")}
+                      </button>
+                    </div>
+                  </motion.div>
                 </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+            )}
+          </AnimatePresence>
 
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deletingId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[160] bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
-            onClick={() => !isSubmitting && setDeletingId(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl border border-primary/5 text-center"
-            >
-              <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-                <Trash2 className="w-6 h-6" />
+          {/* Receipt Lightbox Image Preview */}
+          <AnimatePresence>
+            {previewImage && (
+              <div className="fixed inset-0 z-[99999] overflow-hidden">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setPreviewImage(null)}
+                  className="fixed inset-0 bg-black/85 backdrop-blur-md cursor-pointer"
+                />
+                <div className="fixed inset-0 flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pointer-events-none">
+                  <div className="relative max-w-4xl max-h-[85dvh] flex flex-col items-center justify-center pointer-events-auto">
+                    <button
+                      onClick={() => setPreviewImage(null)}
+                      className="absolute top-2 end-2 sm:top-4 sm:end-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-all cursor-pointer z-10"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                    <img src={previewImage} alt="Receipt Full" className="max-w-full max-h-[80dvh] object-contain rounded-2xl shadow-2xl" />
+                  </div>
+                </div>
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-primary">
-                  {isAr ? "تأكيد حذف المصروف" : "Delete Expense Record"}
-                </h4>
-                <p className="text-xs text-charcoal/50 mt-1">
-                  {isAr ? "هل أنت متأكد من حذف هذا المصروف؟ لن تتمكن من استرجاعه لاحقاً." : "Are you sure you want to permanently delete this expense?"}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => setDeletingId(null)}
-                  className="flex-1 py-2.5 bg-cream hover:bg-primary/5 text-primary font-bold rounded-xl text-xs cursor-pointer"
-                >
-                  {isAr ? "إلغاء" : "Cancel"}
-                </button>
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={handleDeleteExpense}
-                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md disabled:opacity-50"
-                >
-                  {isSubmitting ? (isAr ? "جاري الحذف..." : "Deleting...") : (isAr ? "نعم، حذف" : "Yes, Delete")}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Receipt Lightbox Image Preview */}
-      <AnimatePresence>
-        {previewImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setPreviewImage(null)}
-            className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
-          >
-            <div className="relative max-w-4xl max-h-[85vh]">
-              <button
-                onClick={() => setPreviewImage(null)}
-                className="absolute top-4 end-4 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              <img src={previewImage} alt="Receipt Full" className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
     </div>
   );
 }

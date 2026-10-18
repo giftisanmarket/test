@@ -26,7 +26,8 @@ import {
   Info,
   ChevronDown,
   Check,
-  Clock
+  Clock,
+  Store
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "next-auth/react";
@@ -286,16 +287,28 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                     </div>
                     <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100" />
                   </Link>
+                  {user.role === "ARTISAN" && (
+                    <Link 
+                      href="/studio"
+                      className="flex items-center justify-between w-full p-3 md:p-4 bg-accent/10 border border-accent/20 rounded-2xl text-accent font-black hover:bg-accent hover:text-white transition-all group text-sm shadow-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Store className="w-4 h-4 md:w-5 md:h-5" />
+                        <span>{dict.profile?.studio || dict.common?.pro_studio || "Shop Manager"}</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform" />
+                    </Link>
+                  )}
                   {user.role === "ADMIN" && (
                     <Link 
                       href="/admin"
-                      className="flex items-center justify-between w-full p-3 md:p-4 bg-accent/5 rounded-2xl text-accent font-bold hover:bg-accent hover:text-white transition-all group text-sm"
+                      className="flex items-center justify-between w-full p-3 md:p-4 bg-primary/10 border border-primary/20 rounded-2xl text-primary font-black hover:bg-primary hover:text-white transition-all group text-sm shadow-xs"
                     >
                       <div className="flex items-center gap-3">
-                        <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 opacity-100 lg:opacity-40 lg:group-hover:opacity-100" />
-                        <span>{dict.profile.admin}</span>
+                        <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 opacity-100" />
+                        <span>{dict.profile.admin || "Admin Portal"}</span>
                       </div>
-                      <ChevronRight className="w-4 h-4 opacity-100 lg:opacity-40 lg:group-hover:opacity-100" />
+                      <ChevronRight className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform" />
                     </Link>
                   )}
                   <button 

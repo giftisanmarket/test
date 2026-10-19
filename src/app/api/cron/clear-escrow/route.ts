@@ -1,33 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 /**
  * AUTOMATED ESCROW CLEARANCE CRON ENDPOINT
  * 
- * This API endpoint is meant to be called daily by a Serverless Cron scheduler (e.g. Vercel Cron, GitHub Actions).
- * It automatically moves cleared funds from PENDING escrow to WITHDRAWABLE balances.
+ * This API endpoint can be called by:
+ * 1. Vercel Cron (sends x-vercel-cron header or Bearer <CRON_SECRET>)
+ * 2. An external scheduler with Authorization: Bearer <CRON_SECRET>
+ * 3. An authenticated Admin user session
  * 
  * Path: GET /api/cron/clear-escrow
- * Authorization: Bearer <CRON_SECRET>
  */
 export async function GET(req: NextRequest) {
   try {
     // 1. Authorization Guard
     const authHeader = req.headers.get("authorization");
+    const isVercelCron = req.headers.get("x-vercel-cron") === "1" || req.headers.get("user-agent")?.includes("vercel-cron");
     const cronSecret = process.env.CRON_SECRET;
     const isProd = process.env.NODE_ENV === "production";
 
-    if (isProd) {
-      if (!cronSecret) {
-        console.error("❌ CRON_SECRET is not configured in production environment variables!");
-        return NextResponse.json({ error: "Configuration Error" }, { status: 500 });
+    let isAuthorized = !isProd; // Allowed in development
+
+    if (!isAuthorized) {
+      if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+        isAuthorized = true;
+      } else if (isVercelCron) {
+        isAuthorized = true;
+      } else {
+        const session = await auth();
+        if (session?.user?.role === "ADMIN") {
+          isAuthorized = true;
+        }
       }
-      if (authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    } else {
-      // In development, allow triggering without bearer token for local testing convenience
-      console.log("ℹ️ [Cron Dev Mode] Skipping Authorization check for local development simulation.");
+    }
+
+    if (!isAuthorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // 2. Configurable holding window (7 days is standard ecommerce escrow)

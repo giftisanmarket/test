@@ -262,20 +262,8 @@ export function PaymentTab({
       <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pb-8 border-b border-primary/5">
           <div className="space-y-2 text-start">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-700 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full border border-green-500/10">
-                <Sparkles className="w-3 h-3 text-green-600" /> {isRTL ? "قسم الأرباح المباشر" : "Live Financial Tab"}
-              </div>
-              <button
-                type="button"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                title={isRTL ? "تحديث الأرصدة وتسوية المبيعات المستحقة تلقائيًا" : "Refresh balances and auto-clear matured sales"}
-                className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold text-charcoal/60 hover:text-primary bg-charcoal/5 hover:bg-primary/5 border border-primary/10 rounded-full transition-all cursor-pointer disabled:opacity-50"
-              >
-                <RotateCw className={cn("w-3 h-3 text-charcoal/50", isRefreshing && "animate-spin text-accent")} />
-                <span>{isRefreshing ? (isRTL ? "جاري التحديث..." : "Syncing...") : (isRTL ? "تحديث الأرصدة" : "Refresh Balances")}</span>
-              </button>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-700 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full border border-green-500/10">
+              <Sparkles className="w-3 h-3 text-green-600" /> {isRTL ? "قسم الأرباح المباشر" : "Live Financial Tab"}
             </div>
             <h2 className="text-2xl md:text-4xl font-heading font-black text-primary">
               {isRTL ? "إدارة الأرباح والمدفوعات" : "Earnings & Payments"}
@@ -287,8 +275,19 @@ export function PaymentTab({
             </p>
           </div>
 
-          {!showWithdrawForm && (
-            <div className="flex flex-col items-center md:items-end gap-1.5 self-stretch md:self-auto">
+          <div className="flex flex-col sm:flex-row items-center gap-3 self-stretch md:self-auto">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title={isRTL ? "تحديث الأرصدة وتسوية المبيعات المستحقة تلقائيًا" : "Refresh balances and auto-clear matured sales"}
+              className="h-12 px-4 text-xs font-bold text-charcoal/70 hover:text-primary bg-charcoal/5 hover:bg-primary/5 border border-primary/10 rounded-2xl transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2 justify-center w-full sm:w-auto shrink-0"
+            >
+              <RotateCw className={cn("w-3.5 h-3.5 text-charcoal/50", isRefreshing && "animate-spin text-accent")} />
+              <span>{isRefreshing ? (isRTL ? "جاري التحديث..." : "Syncing...") : (isRTL ? "تحديث الأرصدة" : "Refresh Balances")}</span>
+            </button>
+
+            <div className="flex flex-col items-center md:items-end gap-1.5 w-full sm:w-auto">
               <motion.button
                 whileHover={canWithdraw ? { scale: 1.02 } : undefined}
                 whileTap={canWithdraw ? { scale: 0.98 } : undefined}
@@ -299,13 +298,13 @@ export function PaymentTab({
                   }
                 }}
                 className={cn(
-                  "px-8 h-14 font-bold rounded-2xl flex items-center gap-2 transition-all text-sm md:text-base w-full md:w-auto justify-center",
+                  "px-6 h-12 font-bold rounded-2xl flex items-center gap-2 transition-all text-xs md:text-sm w-full sm:w-auto justify-center",
                   canWithdraw 
                     ? "bg-accent hover:bg-accent-dark text-white shadow-xl shadow-accent/20 cursor-pointer" 
                     : "bg-charcoal/10 text-charcoal/40 border border-primary/5 cursor-not-allowed shadow-none"
                 )}
               >
-                <Send className="w-4 h-4 rotate-45" /> {isRTL ? "طلب سحب الأرباح" : "Request Withdrawal"}
+                <Send className="w-3.5 h-3.5 rotate-45" /> {isRTL ? "طلب سحب الأرباح" : "Request Withdrawal"}
               </motion.button>
               {!canWithdraw && (
                 <span className="text-[10px] font-medium text-charcoal/40">
@@ -317,7 +316,7 @@ export function PaymentTab({
                 </span>
               )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Balance Grid */}
@@ -386,192 +385,7 @@ export function PaymentTab({
           </div>
         </div>
 
-        {/* 2. Interactive Payout Request Form */}
-        <AnimatePresence>
-          {showWithdrawForm && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden mt-8"
-            >
-              <div className="p-5 md:p-8 bg-cream/30 rounded-3xl border border-primary/10 mt-4 text-start">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-heading font-bold text-primary">
-                    {isRTL ? "طلب سحب جديد" : "Request Payout"}
-                  </h3>
-                  <button 
-                    onClick={() => setShowWithdrawForm(false)}
-                    className="text-xs text-charcoal/40 hover:text-red-500 font-bold uppercase tracking-wider"
-                  >
-                    {isRTL ? "إلغاء" : "Cancel"}
-                  </button>
-                </div>
 
-                <form onSubmit={handleRequestPayout} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Amount */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-black uppercase tracking-wider text-primary/60">
-                        {isRTL ? "المبلغ المراد سحبه (EGP)" : "Amount to Withdraw (EGP)"}
-                      </label>
-                      <span className="text-[10px] font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full">
-                        {isRTL ? `الحد الأدنى: ${MIN_PAYOUT_AMOUNT} ج.م` : `Min: ${MIN_PAYOUT_AMOUNT} EGP`}
-                      </span>
-                    </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      min={MIN_PAYOUT_AMOUNT}
-                      max={balance.withdrawable}
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder={isRTL ? `الحد الأدنى ${MIN_PAYOUT_AMOUNT} ج.م - الأقصى ${balance.withdrawable.toFixed(2)}` : `Min ${MIN_PAYOUT_AMOUNT} EGP - Max ${balance.withdrawable.toFixed(2)}`}
-                      className="w-full h-12 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary"
-                    />
-                    <p className="text-[10px] text-charcoal/50 font-medium">
-                      {isRTL 
-                        ? `الحد الأدنى لكل عملية سحب هو ${MIN_PAYOUT_AMOUNT} ج.م. الرصيد القابل للسحب: ${balance.withdrawable.toFixed(2)} ج.م.` 
-                        : `Minimum withdrawal threshold is ${MIN_PAYOUT_AMOUNT} EGP. Available to withdraw: ${balance.withdrawable.toFixed(2)} EGP.`}
-                    </p>
-                  </div>
-
-                  {/* Method */}
-                  <div className="space-y-2 relative">
-                    <label className="text-xs font-black uppercase tracking-wider text-primary/60">
-                      {isRTL ? "طريقة الدفع المفضلة" : "Preferred Payout Method"}
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className="w-full h-12 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary flex items-center justify-between text-start cursor-pointer hover:border-primary/20 transition-all"
-                      >
-                        <span>
-                          {method === "INSTAPAY"
-                            ? (isRTL ? "عنوان إنستا باي (InstaPay)" : "InstaPay Address")
-                            : method === "VODAFONE_CASH"
-                              ? (isRTL ? "فودافون كاش / محفظة الهاتف" : "Vodafone Cash / Mobile Wallet")
-                              : (isRTL ? "تحويل بنكي مباشر (IBAN)" : "Direct Bank Transfer (IBAN)")}
-                        </span>
-                        <ChevronDown className={cn("w-4 h-4 text-primary/30 transition-transform duration-200", isDropdownOpen && "rotate-180")} />
-                      </button>
-
-                      <AnimatePresence>
-                        {isDropdownOpen && (
-                          <>
-                            {/* Backdrop overlay to click outside */}
-                            <div 
-                              className="fixed inset-0 z-40 cursor-default" 
-                              onClick={() => setIsDropdownOpen(false)}
-                            />
-                            <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              transition={{ duration: 0.15 }}
-                              className="absolute left-0 right-0 mt-2 bg-white rounded-xl border border-primary/10 shadow-xl z-50 overflow-hidden divide-y divide-primary/5"
-                            >
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMethod("INSTAPAY");
-                                  setIsDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full px-4 py-3 text-start text-xs font-bold hover:bg-cream/40 transition-colors flex items-center justify-between cursor-pointer",
-                                  method === "INSTAPAY" ? "text-accent bg-accent/5" : "text-primary"
-                                )}
-                              >
-                                <span>{isRTL ? "عنوان إنستا باي (InstaPay)" : "InstaPay Address"}</span>
-                                {method === "INSTAPAY" && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMethod("VODAFONE_CASH");
-                                  setIsDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full px-4 py-3 text-start text-xs font-bold hover:bg-cream/40 transition-colors flex items-center justify-between cursor-pointer",
-                                  method === "VODAFONE_CASH" ? "text-accent bg-accent/5" : "text-primary"
-                                )}
-                              >
-                                <span>{isRTL ? "فودافون كاش / محفظة الهاتف" : "Vodafone Cash / Mobile Wallet"}</span>
-                                {method === "VODAFONE_CASH" && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMethod("BANK_TRANSFER");
-                                  setIsDropdownOpen(false);
-                                }}
-                                className={cn(
-                                  "w-full px-4 py-3 text-start text-xs font-bold hover:bg-cream/40 transition-colors flex items-center justify-between cursor-pointer",
-                                  method === "BANK_TRANSFER" ? "text-accent bg-accent/5" : "text-primary"
-                                )}
-                              >
-                                <span>{isRTL ? "تحويل بنكي مباشر (IBAN)" : "Direct Bank Transfer (IBAN)"}</span>
-                                {method === "BANK_TRANSFER" && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                              </button>
-                            </motion.div>
-                          </>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-wider text-primary/60">
-                      {method === "INSTAPAY" 
-                        ? (isRTL ? "عنوان إنستا باي (مثال: name@instapay)" : "InstaPay Handle (e.g. name@instapay)") 
-                        : method === "VODAFONE_CASH" 
-                          ? (isRTL ? "رقم المحفظة الإلكترونية (010xxxxxxx)" : "Mobile Wallet Number (010xxxxxxx)") 
-                          : (isRTL ? "رقم الحساب البنكي (IBAN)" : "Bank Account IBAN")}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder={method === "INSTAPAY" ? "yourname@instapay" : method === "VODAFONE_CASH" ? "01012345678" : "EGxxxxxxxxxxxxxxxxxxxxxxx"}
-                      className="w-full h-12 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary"
-                    />
-                  </div>
-
-                  {/* Full Name */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black uppercase tracking-wider text-primary/60">
-                      {isRTL ? "اسم المستفيد بالكامل" : "Beneficiary Full Name"}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Fatima Mohamed"
-                      className="w-full h-12 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2 pt-2">
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full h-12 bg-primary hover:bg-primary-light text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 transition-colors text-sm uppercase tracking-wider cursor-pointer"
-                    >
-                      {isSubmitting ? (isRTL ? "جاري الإرسال..." : "Submitting...") : (isRTL ? "تأكيد وإرسال طلب السحب" : "Submit Withdrawal Request")}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* 3. Transaction History */}
@@ -761,6 +575,221 @@ export function PaymentTab({
         </div>
         <div className="absolute bottom-0 end-0 w-96 h-96 bg-white/5 rounded-full blur-[100px] translate-y-1/2 translate-x-1/2" />
       </div>
+
+      {/* 2. Payout Request Modal Dialog */}
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showWithdrawForm && (
+            <div className="fixed inset-0 z-[9999] overflow-y-auto flex items-center justify-center p-3 sm:p-4 md:p-6">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowWithdrawForm(false)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
+              />
+
+              {/* Modal Body */}
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                animate={{ scale: 1, opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 25 } }}
+                exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-primary/10 flex flex-col z-10 my-auto max-h-[calc(100dvh-2rem)] text-start"
+              >
+                {/* Header */}
+                <div className="p-4 sm:p-6 bg-cream/20 border-b border-primary/10 flex items-center justify-between shrink-0">
+                  <div className="space-y-0.5">
+                    <h3 className="text-base sm:text-lg font-heading font-black text-primary">
+                      {isRTL ? "طلب سحب الأرباح" : "Request Payout"}
+                    </h3>
+                    <p className="text-[11px] text-charcoal/50 font-medium">
+                      {isRTL 
+                        ? `الرصيد المتاح للسحب: ${balance.withdrawable.toFixed(2)} ج.م` 
+                        : `Available to withdraw: ${balance.withdrawable.toFixed(2)} EGP`}
+                    </p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setShowWithdrawForm(false)}
+                    aria-label={isRTL ? "إغلاق" : "Close"}
+                    className="w-8 h-8 rounded-full hover:bg-primary/10 flex items-center justify-center transition-colors cursor-pointer text-primary/70 hover:text-primary shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Form Body */}
+                <div className="overflow-y-auto p-4 sm:p-6 flex-1 min-h-0">
+                  <form onSubmit={handleRequestPayout} className="space-y-4">
+                    {/* Amount */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black uppercase tracking-wider text-primary/60">
+                          {isRTL ? "المبلغ المراد سحبه (EGP)" : "Amount to Withdraw (EGP)"}
+                        </label>
+                        <span className="text-[10px] font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full">
+                          {isRTL ? `الحد الأدنى: ${MIN_PAYOUT_AMOUNT} ج.م` : `Min: ${MIN_PAYOUT_AMOUNT} EGP`}
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        min={MIN_PAYOUT_AMOUNT}
+                        max={balance.withdrawable}
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder={isRTL ? `الحد الأدنى ${MIN_PAYOUT_AMOUNT} ج.م - الأقصى ${balance.withdrawable.toFixed(2)}` : `Min ${MIN_PAYOUT_AMOUNT} EGP - Max ${balance.withdrawable.toFixed(2)}`}
+                        className="w-full h-11 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary"
+                      />
+                    </div>
+
+                    {/* Method */}
+                    <div className="space-y-1.5 relative">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary/60">
+                        {isRTL ? "طريقة الدفع المفضلة" : "Preferred Payout Method"}
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                          className="w-full h-11 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary flex items-center justify-between text-start cursor-pointer hover:border-primary/20 transition-all"
+                        >
+                          <span>
+                            {method === "INSTAPAY"
+                              ? (isRTL ? "عنوان إنستا باي (InstaPay)" : "InstaPay Address")
+                              : method === "VODAFONE_CASH"
+                                ? (isRTL ? "فودافون كاش / محفظة الهاتف" : "Vodafone Cash / Mobile Wallet")
+                                : (isRTL ? "تحويل بنكي مباشر (IBAN)" : "Direct Bank Transfer (IBAN)")}
+                          </span>
+                          <ChevronDown className={cn("w-4 h-4 text-primary/30 transition-transform duration-200", isDropdownOpen && "rotate-180")} />
+                        </button>
+
+                        <AnimatePresence>
+                          {isDropdownOpen && (
+                            <>
+                              <div 
+                                className="fixed inset-0 z-40 cursor-default" 
+                                onClick={() => setIsDropdownOpen(false)}
+                              />
+                              <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute left-0 right-0 mt-2 bg-white rounded-xl border border-primary/10 shadow-xl z-50 overflow-hidden divide-y divide-primary/5"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMethod("INSTAPAY");
+                                    setIsDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full px-4 py-2.5 text-start text-xs font-bold hover:bg-cream/40 transition-colors flex items-center justify-between cursor-pointer",
+                                    method === "INSTAPAY" ? "text-accent bg-accent/5" : "text-primary"
+                                  )}
+                                >
+                                  <span>{isRTL ? "عنوان إنستا باي (InstaPay)" : "InstaPay Address"}</span>
+                                  {method === "INSTAPAY" && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMethod("VODAFONE_CASH");
+                                    setIsDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full px-4 py-2.5 text-start text-xs font-bold hover:bg-cream/40 transition-colors flex items-center justify-between cursor-pointer",
+                                    method === "VODAFONE_CASH" ? "text-accent bg-accent/5" : "text-primary"
+                                  )}
+                                >
+                                  <span>{isRTL ? "فودافون كاش / محفظة الهاتف" : "Vodafone Cash / Mobile Wallet"}</span>
+                                  {method === "VODAFONE_CASH" && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMethod("BANK_TRANSFER");
+                                    setIsDropdownOpen(false);
+                                  }}
+                                  className={cn(
+                                    "w-full px-4 py-2.5 text-start text-xs font-bold hover:bg-cream/40 transition-colors flex items-center justify-between cursor-pointer",
+                                    method === "BANK_TRANSFER" ? "text-accent bg-accent/5" : "text-primary"
+                                  )}
+                                >
+                                  <span>{isRTL ? "تحويل بنكي مباشر (IBAN)" : "Direct Bank Transfer (IBAN)"}</span>
+                                  {method === "BANK_TRANSFER" && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                </button>
+                              </motion.div>
+                            </>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+
+                    {/* Address */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary/60">
+                        {method === "INSTAPAY" 
+                          ? (isRTL ? "عنوان إنستا باي (مثال: name@instapay)" : "InstaPay Handle (e.g. name@instapay)") 
+                          : method === "VODAFONE_CASH" 
+                            ? (isRTL ? "رقم المحفظة الإلكترونية (010xxxxxxx)" : "Mobile Wallet Number (010xxxxxxx)") 
+                            : (isRTL ? "رقم الحساب البنكي (IBAN)" : "Bank Account IBAN")}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder={method === "INSTAPAY" ? "yourname@instapay" : method === "VODAFONE_CASH" ? "01012345678" : "EGxxxxxxxxxxxxxxxxxxxxxxx"}
+                        className="w-full h-11 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary"
+                      />
+                    </div>
+
+                    {/* Full Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary/60">
+                        {isRTL ? "اسم المستفيد بالكامل" : "Beneficiary Full Name"}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="e.g. Fatima Mohamed"
+                        className="w-full h-11 px-4 rounded-xl border border-primary/10 bg-white focus:outline-none focus:border-accent text-sm font-bold text-primary"
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowWithdrawForm(false)}
+                        className="flex-1 h-11 bg-charcoal/5 hover:bg-charcoal/10 text-charcoal/70 font-bold rounded-xl transition-colors text-xs uppercase tracking-wider cursor-pointer"
+                      >
+                        {isRTL ? "إلغاء" : "Cancel"}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-[2] h-11 bg-primary hover:bg-primary-light text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 transition-colors text-xs uppercase tracking-wider cursor-pointer"
+                      >
+                        {isSubmitting ? (isRTL ? "جاري الإرسال..." : "Submitting...") : (isRTL ? "إرسال طلب السحب" : "Submit Withdrawal Request")}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Receipt PDF Generator Modal */}
       {typeof document !== "undefined" && createPortal(

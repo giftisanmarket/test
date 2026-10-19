@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { signIn, auth } from "@/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { AuthError, CredentialsSignin } from "next-auth";
-import { slugify, stripEmojis } from "@/lib/utils";
+import { slugify, stripEmojis, getEscrowClearanceThresholdDate } from "@/lib/utils";
 import cloudinary from "@/lib/cloudinary";
 import sharp from "sharp";
 import { sendWelcomeEmail, sendOrderNotification, sendMessageNotification, sendVerificationEmail, sendOrderStatusUpdateEmail, sendPasswordResetEmail, sendInquiryNotification, sendArtisanApprovalEmail, sendArtisanOutreachEmail, sendCustomEmail, sendProductStatusUpdateEmail, sendPayoutRequestEmail, sendPayoutApprovedEmail, sendPayoutDeclinedEmail, sendRefundRequestSubmittedEmail, sendRefundResolvedEmail, sendAbandonedCheckoutNotification, sendBuyerOrderReceiptEmail } from "@/lib/mail";
@@ -2006,9 +2006,7 @@ export async function getUserOrders(userId: string) {
  */
 export async function autoClearEligibleArtisanEscrow(artisanId: string) {
   try {
-    const HOLDING_DAYS = 7;
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() - HOLDING_DAYS);
+    const thresholdDate = getEscrowClearanceThresholdDate(7);
 
     const eligibleTransactions = await prisma.artisanTransaction.findMany({
       where: {
@@ -2364,9 +2362,7 @@ export async function triggerEscrowClearanceAction() {
       return { error: "You must be an admin to perform this action." };
     }
 
-    const HOLDING_DAYS = 7;
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() - HOLDING_DAYS);
+    const thresholdDate = getEscrowClearanceThresholdDate(7);
 
     const pendingSales = await prisma.artisanTransaction.findMany({
       where: {
@@ -2374,6 +2370,9 @@ export async function triggerEscrowClearanceAction() {
         status: "PENDING",
         createdAt: {
           lt: thresholdDate
+        },
+        order: {
+          status: "DELIVERED"
         }
       }
     });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { getEscrowClearanceThresholdDate } from "@/lib/utils";
 
 /**
  * AUTOMATED ESCROW CLEARANCE CRON ENDPOINT
@@ -39,10 +40,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Configurable holding window (7 days is standard ecommerce escrow)
-    const HOLDING_DAYS = 7;
-    const thresholdDate = new Date();
-    thresholdDate.setDate(thresholdDate.getDate() - HOLDING_DAYS);
+    // 2. Calendar-day based clearance: orders delivered 7 days ago clear from the start of the 7th day
+    const thresholdDate = getEscrowClearanceThresholdDate(7);
 
     console.log(`⏳ [Cron Escrow] Scanning for SALE transactions created before: ${thresholdDate.toISOString()}`);
 

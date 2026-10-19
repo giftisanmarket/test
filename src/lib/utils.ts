@@ -62,3 +62,30 @@ export function getOptimizedImageUrl(
 
   return url.replace("/upload/", `/upload/${transformString}/`);
 }
+
+/**
+ * Calculates the calendar cutoff date for escrow clearance.
+ * An order delivered on calendar day D becomes eligible from the beginning (00:00)
+ * of day D + holdingDays in Egypt time (UTC+3), rather than requiring the exact hour/minute to pass.
+ */
+export function getEscrowClearanceThresholdDate(holdingDays: number = 7): Date {
+  const now = new Date();
+  // Egypt timezone offset: UTC+3 (3 hours in ms)
+  const cairoOffsetMs = 3 * 60 * 60 * 1000;
+  const cairoNow = new Date(now.getTime() + cairoOffsetMs);
+
+  // Start of today (00:00:00.000) in Cairo time
+  const cairoStartOfToday = new Date(Date.UTC(
+    cairoNow.getUTCFullYear(),
+    cairoNow.getUTCMonth(),
+    cairoNow.getUTCDate(),
+    0, 0, 0, 0
+  ));
+
+  // If today is day T, all orders delivered on or before day (T - holdingDays) are eligible.
+  // In other words, any order created before the start of day (T - holdingDays + 1) in Cairo.
+  const cutoffCairo = new Date(cairoStartOfToday.getTime() - (holdingDays - 1) * 24 * 60 * 60 * 1000);
+
+  // Return converted back to UTC
+  return new Date(cutoffCairo.getTime() - cairoOffsetMs);
+}

@@ -645,187 +645,194 @@ export function AdminExpensesClient({
         </div>
       </div>
 
-      {/* KPI Financial Overview Cards (Interactive: click any card to filter and scroll to list) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Total Funded by Mohamed */}
-        <div 
-          onClick={handleViewFundedTransfers}
-          className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-emerald-200/80 shadow-sm space-y-2.5 relative overflow-hidden flex flex-col justify-between cursor-pointer group hover:shadow-md hover:border-emerald-300 transition-all active:scale-[0.99]"
-        >
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 leading-tight">
-                  {isAr ? "إجمالي ما حوله محمد" : "Transferred by Mohamed"}
+      {/* KPI Financial Overview Cards (Swipeable Carousel on mobile, 2 cols on tablet/laptop, 4 cols on wide screens) */}
+      <div className="space-y-1.5">
+        <div className="flex sm:grid sm:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible">
+          {/* Card 1: Total Funded by Mohamed */}
+          <div 
+            onClick={handleViewFundedTransfers}
+            className="w-[84vw] max-w-[340px] shrink-0 snap-center sm:w-auto p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-emerald-200/80 shadow-sm space-y-2.5 relative overflow-hidden flex flex-col justify-between cursor-pointer group hover:shadow-md hover:border-emerald-300 transition-all active:scale-[0.99]"
+          >
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 leading-tight">
+                    {isAr ? "إجمالي ما حوله محمد" : "Transferred by Mohamed"}
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 shrink-0 whitespace-nowrap">
+                  {isAr ? "مكتمل" : "Confirmed"}
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 shrink-0 whitespace-nowrap">
-                {isAr ? "مكتمل" : "Confirmed"}
-              </span>
+              <p className="text-xl sm:text-2xl 2xl:text-3xl font-black text-emerald-700 font-heading tracking-tight break-words">
+                EGP {(analytics.totalFunded || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
             </div>
-            <p className="text-xl sm:text-2xl 2xl:text-3xl font-black text-emerald-700 font-heading tracking-tight break-words">
-              EGP {(analytics.totalFunded || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="text-[11px] text-charcoal/60 font-medium flex items-center justify-between pt-2 border-t border-emerald-100">
-            <span>{isAr ? "عمليات مكتملة التحويل:" : "Completed transfers:"}</span>
-            <button
-              type="button"
-              onClick={handleViewFundedTransfers}
-              className="text-[10px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-            >
-              <span>{fundedCount}</span>
-              <span className="text-[9px] text-emerald-700 font-semibold">{isAr ? "عرض" : "View"}</span>
-              <ArrowDown className="w-2.5 h-2.5 text-emerald-700 group-hover:translate-y-0.5 transition-transform" />
-            </button>
-          </div>
-        </div>
-
-        {/* Card 2: Pending Transfers from Mohamed */}
-        <div 
-          onClick={handleViewPendingTransfers}
-          className={cn(
-            "p-4 sm:p-5 rounded-2xl sm:rounded-3xl border shadow-sm space-y-2.5 relative overflow-hidden transition-all flex flex-col justify-between cursor-pointer group hover:shadow-md active:scale-[0.99]",
-            (analytics.pendingFunding || 0) > 0
-              ? "bg-amber-50/70 border-amber-300 hover:border-amber-400"
-              : "bg-white border-primary/5 hover:border-primary/20"
-          )}
-        >
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 leading-tight">
-                  {isAr ? "بانتظار تحويل محمد" : "Awaiting Mohamed's Transfer"}
-                </span>
-              </div>
-              {(analytics.pendingFunding || 0) > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-200 text-amber-900 animate-pulse shrink-0 whitespace-nowrap">
-                  {pendingTransferCount} {isAr ? "مطلوبة" : "Pending"}
-                </span>
-              )}
-            </div>
-            <p className="text-xl sm:text-2xl 2xl:text-3xl font-black text-amber-800 font-heading tracking-tight break-words">
-              EGP {(analytics.pendingFunding || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="text-[11px] text-charcoal/60 font-medium flex items-center justify-between pt-2 border-t border-amber-200/60">
-            <span>{isAr ? "مطلوب تحويلها للشركاء" : "Awaiting bank/wallet transfer"}</span>
-            <button
-              type="button"
-              onClick={handleViewPendingTransfers}
-              className="text-[10px] font-black text-amber-900 bg-amber-200/90 hover:bg-amber-300 px-2.5 py-1 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1 shadow-xs active:scale-95"
-            >
-              <span>{isAr ? "عرض القائمة" : "View List"}</span>
-              <ArrowDown className="w-3 h-3 text-amber-900 group-hover:translate-y-0.5 transition-transform" />
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: Partner Expenses */}
-        <div className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-2 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <User className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span className="text-[11px] font-black uppercase tracking-wider text-charcoal/70 leading-tight">
-                  {isAr ? "مصاريف الشركاء" : "Partner Expenses"}
-                </span>
-              </div>
-              <span className="text-[10px] text-charcoal/40 font-bold shrink-0">
-                {isAr ? "حازم / نور / محمد" : "Hazem • Nour"}
-              </span>
-            </div>
-
-            <div className="space-y-1.5">
-              {/* Hazem */}
-              <div 
-                onClick={(e) => handleViewPartnerExpenses("HAZEM", e)}
-                className="flex flex-wrap items-center justify-between gap-1 text-xs py-1 px-1.5 -mx-1.5 rounded-lg hover:bg-indigo-50/60 cursor-pointer transition-colors group"
-                title={isAr ? "عرض مصاريف حازم" : "Filter by Hazem"}
+            <div className="text-[11px] text-charcoal/60 font-medium flex items-center justify-between pt-2 border-t border-emerald-100">
+              <span>{isAr ? "عمليات مكتملة التحويل:" : "Completed transfers:"}</span>
+              <button
+                type="button"
+                onClick={handleViewFundedTransfers}
+                className="text-[10px] font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 active:scale-95"
               >
-                <span className="font-bold text-indigo-900 flex items-center gap-1.5 shrink-0">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block shrink-0" />
-                  <span>{isAr ? "حازم:" : "Hazem:"}</span>
+                <span>{fundedCount}</span>
+                <span className="text-[9px] text-emerald-700 font-semibold">{isAr ? "عرض" : "View"}</span>
+                <ArrowDown className="w-2.5 h-2.5 text-emerald-700 group-hover:translate-y-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Pending Transfers from Mohamed */}
+          <div 
+            onClick={handleViewPendingTransfers}
+            className={cn(
+              "w-[84vw] max-w-[340px] shrink-0 snap-center sm:w-auto p-4 sm:p-5 rounded-2xl sm:rounded-3xl border shadow-sm space-y-2.5 relative overflow-hidden transition-all flex flex-col justify-between cursor-pointer group hover:shadow-md active:scale-[0.99]",
+              (analytics.pendingFunding || 0) > 0
+                ? "bg-amber-50/70 border-amber-300 hover:border-amber-400"
+                : "bg-white border-primary/5 hover:border-primary/20"
+            )}
+          >
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 leading-tight">
+                    {isAr ? "بانتظار تحويل محمد" : "Awaiting Mohamed's Transfer"}
+                  </span>
+                </div>
+                {(analytics.pendingFunding || 0) > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-200 text-amber-900 animate-pulse shrink-0 whitespace-nowrap">
+                    {pendingTransferCount} {isAr ? "مطلوبة" : "Pending"}
+                  </span>
+                )}
+              </div>
+              <p className="text-xl sm:text-2xl 2xl:text-3xl font-black text-amber-800 font-heading tracking-tight break-words">
+                EGP {(analytics.pendingFunding || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="text-[11px] text-charcoal/60 font-medium flex items-center justify-between pt-2 border-t border-amber-200/60">
+              <span>{isAr ? "مطلوب تحويلها للشركاء" : "Awaiting bank/wallet transfer"}</span>
+              <button
+                type="button"
+                onClick={handleViewPendingTransfers}
+                className="text-[10px] font-black text-amber-900 bg-amber-200/90 hover:bg-amber-300 px-2.5 py-1 rounded-lg transition-all cursor-pointer shrink-0 whitespace-nowrap flex items-center gap-1 shadow-xs active:scale-95"
+              >
+                <span>{isAr ? "عرض القائمة" : "View List"}</span>
+                <ArrowDown className="w-3 h-3 text-amber-900 group-hover:translate-y-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
+
+          {/* Card 3: Partner Expenses */}
+          <div className="w-[84vw] max-w-[340px] shrink-0 snap-center sm:w-auto p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-2 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <User className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-charcoal/70 leading-tight">
+                    {isAr ? "مصاريف الشركاء" : "Partner Expenses"}
+                  </span>
+                </div>
+                <span className="text-[10px] text-charcoal/40 font-bold shrink-0">
+                  {isAr ? "حازم / نور / محمد" : "Hazem • Nour"}
                 </span>
-                <div className="flex items-center gap-1 font-black text-primary text-xs">
-                  <span>EGP {((analytics.hazemFunded || 0) + (analytics.hazemPending || 0)).toLocaleString()}</span>
-                  {(analytics.hazemPending || 0) > 0 && (
-                    <span className="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-bold whitespace-nowrap">
-                      +{(analytics.hazemPending || 0).toLocaleString()} {isAr ? "معلق" : "pend."}
-                    </span>
-                  )}
-                  <ArrowDown className="w-2.5 h-2.5 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+
+              <div className="space-y-1.5">
+                {/* Hazem */}
+                <div 
+                  onClick={(e) => handleViewPartnerExpenses("HAZEM", e)}
+                  className="flex flex-wrap items-center justify-between gap-1 text-xs py-1 px-1.5 -mx-1.5 rounded-lg hover:bg-indigo-50/60 cursor-pointer transition-colors group"
+                  title={isAr ? "عرض مصاريف حازم" : "Filter by Hazem"}
+                >
+                  <span className="font-bold text-indigo-900 flex items-center gap-1.5 shrink-0">
+                    <span className="w-2 h-2 rounded-full bg-indigo-600 inline-block shrink-0" />
+                    <span>{isAr ? "حازم:" : "Hazem:"}</span>
+                  </span>
+                  <div className="flex items-center gap-1 font-black text-primary text-xs">
+                    <span>EGP {((analytics.hazemFunded || 0) + (analytics.hazemPending || 0)).toLocaleString()}</span>
+                    {(analytics.hazemPending || 0) > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-bold whitespace-nowrap">
+                        +{(analytics.hazemPending || 0).toLocaleString()} {isAr ? "معلق" : "pend."}
+                      </span>
+                    )}
+                    <ArrowDown className="w-2.5 h-2.5 text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+
+                {/* Nour */}
+                <div 
+                  onClick={(e) => handleViewPartnerExpenses("NOUR", e)}
+                  className="flex flex-wrap items-center justify-between gap-1 text-xs py-1 px-1.5 -mx-1.5 rounded-lg hover:bg-cyan-50/60 cursor-pointer transition-colors group"
+                  title={isAr ? "عرض مصاريف نور" : "Filter by Nour"}
+                >
+                  <span className="font-bold text-cyan-900 flex items-center gap-1.5 shrink-0">
+                    <span className="w-2 h-2 rounded-full bg-cyan-600 inline-block shrink-0" />
+                    <span>{isAr ? "نور:" : "Nour:"}</span>
+                  </span>
+                  <div className="flex items-center gap-1 font-black text-primary text-xs">
+                    <span>EGP {((analytics.nourFunded || 0) + (analytics.nourPending || 0)).toLocaleString()}</span>
+                    {(analytics.nourPending || 0) > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-bold whitespace-nowrap">
+                        +{(analytics.nourPending || 0).toLocaleString()} {isAr ? "معلق" : "pend."}
+                      </span>
+                    )}
+                    <ArrowDown className="w-2.5 h-2.5 text-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Nour */}
-              <div 
-                onClick={(e) => handleViewPartnerExpenses("NOUR", e)}
-                className="flex flex-wrap items-center justify-between gap-1 text-xs py-1 px-1.5 -mx-1.5 rounded-lg hover:bg-cyan-50/60 cursor-pointer transition-colors group"
-                title={isAr ? "عرض مصاريف نور" : "Filter by Nour"}
-              >
-                <span className="font-bold text-cyan-900 flex items-center gap-1.5 shrink-0">
-                  <span className="w-2 h-2 rounded-full bg-cyan-600 inline-block shrink-0" />
-                  <span>{isAr ? "نور:" : "Nour:"}</span>
-                </span>
-                <div className="flex items-center gap-1 font-black text-primary text-xs">
-                  <span>EGP {((analytics.nourFunded || 0) + (analytics.nourPending || 0)).toLocaleString()}</span>
-                  {(analytics.nourPending || 0) > 0 && (
-                    <span className="text-[9px] px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded font-bold whitespace-nowrap">
-                      +{(analytics.nourPending || 0).toLocaleString()} {isAr ? "معلق" : "pend."}
-                    </span>
-                  )}
-                  <ArrowDown className="w-2.5 h-2.5 text-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              </div>
+            <div className="text-[10px] text-charcoal/50 font-medium pt-2 border-t border-primary/5 flex items-center justify-between">
+              <span>{isAr ? "المصاريف التشغيلية والتجهيز" : "Operations & Supplies split"}</span>
             </div>
           </div>
 
-          <div className="text-[10px] text-charcoal/50 font-medium pt-2 border-t border-primary/5 flex items-center justify-between">
-            <span>{isAr ? "المصاريف التشغيلية والتجهيز" : "Operations & Supplies split"}</span>
+          {/* Card 4: Total Platform Purchases & Burn */}
+          <div 
+            onClick={handleViewAllExpenses}
+            className="w-[84vw] max-w-[340px] shrink-0 snap-center sm:w-auto p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-2 flex flex-col justify-between cursor-pointer group hover:shadow-md hover:border-primary/20 transition-all active:scale-[0.99]"
+          >
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <TrendingUp className="w-4 h-4 text-purple-600 shrink-0" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-charcoal/70 leading-tight">
+                    {isAr ? "إجمالي مصاريف المنصة" : "Total Platform Burn"}
+                  </span>
+                </div>
+                <span className="text-[10px] text-charcoal/50 font-bold px-2 py-0.5 rounded-full bg-cream shrink-0 whitespace-nowrap">
+                  {analytics.totalCount} {isAr ? "بند" : "entries"}
+                </span>
+              </div>
+              <p className="text-xl sm:text-2xl 2xl:text-3xl font-black text-primary font-heading tracking-tight break-words">
+                EGP {analytics.totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="text-[11px] text-charcoal/50 font-medium flex items-center justify-between pt-2 border-t border-primary/5">
+              <span>{isAr ? "هذا الشهر:" : "This Month:"}</span>
+              <span className="font-bold text-primary">EGP {analytics.thisMonthSpent.toLocaleString()}</span>
+            </div>
           </div>
         </div>
 
-        {/* Card 4: Total Platform Purchases & Burn */}
-        <div 
-          onClick={handleViewAllExpenses}
-          className="p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm space-y-2 flex flex-col justify-between cursor-pointer group hover:shadow-md hover:border-primary/20 transition-all active:scale-[0.99]"
-        >
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <TrendingUp className="w-4 h-4 text-purple-600 shrink-0" />
-                <span className="text-[11px] font-black uppercase tracking-wider text-charcoal/70 leading-tight">
-                  {isAr ? "إجمالي مصاريف المنصة" : "Total Platform Burn"}
-                </span>
-              </div>
-              <span className="text-[10px] text-charcoal/50 font-bold px-2 py-0.5 rounded-full bg-cream shrink-0 whitespace-nowrap">
-                {analytics.totalCount} {isAr ? "بند" : "entries"}
-              </span>
-            </div>
-            <p className="text-xl sm:text-2xl 2xl:text-3xl font-black text-primary font-heading tracking-tight break-words">
-              EGP {analytics.totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="text-[11px] text-charcoal/50 font-medium flex items-center justify-between pt-2 border-t border-primary/5">
-            <span>{isAr ? "هذا الشهر:" : "This Month:"}</span>
-            <span className="font-bold text-primary">EGP {analytics.thisMonthSpent.toLocaleString()}</span>
-          </div>
+        {/* Mobile Swipe Hint */}
+        <div className="flex sm:hidden items-center justify-between px-1 text-[10px] text-charcoal/40 font-bold">
+          <span>{isAr ? "اسحب لمشاهدة باقي الإحصائيات ⟷" : "Swipe cards for all metrics ⟷"}</span>
         </div>
       </div>
 
       {/* Main Workflow Tabs & Filters Strip */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm p-4 sm:p-5 space-y-4">
-        {/* Status Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-primary/5 pb-3">
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border border-primary/5 shadow-sm p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
+        {/* Status Tabs (Mobile Smooth Pill Scroller) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 border-b border-primary/5 pb-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0 -mx-1 px-1 flex-nowrap">
             <button
               type="button"
               onClick={() => setFundingStatusFilter("ALL")}
               className={cn(
-                "px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap",
+                "px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0",
                 fundingStatusFilter === "ALL"
                   ? "bg-primary text-white shadow-sm"
                   : "bg-cream/50 text-charcoal/70 hover:bg-cream"
@@ -844,14 +851,14 @@ export function AdminExpensesClient({
               type="button"
               onClick={() => setFundingStatusFilter("PENDING_TRANSFER")}
               className={cn(
-                "px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap",
+                "px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0",
                 fundingStatusFilter === "PENDING_TRANSFER"
                   ? "bg-amber-600 text-white shadow-sm"
                   : "bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
               )}
             >
               <Clock className="w-3.5 h-3.5 shrink-0" />
-              <span>{isAr ? "في انتظار تحويل محمد" : "Awaiting Mohamed's Transfer"}</span>
+              <span>{isAr ? "بانتظار تحويل محمد" : "Awaiting Transfer"}</span>
               {pendingTransferCount > 0 && (
                 <span className={cn(
                   "px-1.5 py-0.2 rounded-full text-[10px] font-black",
@@ -866,14 +873,14 @@ export function AdminExpensesClient({
               type="button"
               onClick={() => setFundingStatusFilter("FUNDED")}
               className={cn(
-                "px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap",
+                "px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0",
                 fundingStatusFilter === "FUNDED"
                   ? "bg-emerald-700 text-white shadow-sm"
                   : "bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
               )}
             >
               <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{isAr ? "تم التحويل والتمويل" : "Funded & Transferred"}</span>
+              <span>{isAr ? "تم التحويل" : "Funded & Transferred"}</span>
               <span className={cn(
                 "px-1.5 py-0.2 rounded-full text-[10px]",
                 fundingStatusFilter === "FUNDED" ? "bg-white/20 text-white" : "bg-emerald-200 text-emerald-900"
@@ -968,11 +975,11 @@ export function AdminExpensesClient({
           {/* Search + Category Filter */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
             {/* Category Dropdown */}
-            <div className="relative flex-1 sm:w-48">
+            <div className="relative flex-1 sm:w-56">
               <button
                 type="button"
                 onClick={() => setIsCategoryFilterOpen(!isCategoryFilterOpen)}
-                className="w-full h-9 px-3 bg-cream/40 hover:bg-cream border border-primary/10 rounded-xl text-xs font-bold text-primary flex items-center justify-between transition-all cursor-pointer"
+                className="w-full h-9 px-3 bg-cream/40 hover:bg-cream border border-primary/10 rounded-xl text-xs font-bold text-primary flex items-center justify-between transition-all cursor-pointer shadow-xs"
               >
                 <span className="truncate">
                   {categoryFilter === "ALL"
@@ -987,11 +994,11 @@ export function AdminExpensesClient({
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsCategoryFilterOpen(false)} />
                     <motion.div
-                      initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                      initial={{ opacity: 0, y: -6, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                      exit={{ opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute start-0 top-full mt-1.5 w-60 max-w-[calc(100vw-2.5rem)] bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 space-y-0.5 max-h-72 overflow-y-auto custom-scrollbar text-start"
+                      className="absolute start-0 end-0 top-full mt-1.5 bg-white rounded-2xl border border-primary/10 shadow-2xl p-1.5 z-50 space-y-0.5 max-h-72 overflow-y-auto custom-scrollbar text-start"
                     >
                       <button
                         type="button"
@@ -1079,7 +1086,7 @@ export function AdminExpensesClient({
       ) : (
         <>
           {/* Mobile View: Adaptive Expense Cards (<lg) */}
-          <div className="block lg:hidden space-y-3.5">
+          <div className="block lg:hidden space-y-3.5 pb-10">
             {filteredExpenses.map((exp) => {
               const catInfo = categoryLabels[exp.category as ExpenseCategoryType] || categoryLabels.OTHER;
               const Icon = catInfo.icon;
@@ -1099,31 +1106,37 @@ export function AdminExpensesClient({
                 >
                   {/* Top Line: Category & Status */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
                       <span className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border",
+                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border shrink-0",
                         catInfo.bg,
                         catInfo.color
                       )}>
-                        <Icon className="w-3 h-3" />
+                        <Icon className="w-3 h-3 shrink-0" />
                         <span>{catInfo[isAr ? "ar" : "en"]}</span>
                       </span>
 
                       <span className={cn(
-                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border",
+                        "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-bold border shrink-0",
                         statusInfo.bg,
                         statusInfo.color
                       )}>
-                        <span className={cn("w-1.5 h-1.5 rounded-full", statusInfo.dot)} />
-                        <span>{statusInfo[isAr ? "ar" : "en"]}</span>
+                        <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", statusInfo.dot)} />
+                        <span>
+                          {statusKey === "PENDING_TRANSFER"
+                            ? (isAr ? "بانتظار التحويل" : "Awaiting Transfer")
+                            : statusKey === "FUNDED"
+                            ? (isAr ? "تم التحويل" : "Funded")
+                            : statusInfo[isAr ? "ar" : "en"]}
+                        </span>
                       </span>
                     </div>
 
                     <div className="text-end shrink-0">
-                      <p className="font-black text-primary text-base">
+                      <p className="font-black text-primary text-base leading-tight">
                         EGP {exp.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
-                      <p className="text-[10px] text-charcoal/40 font-medium">
+                      <p className="text-[10px] text-charcoal/40 font-medium mt-0.5">
                         {new Date(exp.date).toLocaleDateString(isAr ? "ar-EG" : "en-US", { month: "short", day: "numeric" })}
                       </p>
                     </div>

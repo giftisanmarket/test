@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signIn, auth } from "@/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { AuthError } from "next-auth";
+import { AuthError, CredentialsSignin } from "next-auth";
 import { slugify, stripEmojis } from "@/lib/utils";
 import cloudinary from "@/lib/cloudinary";
 import sharp from "sharp";
@@ -201,34 +201,66 @@ export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
 }
 
 export async function login(formData: any) {
-  const { email, password } = formData;
+  let email = "";
+  let password = "";
+
+  if (formData instanceof FormData) {
+    email = (formData.get("email") as string) || "";
+    password = (formData.get("password") as string) || "";
+  } else if (formData && typeof formData === "object") {
+    email = typeof formData.email === "string" ? formData.email : "";
+    password = typeof formData.password === "string" ? formData.password : "";
+  }
+
+  email = email.trim().toLowerCase();
+
+  if (!email || !password) {
+    return { error: "Please enter both email and password.", code: "MISSING_CREDENTIALS" };
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { error: "Please enter a valid email address.", code: "INVALID_EMAIL" };
+  }
 
   try {
-    const res = await signIn("credentials", {
+    await signIn("credentials", {
       email,
       password,
       redirect: false,
     });
 
-    if (res?.error) {
-      return { error: "Invalid credentials." };
+    return { success: true };
+  } catch (error: any) {
+    // Preserve Next.js internal redirect exceptions
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      typeof (error as { digest?: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
     }
 
-    return { success: true };
-  } catch (error) {
-    if (error instanceof AuthError) {
-      if (error.cause?.err?.message === "UNVERIFIED_EMAIL") {
-        return { error: "Please verify your email address before logging in. Check your inbox for a link!" };
+    if (error instanceof AuthError || error?.name === "AuthError") {
+      const customCode = (error as any).code || (error as any).cause?.err?.message;
+      if (customCode === "UNVERIFIED_EMAIL") {
+        return {
+          error: "Please verify your email address before logging in. Check your inbox for a link!",
+          code: "UNVERIFIED_EMAIL",
+        };
       }
-      switch (error.type) {
-        case "CredentialsSignin":
-          return { error: "Invalid credentials." };
-        default:
-          return { error: "Something went wrong." };
+
+      if (error instanceof CredentialsSignin || error.type === "CredentialsSignin") {
+        return { error: "Invalid credentials.", code: "INVALID_CREDENTIALS" };
       }
+
+      return { error: "Something went wrong.", code: error.type || "AUTH_ERROR" };
     }
-    // For manual client-side handling, we don't want to throw the redirect here
-    return { error: "An unexpected error occurred." };
+
+    console.error("Login action error:", error);
+    return { error: "An unexpected error occurred.", code: "SERVER_ERROR" };
   }
 }
 
@@ -5739,32 +5771,20 @@ export async function resolveRefundRequestAction({
 // -----------------------------------------------------------------------------
 
 function getExpenseDb() {
-  if ((prisma as any).platformExpense) {
-    return prisma;
-  }
-  try {
-    const { PrismaClient } = require("@prisma/client");
-    const { PrismaPg } = require("@prisma/adapter-pg");
-    const { Pool } = require("pg");
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      max: 2
-    });
-    const adapter = new PrismaPg(pool);
-    return new PrismaClient({ adapter });
-  } catch {
-    return prisma;
-  }
+  return prisma;
 }
 
 export async function getPlatformExpensesAction({
   category,
   timeframe = "ALL",
+  fundingStatus = "ALL",
+  requestedBy = "ALL",
   search
 }: {
   category?: string;
   timeframe?: "ALL" | "THIS_MONTH" | "LAST_MONTH" | "THIS_YEAR";
+  fundingStatus?: "ALL" | "PENDING_TRANSFER" | "FUNDED" | "REJECTED";
+  requestedBy?: "ALL" | "HAZEM" | "NOUR" | "MOHAMED";
   search?: string;
 } = {}) {
   const session = await auth();
@@ -5786,6 +5806,14 @@ export async function getPlatformExpensesAction({
       where.category = category;
     }
 
+    if (fundingStatus && fundingStatus !== "ALL") {
+      where.fundingStatus = fundingStatus;
+    }
+
+    if (requestedBy && requestedBy !== "ALL") {
+      where.requestedBy = requestedBy;
+    }
+
     if (timeframe === "THIS_MONTH") {
       where.date = { gte: startOfThisMonth };
     } else if (timeframe === "LAST_MONTH") {
@@ -5799,6 +5827,7 @@ export async function getPlatformExpensesAction({
         { title: { contains: search.trim(), mode: "insensitive" } },
         { paidBy: { contains: search.trim(), mode: "insensitive" } },
         { notes: { contains: search.trim(), mode: "insensitive" } },
+        { fundedBy: { contains: search.trim(), mode: "insensitive" } },
       ];
     }
 
@@ -5813,13 +5842,22 @@ export async function getPlatformExpensesAction({
         id: true,
         amount: true,
         category: true,
-        date: true
+        date: true,
+        fundingStatus: true,
+        requestedBy: true,
       }
     });
 
     let totalSpent = 0;
     let thisMonthSpent = 0;
     let lastMonthSpent = 0;
+    let totalFunded = 0;
+    let pendingFunding = 0;
+    let hazemFunded = 0;
+    let hazemPending = 0;
+    let nourFunded = 0;
+    let nourPending = 0;
+    let mohamedDirect = 0;
     const categoryTotals: Record<string, number> = {};
     const categoryCounts: Record<string, number> = {};
 
@@ -5833,6 +5871,20 @@ export async function getPlatformExpensesAction({
         lastMonthSpent += exp.amount;
       }
 
+      const fStatus = exp.fundingStatus || "PENDING_TRANSFER";
+      const rBy = exp.requestedBy || "HAZEM";
+
+      if (fStatus === "FUNDED") {
+        totalFunded += exp.amount;
+        if (rBy === "HAZEM") hazemFunded += exp.amount;
+        else if (rBy === "NOUR") nourFunded += exp.amount;
+        else if (rBy === "MOHAMED") mohamedDirect += exp.amount;
+      } else if (fStatus === "PENDING_TRANSFER") {
+        pendingFunding += exp.amount;
+        if (rBy === "HAZEM") hazemPending += exp.amount;
+        else if (rBy === "NOUR") nourPending += exp.amount;
+      }
+
       categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
       categoryCounts[exp.category] = (categoryCounts[exp.category] || 0) + 1;
     }
@@ -5842,6 +5894,13 @@ export async function getPlatformExpensesAction({
       expenses,
       analytics: {
         totalSpent,
+        totalFunded,
+        pendingFunding,
+        hazemFunded,
+        hazemPending,
+        nourFunded,
+        nourPending,
+        mohamedDirect,
         thisMonthSpent,
         lastMonthSpent,
         totalCount: allExpenses.length,
@@ -5861,6 +5920,12 @@ export async function createPlatformExpenseAction({
   amount,
   currency = "EGP",
   date,
+  requestedBy = "HAZEM",
+  fundingStatus = "PENDING_TRANSFER",
+  fundedBy = "Mohamed",
+  fundedAt,
+  transferMethod,
+  transferProofImage,
   paidBy,
   paymentMethod,
   receiptImage,
@@ -5872,6 +5937,12 @@ export async function createPlatformExpenseAction({
   amount: number;
   currency?: string;
   date?: string;
+  requestedBy?: "HAZEM" | "NOUR" | "MOHAMED";
+  fundingStatus?: "PENDING_TRANSFER" | "FUNDED" | "REJECTED";
+  fundedBy?: string;
+  fundedAt?: string | null;
+  transferMethod?: string;
+  transferProofImage?: string;
   paidBy?: string;
   paymentMethod?: string;
   receiptImage?: string;
@@ -5900,6 +5971,15 @@ export async function createPlatformExpenseAction({
       receiptUrl = receiptImage;
     }
 
+    let transferProofUrl: string | null = null;
+    if (transferProofImage && transferProofImage.startsWith("data:")) {
+      transferProofUrl = await processImage(transferProofImage);
+    } else if (transferProofImage) {
+      transferProofUrl = transferProofImage;
+    }
+
+    const isFunded = fundingStatus === "FUNDED";
+
     const expense = await db.platformExpense.create({
       data: {
         title: title.trim(),
@@ -5907,6 +5987,12 @@ export async function createPlatformExpenseAction({
         amount: Number(amount),
         currency,
         date: date ? new Date(date) : new Date(),
+        requestedBy,
+        fundingStatus,
+        fundedBy: isFunded ? (fundedBy || "Mohamed") : null,
+        fundedAt: isFunded ? (fundedAt ? new Date(fundedAt) : new Date()) : null,
+        transferMethod: transferMethod ? transferMethod.trim() : null,
+        transferProofUrl,
         paidBy: paidBy ? paidBy.trim() : null,
         paymentMethod: paymentMethod ? paymentMethod.trim() : null,
         receiptUrl,
@@ -5931,6 +6017,12 @@ export async function updatePlatformExpenseAction({
   amount,
   currency = "EGP",
   date,
+  requestedBy,
+  fundingStatus,
+  fundedBy,
+  fundedAt,
+  transferMethod,
+  transferProofImage,
   paidBy,
   paymentMethod,
   receiptImage,
@@ -5943,6 +6035,12 @@ export async function updatePlatformExpenseAction({
   amount: number;
   currency?: string;
   date?: string;
+  requestedBy?: "HAZEM" | "NOUR" | "MOHAMED";
+  fundingStatus?: "PENDING_TRANSFER" | "FUNDED" | "REJECTED";
+  fundedBy?: string;
+  fundedAt?: string | null;
+  transferMethod?: string;
+  transferProofImage?: string;
   paidBy?: string;
   paymentMethod?: string;
   receiptImage?: string;
@@ -5975,19 +6073,41 @@ export async function updatePlatformExpenseAction({
       receiptUrl = receiptImage || null;
     }
 
+    let transferProofUrl: string | null | undefined = undefined;
+    if (transferProofImage && transferProofImage.startsWith("data:")) {
+      transferProofUrl = await processImage(transferProofImage);
+    } else if (transferProofImage !== undefined) {
+      transferProofUrl = transferProofImage || null;
+    }
+
+    const dataToUpdate: any = {
+      title: title.trim(),
+      category,
+      amount: Number(amount),
+      currency,
+      date: date ? new Date(date) : undefined,
+      paidBy: paidBy ? paidBy.trim() : null,
+      paymentMethod: paymentMethod ? paymentMethod.trim() : null,
+      notes: notes ? notes.trim() : null
+    };
+
+    if (requestedBy) dataToUpdate.requestedBy = requestedBy;
+    if (fundingStatus) {
+      dataToUpdate.fundingStatus = fundingStatus;
+      if (fundingStatus === "FUNDED") {
+        dataToUpdate.fundedBy = fundedBy || "Mohamed";
+        dataToUpdate.fundedAt = fundedAt ? new Date(fundedAt) : new Date();
+      } else {
+        dataToUpdate.fundedAt = null;
+      }
+    }
+    if (transferMethod !== undefined) dataToUpdate.transferMethod = transferMethod;
+    if (receiptUrl !== undefined) dataToUpdate.receiptUrl = receiptUrl;
+    if (transferProofUrl !== undefined) dataToUpdate.transferProofUrl = transferProofUrl;
+
     const updated = await db.platformExpense.update({
       where: { id },
-      data: {
-        title: title.trim(),
-        category,
-        amount: Number(amount),
-        currency,
-        date: date ? new Date(date) : undefined,
-        paidBy: paidBy ? paidBy.trim() : null,
-        paymentMethod: paymentMethod ? paymentMethod.trim() : null,
-        ...(receiptUrl !== undefined ? { receiptUrl } : {}),
-        notes: notes ? notes.trim() : null
-      }
+      data: dataToUpdate
     });
 
     revalidatePath(`/${lang}/admin/expenses`);
@@ -5996,6 +6116,65 @@ export async function updatePlatformExpenseAction({
   } catch (error: any) {
     console.error("updatePlatformExpense error:", error);
     return { error: error.message || "Failed to update expense" };
+  }
+}
+
+export async function markExpenseAsFundedAction({
+  id,
+  transferMethod = "INSTAPAY",
+  transferProofImage,
+  notes,
+  lang = "en"
+}: {
+  id: string;
+  transferMethod?: string;
+  transferProofImage?: string;
+  notes?: string;
+  lang?: string;
+}) {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN") {
+    return { error: "Unauthorized" };
+  }
+
+  if (!id) {
+    return { error: "Expense ID is required" };
+  }
+
+  try {
+    const db = getExpenseDb();
+    let transferProofUrl: string | null = null;
+    if (transferProofImage && transferProofImage.startsWith("data:")) {
+      transferProofUrl = await processImage(transferProofImage);
+    } else if (transferProofImage) {
+      transferProofUrl = transferProofImage;
+    }
+
+    const dataToUpdate: any = {
+      fundingStatus: "FUNDED",
+      fundedBy: "Mohamed",
+      fundedAt: new Date(),
+      transferMethod: transferMethod || "INSTAPAY",
+    };
+
+    if (transferProofUrl) {
+      dataToUpdate.transferProofUrl = transferProofUrl;
+    }
+    if (notes && notes.trim()) {
+      dataToUpdate.notes = notes.trim();
+    }
+
+    const updated = await db.platformExpense.update({
+      where: { id },
+      data: dataToUpdate
+    });
+
+    revalidatePath(`/${lang}/admin/expenses`);
+    revalidatePath(`/${lang}/admin`);
+    return { success: true, expense: updated };
+  } catch (error: any) {
+    console.error("markExpenseAsFunded error:", error);
+    return { error: error.message || "Failed to mark expense as funded" };
   }
 }
 

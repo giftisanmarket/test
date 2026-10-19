@@ -23,7 +23,7 @@ const pool = globalForPrisma.pool ?? new Pool({
   },
   max: 4, // Restrict active connections per Next.js server instance to prevent socket exhaustion on Neon
   idleTimeoutMillis: 30000, // Close idle pool connections after 30 seconds
-  connectionTimeoutMillis: 5000, // Fail fast if Postgres is experiencing peak loads
+  connectionTimeoutMillis: 15000, // Allow sufficient time for Neon cold starts
 });
 
 const adapter = new PrismaPg(pool);

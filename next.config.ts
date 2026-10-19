@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 
+// Trigger dev server reload to pick up updated Prisma Client schema
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['192.168.1.18', '192.168.1.*', '169.254.83.107', 'localhost', '127.0.0.1'],
   images: {

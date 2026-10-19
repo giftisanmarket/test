@@ -508,24 +508,35 @@ enum ExpenseCategory {
 }
 
 model PlatformExpense {
-  id            String          @id @default(cuid())
-  title         String
-  category      ExpenseCategory @default(OTHER)
-  amount        Float
-  currency      String          @default("EGP")
-  date          DateTime        @default(now())
-  paidBy        String?         // Person or payment source (e.g., "Hazem", "Company Card", "Vodafone Cash")
-  paymentMethod String?         // e.g. "CASH", "BANK_TRANSFER", "CARD", "WALLET"
-  receiptUrl    String?         @db.Text
-  notes         String?         @db.Text
-  createdById   String?
+  id              String          @id @default(cuid())
+  title           String
+  category        ExpenseCategory @default(OTHER)
+  amount          Float
+  currency        String          @default("EGP")
+  date            DateTime        @default(now())
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  // Co-founder & Investor Workflow
+  requestedBy     String          @default("HAZEM") // "HAZEM", "NOUR", "MOHAMED"
+  fundingStatus   String          @default("PENDING_TRANSFER") // "PENDING_TRANSFER", "FUNDED", "REJECTED"
+  fundedBy        String?         @default("Mohamed")
+  fundedAt        DateTime?
+  transferMethod  String?         // "INSTAPAY", "BANK_TRANSFER", "VODAFONE_CASH", "CASH"
+  transferProofUrl String?        @db.Text
+
+  paidBy          String?         // Person or payment source / recipient details
+  paymentMethod   String?         // e.g. "CASH", "BANK_TRANSFER", "CARD", "WALLET", "INSTAPAY"
+  receiptUrl      String?         @db.Text
+  notes           String?         @db.Text
+  createdById     String?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([date])
   @@index([category])
   @@index([createdById])
+  @@index([fundingStatus])
+  @@index([requestedBy])
 }
 
 model AbandonedCheckout {

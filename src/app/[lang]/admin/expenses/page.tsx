@@ -31,6 +31,13 @@ export default async function AdminExpensesPage({
   const initialExpenses = res.expenses || [];
   const initialAnalytics = res.analytics || {
     totalSpent: 0,
+    totalFunded: 0,
+    pendingFunding: 0,
+    hazemFunded: 0,
+    hazemPending: 0,
+    nourFunded: 0,
+    nourPending: 0,
+    mohamedDirect: 0,
     thisMonthSpent: 0,
     lastMonthSpent: 0,
     totalCount: 0,

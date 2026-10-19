@@ -22,10 +22,11 @@ import {
   FileText,
   Printer,
   X,
-  Download
+  Download,
+  RotateCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { requestPayoutAction } from "@/lib/actions";
+import { requestPayoutAction, refreshArtisanBalanceAction } from "@/lib/actions";
 import { MIN_PAYOUT_AMOUNT } from "@/lib/constants";
 import { toast } from "react-hot-toast";
 
@@ -56,6 +57,33 @@ export function PaymentTab({
   const [address, setAddress] = useState(artisan.payoutAddress || "");
   const [name, setName] = useState(artisan.payoutName || "");
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const res = await refreshArtisanBalanceAction(artisan.id);
+      if (res.success) {
+        if (res.clearedCount && res.clearedCount > 0) {
+          toast.success(
+            isRTL 
+              ? `تم تسوية ${res.clearedCount} معاملة وتحويلها إلى رصيدك القابل للسحب بنجاح.` 
+              : `Cleared ${res.clearedCount} transaction(s) to your withdrawable balance.`
+          );
+        } else {
+          toast.success(isRTL ? "الرصيد محدّث بأحدث البيانات." : "Balances are up to date.");
+        }
+        router.refresh();
+      } else {
+        toast.error(res.error || (isRTL ? "تعذر تحديث الرصيد." : "Failed to refresh balance."));
+      }
+    } catch {
+      toast.error(isRTL ? "حدث خطأ أثناء التحديث." : "An error occurred while refreshing.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Bulletproof Isolated Print handler (forces pure vector receipt page printing/PDF saving via sandboxed iframe)
   const handlePrint = () => {
@@ -234,8 +262,20 @@ export function PaymentTab({
       <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pb-8 border-b border-primary/5">
           <div className="space-y-2 text-start">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-700 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full border border-green-500/10">
-              <Sparkles className="w-3 h-3 text-green-600" /> {isRTL ? "قسم الأرباح المباشر (تجريبي)" : "Live Financial Tab (Beta)"}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-700 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full border border-green-500/10">
+                <Sparkles className="w-3 h-3 text-green-600" /> {isRTL ? "قسم الأرباح المباشر" : "Live Financial Tab"}
+              </div>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                title={isRTL ? "تحديث الأرصدة وتسوية المبيعات المستحقة تلقائيًا" : "Refresh balances and auto-clear matured sales"}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold text-charcoal/60 hover:text-primary bg-charcoal/5 hover:bg-primary/5 border border-primary/10 rounded-full transition-all cursor-pointer disabled:opacity-50"
+              >
+                <RotateCw className={cn("w-3 h-3 text-charcoal/50", isRefreshing && "animate-spin text-accent")} />
+                <span>{isRefreshing ? (isRTL ? "جاري التحديث..." : "Syncing...") : (isRTL ? "تحديث الأرصدة" : "Refresh Balances")}</span>
+              </button>
             </div>
             <h2 className="text-2xl md:text-4xl font-heading font-black text-primary">
               {isRTL ? "إدارة الأرباح والمدفوعات" : "Earnings & Payments"}

@@ -2000,8 +2000,98 @@ export async function getUserOrders(userId: string) {
   }
 }
 
+/**
+ * Auto-clears any delivered sales older than 7 days for a specific artisan
+ * Transitions them from PENDING -> CLEARED and moves the amount from pending to withdrawable balance.
+ */
+export async function autoClearEligibleArtisanEscrow(artisanId: string) {
+  try {
+    const HOLDING_DAYS = 7;
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() - HOLDING_DAYS);
+
+    const eligibleTransactions = await prisma.artisanTransaction.findMany({
+      where: {
+        artisanId,
+        type: "SALE",
+        status: "PENDING",
+        createdAt: {
+          lt: thresholdDate
+        },
+        order: {
+          status: "DELIVERED"
+        }
+      }
+    });
+
+    if (eligibleTransactions.length === 0) return 0;
+
+    let clearedCount = 0;
+    for (const tx of eligibleTransactions) {
+      try {
+        await prisma.$transaction(async (prismaTx) => {
+          await prismaTx.artisanTransaction.update({
+            where: { id: tx.id },
+            data: { status: "CLEARED" }
+          });
+
+          await prismaTx.artisanBalance.update({
+            where: { artisanId: tx.artisanId },
+            data: {
+              pending: { decrement: tx.amount },
+              withdrawable: { increment: tx.amount }
+            }
+          });
+        });
+        clearedCount++;
+      } catch (err) {
+        console.error(`Failed to auto-clear transaction ${tx.id} for artisan ${artisanId}:`, err);
+      }
+    }
+
+    return clearedCount;
+  } catch (error) {
+    console.error(`Auto-clear escrow error for artisan ${artisanId}:`, error);
+    return 0;
+  }
+}
+
+export async function refreshArtisanBalanceAction(artisanId: string) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { error: "You must be signed in to perform this action." };
+    }
+
+    const artisan = await prisma.artisanProfile.findUnique({
+      where: { id: artisanId },
+      select: { userId: true }
+    });
+
+    if (!artisan || (artisan.userId !== session.user.id && session.user.role !== "ADMIN")) {
+      return { error: "Unauthorized access to this shop's finances." };
+    }
+
+    const clearedCount = await autoClearEligibleArtisanEscrow(artisanId);
+    revalidatePath("/studio");
+    return { success: true, clearedCount };
+  } catch (error: any) {
+    return { error: error.message || "Failed to refresh balance." };
+  }
+}
+
 export async function getArtisanData(userId: string) {
   try {
+    // 1. Lazy-clear any matured escrow sales for this artisan upon viewing studio
+    const profile = await prisma.artisanProfile.findUnique({
+      where: { userId },
+      select: { id: true }
+    });
+
+    if (profile) {
+      await autoClearEligibleArtisanEscrow(profile.id);
+    }
+
     const artisan = await prisma.artisanProfile.findUnique({
       where: { userId },
       include: {
@@ -2047,6 +2137,9 @@ export async function requestPayoutAction(
     if (!session?.user?.id) {
       return { error: "You must be signed in to perform this action" };
     }
+
+    // Auto-clear any matured escrow sales for this artisan right before verifying balances
+    await autoClearEligibleArtisanEscrow(artisanId);
 
     const artisan = await prisma.artisanProfile.findUnique({
       where: { id: artisanId },

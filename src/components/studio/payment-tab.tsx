@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,11 +19,15 @@ import {
   TrendingUp,
   ArrowRight,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Printer,
   X,
   Download,
-  RotateCw
+  RotateCw,
+  Search,
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { requestPayoutAction, refreshArtisanBalanceAction } from "@/lib/actions";
@@ -58,6 +62,44 @@ export function PaymentTab({
   const [name, setName] = useState(artisan.payoutName || "");
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Transaction history search, filtering, and pagination states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "SALE" | "PAYOUT" | "REFUND_DEBIT">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "CLEARED" | "PENDING" | "COMPLETED" | "FAILED">("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // Filtered transactions
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((tx: any) => {
+      if (typeFilter !== "ALL" && tx.type !== typeFilter) return false;
+      if (statusFilter !== "ALL" && tx.status !== statusFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const desc = (tx.description || "").toLowerCase();
+        const id = (tx.id || "").toLowerCase();
+        const orderId = (tx.orderId || "").toLowerCase();
+        const amountStr = tx.amount?.toString() || "";
+        if (!desc.includes(q) && !id.includes(q) && !orderId.includes(q) && !amountStr.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [transactions, typeFilter, statusFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredTransactions.slice(start, start + pageSize);
+  }, [filteredTransactions, currentPage, pageSize]);
+
+  // Reset to first page when filtering or searching changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [typeFilter, statusFilter, searchQuery]);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -167,7 +209,9 @@ export function PaymentTab({
   const isRTL = lang === "ar";
 
   const handleExportCSV = () => {
-    if (transactions.length === 0) {
+    const dataToExport = filteredTransactions.length > 0 ? filteredTransactions : transactions;
+
+    if (dataToExport.length === 0) {
       toast.error(isRTL ? "لا توجد معاملات لتصديرها." : "No transactions available to export.", {
         style: { borderRadius: "20px", background: "#1a1a1a", color: "#fff" }
       });
@@ -175,11 +219,12 @@ export function PaymentTab({
     }
 
     const headers = isRTL 
-      ? ["المعرف", "التاريخ", "النوع", "الوصف", "الحالة", "المبلغ (ج.م)"]
-      : ["ID", "Date", "Type", "Description", "Status", "Amount (EGP)"];
+      ? ["المعرف", "معرف الطلب", "التاريخ", "النوع", "الوصف", "الحالة", "المبلغ (ج.م)"]
+      : ["ID", "Order ID", "Date", "Type", "Description", "Status", "Amount (EGP)"];
 
-    const rows = transactions.map((tx: any) => [
+    const rows = dataToExport.map((tx: any) => [
       tx.id,
+      tx.orderId || "",
       new Date(tx.createdAt).toISOString().split('T')[0],
       tx.type,
       `"${(tx.description || '').replace(/"/g, '""')}"`,
@@ -202,9 +247,15 @@ export function PaymentTab({
     link.click();
     document.body.removeChild(link);
 
-    toast.success(isRTL ? "تم تصدير السجل بنجاح!" : "Ledger exported successfully!", {
-      style: { borderRadius: "20px", background: "#1a1a1a", color: "#fff" }
-    });
+    const isFiltered = filteredTransactions.length !== transactions.length && filteredTransactions.length > 0;
+    toast.success(
+      isFiltered
+        ? (isRTL ? `تم تصدير ${filteredTransactions.length} معاملة بنجاح!` : `Exported ${filteredTransactions.length} transaction(s) successfully!`)
+        : (isRTL ? "تم تصدير كامل السجل بنجاح!" : "Full ledger exported successfully!"), 
+      {
+        style: { borderRadius: "20px", background: "#1a1a1a", color: "#fff" }
+      }
+    );
   };
 
   const handleRequestPayout = async (e: React.FormEvent) => {
@@ -390,10 +441,18 @@ export function PaymentTab({
 
       {/* 3. Transaction History */}
       <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-primary/5 shadow-2xl shadow-primary/5 text-start">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-4 border-b border-primary/5">
-          <h3 className="text-xl font-heading font-black text-primary flex items-center gap-2">
-            {isRTL ? "سجل المعاملات المالية" : "Financial Transaction History"}
-          </h3>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-primary/5">
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-heading font-black text-primary flex items-center gap-2">
+              {isRTL ? "سجل المعاملات المالية" : "Financial Transaction History"}
+            </h3>
+            {transactions.length > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full bg-primary/5 text-primary text-[10px] font-black">
+                {transactions.length} {isRTL ? "معاملة" : "total"}
+              </span>
+            )}
+          </div>
           {transactions.length > 0 && (
             <button
               onClick={handleExportCSV}
@@ -405,6 +464,118 @@ export function PaymentTab({
           )}
         </div>
 
+        {/* Controls Toolbar: Search & Filters */}
+        {transactions.length > 0 && (
+          <div className="space-y-4 mb-6">
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <Search className={cn("w-4 h-4 text-primary/40 absolute top-1/2 -translate-y-1/2 pointer-events-none", isRTL ? "right-3.5" : "left-3.5")} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={isRTL ? "ابحث بالوصف، المعرف أو المبلغ..." : "Search by description, ID, amount..."}
+                  className={cn(
+                    "w-full h-10 text-xs font-medium rounded-xl border border-primary/10 bg-cream/15 focus:bg-white focus:outline-none focus:border-accent text-primary transition-all",
+                    isRTL ? "pr-10 pl-9" : "pl-10 pr-9"
+                  )}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className={cn(
+                      "absolute top-1/2 -translate-y-1/2 p-1 text-primary/40 hover:text-primary transition-colors cursor-pointer",
+                      isRTL ? "left-2.5" : "right-2.5"
+                    )}
+                    aria-label={isRTL ? "مسح البحث" : "Clear search"}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Status Select Filter */}
+              <div className="flex items-center gap-2">
+                <div className="relative shrink-0 w-full sm:w-auto">
+                  <select
+                    value={statusFilter}
+                    onChange={(e: any) => setStatusFilter(e.target.value)}
+                    className="w-full sm:w-auto h-10 px-3 pr-8 rounded-xl border border-primary/10 bg-cream/15 focus:bg-white focus:outline-none focus:border-accent text-xs font-bold text-primary appearance-none cursor-pointer transition-all"
+                  >
+                    <option value="ALL">{isRTL ? "جميع الحالات" : "All Statuses"}</option>
+                    <option value="CLEARED">{isRTL ? "جاهز للسحب" : "Cleared"}</option>
+                    <option value="PENDING">{isRTL ? "في الانتظار" : "Pending"}</option>
+                    <option value="COMPLETED">{isRTL ? "تم التحويل" : "Completed"}</option>
+                    <option value="FAILED">{isRTL ? "ملغي / مرفوض" : "Cancelled"}</option>
+                  </select>
+                  <ChevronDown className={cn("w-3.5 h-3.5 text-primary/40 absolute top-1/2 -translate-y-1/2 pointer-events-none", isRTL ? "left-2.5" : "right-2.5")} />
+                </div>
+              </div>
+            </div>
+
+            {/* Type Filter Pills & Info Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              {/* Type Pills */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: "ALL", labelEn: "All Types", labelAr: "كل العمليات" },
+                  { id: "SALE", labelEn: "Sales", labelAr: "أرباح مبيعات" },
+                  { id: "PAYOUT", labelEn: "Payouts", labelAr: "سحب أرباح" },
+                  { id: "REFUND_DEBIT", labelEn: "Refunds", labelAr: "مرتجعات" },
+                ].map((pill) => {
+                  const isActive = typeFilter === pill.id;
+                  return (
+                    <button
+                      key={pill.id}
+                      onClick={() => setTypeFilter(pill.id as any)}
+                      className={cn(
+                        "h-8 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                        isActive
+                          ? "bg-primary text-white shadow-sm"
+                          : "bg-primary/5 hover:bg-primary/10 text-primary/70"
+                      )}
+                    >
+                      {pill.id === "SALE" && <span className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-green-300" : "bg-green-500")} />}
+                      {pill.id === "PAYOUT" && <span className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-blue-300" : "bg-blue-500")} />}
+                      {pill.id === "REFUND_DEBIT" && <span className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-red-300" : "bg-red-500")} />}
+                      <span>{isRTL ? pill.labelAr : pill.labelEn}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Status / Reset indication */}
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-charcoal/50 font-medium">
+                  {isRTL
+                    ? `عرض ${paginatedTransactions.length} من أصل ${filteredTransactions.length}`
+                    : `Showing ${paginatedTransactions.length} of ${filteredTransactions.length}`}
+                  {filteredTransactions.length !== transactions.length && (
+                    <span className="text-primary/40 ms-1">
+                      ({isRTL ? `من ${transactions.length}` : `from ${transactions.length}`})
+                    </span>
+                  )}
+                </span>
+
+                {(typeFilter !== "ALL" || statusFilter !== "ALL" || searchQuery.trim()) && (
+                  <button
+                    onClick={() => {
+                      setTypeFilter("ALL");
+                      setStatusFilter("ALL");
+                      setSearchQuery("");
+                    }}
+                    className="text-xs text-rose-600 hover:text-rose-700 font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>{isRTL ? "إعادة تعيين" : "Reset"}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {transactions.length === 0 ? (
           <div className="p-12 text-center bg-cream/20 rounded-3xl border border-dashed border-primary/10 text-charcoal/40 font-medium space-y-3">
             <Coins className="w-12 h-12 mx-auto text-primary/10" />
@@ -414,74 +585,74 @@ export function PaymentTab({
                 : "No financial transactions have been logged yet. Your earnings will display here automatically."}
             </p>
           </div>
+        ) : filteredTransactions.length === 0 ? (
+          <div className="p-10 text-center bg-cream/10 rounded-2xl border border-dashed border-primary/10 text-charcoal/50 space-y-3">
+            <Search className="w-8 h-8 mx-auto text-primary/20" />
+            <p className="text-sm font-bold text-primary/80">
+              {isRTL ? "لا توجد معاملات مطابقة للبحث أو الفلتر المحدد" : "No transactions match your search or filter criteria"}
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setTypeFilter("ALL");
+                setStatusFilter("ALL");
+              }}
+              className="px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs rounded-xl transition-all cursor-pointer"
+            >
+              {isRTL ? "مسح خيارات الفلترة" : "Clear Filters"}
+            </button>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-primary/5">
-                  <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start whitespace-nowrap">{isRTL ? "التاريخ" : "Date"}</th>
-                  <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start whitespace-nowrap">{isRTL ? "النوع" : "Type"}</th>
-                  <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start min-w-[250px]">{isRTL ? "الوصف" : "Description"}</th>
-                  <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start whitespace-nowrap">{isRTL ? "الحالة" : "Status"}</th>
-                  <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-end whitespace-nowrap">{isRTL ? "المبلغ" : "Amount"}</th>
-                  <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-end whitespace-nowrap">{isRTL ? "الإجراء" : "Action"}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((tx: any) => {
-                  const isSale = tx.type === "SALE";
-                  const isPositive = tx.amount > 0;
+          <>
+            {/* Mobile Card Feed View */}
+            <div className="space-y-3 block md:hidden">
+              {paginatedTransactions.map((tx: any) => {
+                const isSale = tx.type === "SALE";
+                const isPositive = tx.amount > 0;
 
-                  // Dynamic description translator for Arabic localization
-                  const getTranslatedDescription = (desc: string) => {
-                    if (!desc) return "";
-                    if (!isRTL) return desc;
+                // Dynamic description translator for Arabic localization
+                const getTranslatedDescription = (desc: string) => {
+                  if (!desc) return "";
+                  if (!isRTL) return desc;
 
-                    // 1. Withdrawal Pattern: "Withdrawal request via INSTAPAY. Sent to: hazemyasser911@gmail.com (HAZEM)"
-                    if (desc.includes("Withdrawal request via")) {
-                      const parts = desc.match(/Withdrawal request via ([A-Z_]+)\. Sent to: (.*) \((.*)\)/);
-                      if (parts) {
-                        const [_, method, address, name] = parts;
-                        const methodAr = method === "INSTAPAY" 
-                          ? "إنستا باي (InstaPay)" 
-                          : method === "VODAFONE_CASH" 
-                            ? "فودافون كاش / محفظة الهاتف" 
-                            : "تحويل بنكي مباشر (IBAN)";
-                        return `طلب سحب أرباح عبر ${methodAr}. مرسل إلى: ${address} (${name})`;
-                      }
-                      
-                      // Fallback translation
-                      return desc
-                        .replace("Withdrawal request via", "طلب سحب عبر")
-                        .replace("Sent to:", "مرسل إلى:");
+                  if (desc.includes("Withdrawal request via")) {
+                    const parts = desc.match(/Withdrawal request via ([A-Z_]+)\. Sent to: (.*) \((.*)\)/);
+                    if (parts) {
+                      const [_, method, address, name] = parts;
+                      const methodAr = method === "INSTAPAY" 
+                        ? "إنستا باي (InstaPay)" 
+                        : method === "VODAFONE_CASH" 
+                          ? "فودافون كاش / محفظة الهاتف" 
+                          : "تحويل بنكي مباشر (IBAN)";
+                      return `طلب سحب أرباح عبر ${methodAr}. مرسل إلى: ${address} (${name})`;
                     }
+                    return desc
+                      .replace("Withdrawal request via", "طلب سحب عبر")
+                      .replace("Sent to:", "مرسل إلى:");
+                  }
 
-                    // 2. Earnings Pattern: "Earnings from \"Hand-Carved Alabaster Candle Holder\" (Qty: 1). Total: 850 EGP (Commission: 127.50 EGP)"
-                    if (desc.includes("Earnings from")) {
-                      let arDesc = desc;
-                      arDesc = arDesc.replace("Earnings from", "أرباح من");
-                      arDesc = arDesc.replace("Qty:", "الكمية:");
-                      arDesc = arDesc.replace("Total:", "الإجمالي:");
-                      arDesc = arDesc.replace("Commission:", "العمولة:");
-                      arDesc = arDesc.replaceAll("EGP", "ج.م");
-                      return arDesc;
-                    }
+                  if (desc.includes("Earnings from")) {
+                    let arDesc = desc;
+                    arDesc = arDesc.replace("Earnings from", "أرباح من");
+                    arDesc = arDesc.replace("Qty:", "الكمية:");
+                    arDesc = arDesc.replace("Total:", "الإجمالي:");
+                    arDesc = arDesc.replace("Commission:", "العمولة:");
+                    arDesc = arDesc.replaceAll("EGP", "ج.م");
+                    return arDesc;
+                  }
 
-                    return desc;
-                  };
-                  
-                  return (
-                    <tr key={tx.id} className="border-b border-primary/5 hover:bg-cream/10 transition-colors">
-                      <td className="py-5 px-2 text-xs text-charcoal/60 font-medium whitespace-nowrap">
-                        {new Date(tx.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric"
-                        })}
-                      </td>
-                      <td className="py-5 px-2 whitespace-nowrap">
+                  return desc;
+                };
+
+                return (
+                  <div 
+                    key={tx.id} 
+                    className="bg-cream/20 hover:bg-cream/40 rounded-2xl p-4 border border-primary/5 transition-all space-y-3 text-start"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
                         <span className={cn(
-                          "px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md",
+                          "px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md",
                           isSale 
                             ? "bg-green-100 text-green-800" 
                             : tx.type === "PAYOUT" 
@@ -492,13 +663,30 @@ export function PaymentTab({
                             ? (isSale ? "أرباح مبيعات" : tx.type === "PAYOUT" ? "سحب أرباح" : "تعديل رصيد")
                             : tx.type}
                         </span>
-                      </td>
-                      <td className="py-5 px-2 text-xs text-primary font-bold min-w-[250px]">
-                        {getTranslatedDescription(tx.description) || (isRTL ? (isSale ? "أرباح مبيعات" : "طلب سحب أرباح") : (isSale ? "Sale Proceeds" : "Withdrawal Request"))}
-                      </td>
-                      <td className="py-5 px-2 whitespace-nowrap">
+                        {tx.orderId && (
+                          <span className="font-mono text-[9px] bg-primary/5 text-primary/70 px-1.5 py-0.5 rounded border border-primary/10 inline-flex items-center gap-1">
+                            <FileText className="w-2.5 h-2.5" />
+                            {isRTL ? "طلب " : "Order "}#{tx.orderId.slice(-6).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-charcoal/50 font-medium">
+                        {new Date(tx.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric"
+                        })}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-primary font-bold leading-snug">
+                      {getTranslatedDescription(tx.description) || (isRTL ? (isSale ? "أرباح مبيعات" : "طلب سحب أرباح") : (isSale ? "Sale Proceeds" : "Withdrawal Request"))}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-primary/5">
+                      <div className="flex items-center gap-2">
                         <span className={cn(
-                          "px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md inline-flex items-center gap-1",
+                          "px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-md inline-flex items-center gap-1",
                           tx.status === "COMPLETED" || tx.status === "CLEARED"
                             ? "bg-green-100 text-green-800"
                             : tx.status === "PENDING"
@@ -510,39 +698,240 @@ export function PaymentTab({
                             ? (tx.status === "COMPLETED" ? "تم التحويل" : tx.status === "CLEARED" ? "جاهز للسحب" : tx.status === "PENDING" ? "في الانتظار" : (isSale ? "طلب ملغي" : "مرفوض"))
                             : (tx.status === "FAILED" ? (isSale ? "CANCELLED" : "FAILED") : tx.status)}
                         </span>
-                      </td>
-                      <td className={cn(
-                        "py-5 px-2 text-sm font-bold text-end whitespace-nowrap",
-                        tx.status === "FAILED"
-                          ? "text-charcoal/40 line-through"
-                          : isPositive
-                            ? "text-green-600"
-                            : "text-charcoal"
-                      )}>
-                        <div>
-                          <span>{isPositive ? "+" : ""}{tx.amount.toFixed(2)} {isRTL ? "ج.م" : "EGP"}</span>
-                          {tx.status === "FAILED" && (
-                            <span className="block text-[9px] font-bold text-rose-500 uppercase tracking-widest no-underline">
-                              {isRTL ? "(ملغي - 0.00 ج.م)" : "(Voided - 0.00 EGP)"}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-5 px-2 text-end whitespace-nowrap">
                         <button
                           onClick={() => setSelectedReceipt(tx)}
-                          className="px-2.5 py-1.5 bg-primary/5 hover:bg-primary/10 text-primary hover:text-accent rounded-lg transition-all inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider cursor-pointer border border-primary/5 shadow-sm"
+                          className="px-2 py-1 bg-primary/5 hover:bg-primary/10 text-primary hover:text-accent rounded-lg transition-all inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider cursor-pointer border border-primary/5 shadow-sm"
                         >
-                          <FileText className="w-3.5 h-3.5" />
+                          <FileText className="w-3 h-3" />
                           <span>{isRTL ? "الإيصال" : "Receipt"}</span>
                         </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+
+                      <div className="text-end">
+                        <span className={cn(
+                          "text-sm font-black",
+                          tx.status === "FAILED"
+                            ? "text-charcoal/40 line-through"
+                            : isPositive
+                              ? "text-green-600"
+                              : "text-charcoal"
+                        )}>
+                          {isPositive ? "+" : ""}{tx.amount.toFixed(2)} {isRTL ? "ج.م" : "EGP"}
+                        </span>
+                        {tx.status === "FAILED" && (
+                          <span className="block text-[8px] font-bold text-rose-500 uppercase tracking-widest no-underline">
+                            {isRTL ? "(ملغي)" : "(Voided)"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-primary/5">
+                    <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start whitespace-nowrap">{isRTL ? "التاريخ" : "Date"}</th>
+                    <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start whitespace-nowrap">{isRTL ? "النوع" : "Type"}</th>
+                    <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start min-w-[250px]">{isRTL ? "الوصف" : "Description"}</th>
+                    <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-start whitespace-nowrap">{isRTL ? "الحالة" : "Status"}</th>
+                    <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-end whitespace-nowrap">{isRTL ? "المبلغ" : "Amount"}</th>
+                    <th className="py-4 px-2 text-xs font-black uppercase tracking-wider text-primary/40 text-end whitespace-nowrap">{isRTL ? "الإجراء" : "Action"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedTransactions.map((tx: any) => {
+                    const isSale = tx.type === "SALE";
+                    const isPositive = tx.amount > 0;
+
+                    // Dynamic description translator for Arabic localization
+                    const getTranslatedDescription = (desc: string) => {
+                      if (!desc) return "";
+                      if (!isRTL) return desc;
+
+                      // 1. Withdrawal Pattern
+                      if (desc.includes("Withdrawal request via")) {
+                        const parts = desc.match(/Withdrawal request via ([A-Z_]+)\. Sent to: (.*) \((.*)\)/);
+                        if (parts) {
+                          const [_, method, address, name] = parts;
+                          const methodAr = method === "INSTAPAY" 
+                            ? "إنستا باي (InstaPay)" 
+                            : method === "VODAFONE_CASH" 
+                              ? "فودافون كاش / محفظة الهاتف" 
+                              : "تحويل بنكي مباشر (IBAN)";
+                          return `طلب سحب أرباح عبر ${methodAr}. مرسل إلى: ${address} (${name})`;
+                        }
+                        
+                        return desc
+                          .replace("Withdrawal request via", "طلب سحب عبر")
+                          .replace("Sent to:", "مرسل إلى:");
+                      }
+
+                      // 2. Earnings Pattern
+                      if (desc.includes("Earnings from")) {
+                        let arDesc = desc;
+                        arDesc = arDesc.replace("Earnings from", "أرباح من");
+                        arDesc = arDesc.replace("Qty:", "الكمية:");
+                        arDesc = arDesc.replace("Total:", "الإجمالي:");
+                        arDesc = arDesc.replace("Commission:", "العمولة:");
+                        arDesc = arDesc.replaceAll("EGP", "ج.م");
+                        return arDesc;
+                      }
+
+                      return desc;
+                    };
+                    
+                    return (
+                      <tr key={tx.id} className="border-b border-primary/5 hover:bg-cream/10 transition-colors">
+                        <td className="py-5 px-2 text-xs text-charcoal/60 font-medium whitespace-nowrap">
+                          {new Date(tx.createdAt).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric"
+                          })}
+                        </td>
+                        <td className="py-5 px-2 whitespace-nowrap">
+                          <span className={cn(
+                            "px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md",
+                            isSale 
+                              ? "bg-green-100 text-green-800" 
+                              : tx.type === "PAYOUT" 
+                                ? "bg-blue-100 text-blue-800" 
+                                : "bg-red-100 text-red-800"
+                          )}>
+                            {isRTL 
+                              ? (isSale ? "أرباح مبيعات" : tx.type === "PAYOUT" ? "سحب أرباح" : "تعديل رصيد")
+                              : tx.type}
+                          </span>
+                        </td>
+                        <td className="py-5 px-2 text-xs text-primary font-bold min-w-[250px]">
+                          <div className="flex flex-col gap-1 items-start">
+                            <span>
+                              {getTranslatedDescription(tx.description) || (isRTL ? (isSale ? "أرباح مبيعات" : "طلب سحب أرباح") : (isSale ? "Sale Proceeds" : "Withdrawal Request"))}
+                            </span>
+                            {tx.orderId && (
+                              <span className="font-mono text-[9px] bg-primary/5 text-primary/70 px-1.5 py-0.5 rounded border border-primary/10 inline-flex items-center gap-1">
+                                <FileText className="w-2.5 h-2.5" />
+                                {isRTL ? "طلب " : "Order "}#{tx.orderId.slice(-6).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-5 px-2 whitespace-nowrap">
+                          <span className={cn(
+                            "px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-md inline-flex items-center gap-1",
+                            tx.status === "COMPLETED" || tx.status === "CLEARED"
+                              ? "bg-green-100 text-green-800"
+                              : tx.status === "PENDING"
+                                ? "bg-amber-100 text-amber-800 animate-pulse"
+                                : "bg-red-100 text-red-800"
+                          )}>
+                            {tx.status === "PENDING" && <Clock className="w-2.5 h-2.5" />}
+                            {isRTL 
+                              ? (tx.status === "COMPLETED" ? "تم التحويل" : tx.status === "CLEARED" ? "جاهز للسحب" : tx.status === "PENDING" ? "في الانتظار" : (isSale ? "طلب ملغي" : "مرفوض"))
+                              : (tx.status === "FAILED" ? (isSale ? "CANCELLED" : "FAILED") : tx.status)}
+                          </span>
+                        </td>
+                        <td className={cn(
+                          "py-5 px-2 text-sm font-bold text-end whitespace-nowrap",
+                          tx.status === "FAILED"
+                            ? "text-charcoal/40 line-through"
+                            : isPositive
+                              ? "text-green-600"
+                              : "text-charcoal"
+                        )}>
+                          <div>
+                            <span>{isPositive ? "+" : ""}{tx.amount.toFixed(2)} {isRTL ? "ج.م" : "EGP"}</span>
+                            {tx.status === "FAILED" && (
+                              <span className="block text-[9px] font-bold text-rose-500 uppercase tracking-widest no-underline">
+                                {isRTL ? "(ملغي - 0.00 ج.م)" : "(Voided - 0.00 EGP)"}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-5 px-2 text-end whitespace-nowrap">
+                          <button
+                            onClick={() => setSelectedReceipt(tx)}
+                            className="px-2.5 py-1.5 bg-primary/5 hover:bg-primary/10 text-primary hover:text-accent rounded-lg transition-all inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider cursor-pointer border border-primary/5 shadow-sm"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>{isRTL ? "الإيصال" : "Receipt"}</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-6 border-t border-primary/5 text-xs text-charcoal/60">
+                <div className="font-medium">
+                  {isRTL
+                    ? `صفحة ${currentPage} من ${totalPages}`
+                    : `Page ${currentPage} of ${totalPages}`}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="h-8 px-3 rounded-lg border border-primary/10 bg-white hover:bg-cream/40 disabled:opacity-30 disabled:pointer-events-none font-bold inline-flex items-center gap-1 transition-all cursor-pointer"
+                    aria-label={isRTL ? "الصفحة السابقة" : "Previous Page"}
+                  >
+                    <ChevronLeft className={cn("w-3.5 h-3.5", isRTL && "rotate-180")} />
+                    <span>{isRTL ? "السابق" : "Previous"}</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          Math.abs(page - currentPage) <= 1
+                        );
+                      })
+                      .map((page, idx, arr) => {
+                        const prev = arr[idx - 1];
+                        const showEllipsis = prev && page - prev > 1;
+                        return (
+                          <div key={page} className="flex items-center">
+                            {showEllipsis && <span className="px-1 text-charcoal/30 font-bold">...</span>}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={cn(
+                                "w-8 h-8 rounded-lg font-bold text-xs transition-all cursor-pointer",
+                                currentPage === page
+                                  ? "bg-primary text-white shadow-sm"
+                                  : "hover:bg-cream/60 text-charcoal"
+                              )}
+                            >
+                              {page}
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-8 px-3 rounded-lg border border-primary/10 bg-white hover:bg-cream/40 disabled:opacity-30 disabled:pointer-events-none font-bold inline-flex items-center gap-1 transition-all cursor-pointer"
+                    aria-label={isRTL ? "الصفحة التالية" : "Next Page"}
+                  >
+                    <span>{isRTL ? "التالي" : "Next"}</span>
+                    <ChevronRight className={cn("w-3.5 h-3.5", isRTL && "rotate-180")} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

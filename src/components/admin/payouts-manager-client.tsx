@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +38,7 @@ export function PayoutsManagerClient({
   lang
 }: PayoutsManagerClientProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [activeRejectId, setActiveRejectId] = useState<string | null>(null);
@@ -47,6 +48,10 @@ export function PayoutsManagerClient({
   const [confirmPayoutData, setConfirmPayoutData] = useState<{ id: string; amount: number } | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
   const [isClearingEscrow, setIsClearingEscrow] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClearEscrow = async () => {
     setIsClearingEscrow(true);
@@ -347,26 +352,26 @@ export function PayoutsManagerClient({
               return (
                 <div 
                   key={tx.id} 
-                  className="bg-white rounded-3xl p-6 md:p-8 border border-primary/5 shadow-xl shadow-primary/5 hover:border-primary/10 transition-all flex flex-col justify-between gap-6 relative"
+                  className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-primary/5 shadow-xl shadow-primary/5 hover:border-primary/10 transition-all flex flex-col justify-between gap-4 sm:gap-6 relative"
                 >
-                  <div className="space-y-4">
+                  <div className="space-y-3.5 sm:space-y-4">
                     {/* Header info */}
-                    <div className="flex justify-between items-start gap-4">
-                      <div>
-                        <h3 className="text-base font-bold text-primary">
+                    <div className="flex justify-between items-start gap-3 sm:gap-4">
+                      <div className="min-w-0">
+                        <h3 className="text-sm sm:text-base font-bold text-primary truncate">
                           {tx.artisan?.studioName || tx.artisan?.user?.name || "Artisan"}
                         </h3>
-                        <p className="text-xs text-charcoal/40 font-semibold">
+                        <p className="text-[11px] sm:text-xs text-charcoal/40 font-semibold truncate">
                           {tx.artisan?.user?.email}
                         </p>
                       </div>
-                      <p className="text-2xl font-heading font-black text-accent shrink-0">
-                        {Math.abs(tx.amount).toFixed(2)} <span className="text-xs font-bold font-sans">EGP</span>
+                      <p className="text-xl sm:text-2xl font-heading font-black text-accent shrink-0">
+                        {Math.abs(tx.amount).toFixed(2)} <span className="text-[10px] sm:text-xs font-bold font-sans">EGP</span>
                       </p>
                     </div>
 
                     {/* Coordinates details */}
-                    <div className="p-4 bg-cream/35 rounded-2xl border border-primary/5 text-xs space-y-3">
+                    <div className="p-3 sm:p-4 bg-cream/35 rounded-xl sm:rounded-2xl border border-primary/5 text-xs space-y-2.5 sm:space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-charcoal/50 font-medium">{isRTL ? "الوسيلة:" : "Payment Channel:"}</span>
                         <span className={cn(
@@ -399,22 +404,22 @@ export function PayoutsManagerClient({
                   </div>
 
                   {/* Actions footer */}
-                  <div className="pt-4 border-t border-primary/5 flex flex-col sm:flex-row gap-3">
+                  <div className="pt-3.5 sm:pt-4 border-t border-primary/5 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
                     {activeRejectId === tx.id ? (
-                      <div className="w-full space-y-3">
+                      <div className="w-full space-y-2.5 sm:space-y-3">
                         <input
                           type="text"
                           required
                           value={rejectReason}
                           onChange={(e) => setRejectReason(e.target.value)}
                           placeholder="Type reason (e.g. Invalid InstaPay ID)"
-                          className="w-full h-10 px-3 rounded-xl border border-primary/10 bg-white text-xs font-semibold focus:outline-none focus:border-red-500"
+                          className="w-full h-10 px-3.5 rounded-xl border border-primary/10 bg-white text-xs font-semibold focus:outline-none focus:border-red-500"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleReject(tx.id)}
                             disabled={isProcessing === tx.id || !rejectReason.trim()}
-                            className="flex-1 h-9 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                            className="flex-1 h-10 px-4 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl disabled:opacity-50 transition-colors"
                           >
                             Decline & Refund
                           </button>
@@ -423,7 +428,7 @@ export function PayoutsManagerClient({
                               setActiveRejectId(null);
                               setRejectReason("");
                             }}
-                            className="px-3 h-9 bg-charcoal/10 hover:bg-charcoal/20 text-charcoal text-xs font-bold rounded-lg"
+                            className="px-4 h-10 bg-charcoal/10 hover:bg-charcoal/20 text-charcoal text-xs font-bold rounded-xl transition-colors"
                           >
                             Cancel
                           </button>
@@ -434,18 +439,18 @@ export function PayoutsManagerClient({
                         <button
                           onClick={() => setConfirmPayoutData({ id: tx.id, amount: tx.amount })}
                           disabled={isProcessing !== null}
-                          className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/10 transition-colors text-xs uppercase tracking-wider cursor-pointer"
+                          className="w-full sm:flex-1 h-11 sm:h-12 px-4 sm:px-6 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/10 transition-all active:scale-[0.99] text-xs uppercase tracking-wider cursor-pointer"
                         >
-                          <Check className="w-4 h-4" />
-                          {isRTL ? "تم التحويل بنجاح" : "Approve & Mark Paid"}
+                          <Check className="w-4 h-4 shrink-0" />
+                          <span>{isRTL ? "تم التحويل بنجاح" : "Approve & Mark Paid"}</span>
                         </button>
                         <button
                           onClick={() => setActiveRejectId(tx.id)}
                           disabled={isProcessing !== null}
-                          className="px-4 h-12 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors text-xs uppercase tracking-wider"
+                          className="w-full sm:w-auto px-4 sm:px-5 h-11 sm:h-12 py-2.5 sm:py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 transition-all active:scale-[0.99] text-xs uppercase tracking-wider cursor-pointer shrink-0"
                         >
-                          <X className="w-4 h-4" />
-                          {isRTL ? "رفض الطلب" : "Decline"}
+                          <X className="w-4 h-4 shrink-0" />
+                          <span>{isRTL ? "رفض الطلب" : "Decline"}</span>
                         </button>
                       </>
                     )}
@@ -665,10 +670,10 @@ export function PayoutsManagerClient({
       </div>
 
       {/* Custom Confirmation Modal */}
-      {typeof document !== "undefined" && createPortal(
+      {mounted && createPortal(
         <AnimatePresence>
           {confirmPayoutData && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4">
               {/* Backdrop Overlay with blur */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -684,16 +689,16 @@ export function PayoutsManagerClient({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
                 transition={{ type: "spring", damping: 25, stiffness: 350 }}
-                className="bg-white rounded-[2rem] border border-primary/10 max-w-md w-full p-8 md:p-10 shadow-2xl relative z-10 space-y-6 text-center"
+                className="bg-white rounded-2xl sm:rounded-[2rem] border border-primary/10 max-w-md w-full p-5 sm:p-8 md:p-10 shadow-2xl relative z-10 space-y-4 sm:space-y-6 text-center"
               >
                 {/* Icon */}
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-2">
-                  <Check className="w-8 h-8 stroke-[3]" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-1 sm:mb-2">
+                  <Check className="w-6 h-6 sm:w-8 sm:h-8 stroke-[3]" />
                 </div>
 
                 {/* Title & Body */}
-                <div className="space-y-3">
-                  <h3 className="text-xl font-heading font-black text-primary">
+                <div className="space-y-2 sm:space-y-3">
+                  <h3 className="text-lg sm:text-xl font-heading font-black text-primary">
                     {isRTL ? "تأكيد عملية التحويل" : "Confirm Payout Transfer"}
                   </h3>
                   <p className="text-xs text-charcoal/60 font-semibold leading-relaxed">
@@ -704,25 +709,25 @@ export function PayoutsManagerClient({
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 pt-1 sm:pt-2">
                   <button
                     type="button"
                     disabled={isProcessing !== null}
                     onClick={handleApprove}
-                    className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-600/15 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
+                    className="w-full sm:flex-1 h-11 sm:h-12 px-4 sm:px-6 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-600/50 text-white font-black text-xs uppercase tracking-wider rounded-xl sm:rounded-2xl shadow-lg shadow-emerald-600/15 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
                   >
                     {isProcessing === confirmPayoutData.id ? (
                       <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                     ) : (
                       <Check className="w-4 h-4 stroke-[3]" />
                     )}
-                    {isRTL ? "نعم، تم التحويل" : "Yes, Confirm Paid"}
+                    <span>{isRTL ? "نعم، تم التحويل" : "Yes, Confirm Paid"}</span>
                   </button>
                   <button
                     type="button"
                     disabled={isProcessing !== null}
                     onClick={() => setConfirmPayoutData(null)}
-                    className="flex-1 h-12 bg-charcoal/5 hover:bg-charcoal/10 disabled:opacity-50 text-charcoal font-black text-xs uppercase tracking-wider rounded-xl transition-all active:scale-95 cursor-pointer"
+                    className="w-full sm:flex-1 h-11 sm:h-12 px-4 sm:px-6 bg-charcoal/5 hover:bg-charcoal/10 disabled:opacity-50 text-charcoal font-black text-xs uppercase tracking-wider rounded-xl sm:rounded-2xl transition-all active:scale-95 cursor-pointer"
                   >
                     {isRTL ? "إلغاء" : "Cancel"}
                   </button>
@@ -735,7 +740,7 @@ export function PayoutsManagerClient({
       )}
 
       {/* Admin Receipt PDF Generator Modal */}
-      {typeof document !== "undefined" && createPortal(
+      {mounted && createPortal(
         <AnimatePresence>
           {selectedReceipt && (
             <div className="fixed inset-0 z-[9999] overflow-y-auto flex items-center justify-center p-3 sm:p-4 md:p-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { Capacitor } from "@capacitor/core";
 
 /**
@@ -11,19 +11,25 @@ export function isNativePlatform(): boolean {
   return Capacitor.isNativePlatform();
 }
 
+function emptySubscribe() {
+  return () => {};
+}
+
+function getNativeSnapshot(): boolean {
+  if (typeof window === "undefined") return false;
+  const hasPreview = new URLSearchParams(window.location.search).get("preview") === "app";
+  return Capacitor.isNativePlatform() || hasPreview;
+}
+
+function getServerSnapshot(): boolean {
+  return false;
+}
+
 /**
  * React hook that returns true if inside native app or if ?preview=app query param is present.
  */
 export function useIsNative(): boolean {
-  const [isNative, setIsNative] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const hasPreview = new URLSearchParams(window.location.search).get("preview") === "app";
-    setIsNative(Capacitor.isNativePlatform() || hasPreview);
-  }, []);
-
-  return isNative;
+  return useSyncExternalStore(emptySubscribe, getNativeSnapshot, getServerSnapshot);
 }
 
 /**

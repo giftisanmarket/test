@@ -4,8 +4,9 @@ import "./globals.css";
 import { CartProvider } from "@/context/cart-context";
 import { FavoritesProvider } from "@/context/favorites-context";
 import { AuthModalProvider } from "@/context/auth-modal-context";
-import { CartDrawer } from "@/components/cart-drawer";
-import { AuthDrawer } from "@/components/auth-drawer";
+import dynamic from "next/dynamic";
+const CartDrawer = dynamic(() => import("@/components/cart-drawer").then((mod) => mod.CartDrawer));
+const AuthDrawer = dynamic(() => import("@/components/auth-drawer").then((mod) => mod.AuthDrawer));
 import { NativeBottomNav } from "@/components/native-bottom-nav";
 import Script from "next/script";
 
@@ -91,6 +92,7 @@ import { auth } from "@/auth";
 import { Toaster } from "react-hot-toast";
 import { NotificationProvider } from "@/components/notification-provider";
 import { NativeLifecycle } from "@/components/native-lifecycle";
+import { OfflineBanner } from "@/components/offline-banner";
 
 
 export async function generateStaticParams() {
@@ -247,6 +249,7 @@ export default async function RootLayout({
         </Script>
         <SessionProvider session={session} key={session?.user?.id || "guest"}>
           <NativeLifecycle />
+          <OfflineBanner lang={lang} />
           <NotificationProvider lang={lang}>
             <FavoritesProvider>
               <CartProvider>

@@ -2,10 +2,11 @@
 
 import { Navbar } from "@/components/navbar";
 import Link from "next/link";
-import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck } from "lucide-react";
+import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import Confetti from "react-confetti";
+import dynamic from "next/dynamic";
+const Confetti = dynamic(() => import("react-confetti"), { ssr: false });
 import { cn } from "@/lib/utils";
 import { convertGuestToAccount } from "@/lib/actions";
 import { ShippingAddressDisplay } from "@/lib/location-utils";
@@ -171,7 +172,10 @@ export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
                       country={order.shippingCountry || "Egypt"}
                       lang={lang}
                     />
-                    <p className="font-mono text-xs mt-2 text-charcoal/50">📞 {order.clientPhone}</p>
+                    <p className="font-mono text-xs mt-2 text-charcoal/50 flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 inline shrink-0" />
+                      <span>{order.clientPhone}</span>
+                    </p>
                   </div>
                 </div>
 
@@ -227,7 +231,7 @@ export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
                   <UserCheck className="w-8 h-8 text-accent-light" />
                 </div>
                 <h3 className="text-2xl md:text-3xl font-heading font-bold text-white">
-                  {isAr ? "تم إنشاء حسابك بنجاح! 🎉" : "Account Created Successfully! 🎉"}
+                  {isAr ? "تم إنشاء حسابك بنجاح!" : "Account Created Successfully!"}
                 </h3>
                 <p className="text-white/80 text-sm md:text-base max-w-lg leading-relaxed">
                   {isAr

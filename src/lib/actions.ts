@@ -13,9 +13,80 @@ import { generateVerificationToken, generatePasswordResetToken } from "@/lib/tok
 import { cookies, headers } from "next/headers";
 import { createPaymobIntention, PAYMOB_PUBLIC_KEY } from "@/lib/paymob";
 import { IS_CHAT_LOCKED, MIN_PAYOUT_AMOUNT } from "@/lib/constants";
-import { sendDiscordInquiryNotification } from "@/lib/discord";
-import { createBostaDelivery, getBostaAWB, getBostaTracking } from "@/lib/bosta";
 import { matchEgyptGovernorate } from "@/lib/egypt-governorates";
+import {
+  signUp as _signUp,
+  login as _login,
+  resendVerificationEmailAction as _resendVerificationEmailAction,
+  getUserInfo as _getUserInfo,
+  sendPasswordResetEmailAction as _sendPasswordResetEmailAction,
+  resetPasswordAction as _resetPasswordAction,
+  deleteAccountAction as _deleteAccountAction,
+  convertGuestToAccount as _convertGuestToAccount,
+} from "./actions/auth-actions";
+
+import {
+  shipOrderWithBosta as _shipOrderWithBosta,
+  getBostaAWBAction as _getBostaAWBAction,
+} from "./actions/shipping-actions";
+
+import {
+  submitInquiry as _submitInquiry,
+  sendOutreachAction as _sendOutreachAction,
+  subscribeToNewsletter as _subscribeToNewsletter,
+} from "./actions/inquiry-actions";
+
+export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
+  return _signUp(formData, role);
+}
+
+export async function login(formData: any) {
+  return _login(formData);
+}
+
+export async function resendVerificationEmailAction(email: string) {
+  return _resendVerificationEmailAction(email);
+}
+
+export async function getUserInfo(userId: string) {
+  return _getUserInfo(userId);
+}
+
+export async function sendPasswordResetEmailAction(email: string) {
+  return _sendPasswordResetEmailAction(email);
+}
+
+export async function resetPasswordAction(token: string, password: any) {
+  return _resetPasswordAction(token, password);
+}
+
+export async function deleteAccountAction(userId: string) {
+  return _deleteAccountAction(userId);
+}
+
+export async function convertGuestToAccount(params: { orderId: string; password: string }) {
+  return _convertGuestToAccount(params);
+}
+
+export async function shipOrderWithBosta(orderId: string) {
+  return _shipOrderWithBosta(orderId);
+}
+
+export async function getBostaAWBAction(deliveryIdOrTracking: string) {
+  return _getBostaAWBAction(deliveryIdOrTracking);
+}
+
+export async function submitInquiry(data: { name: string; email: string; message: string }) {
+  return _submitInquiry(data);
+}
+
+export async function sendOutreachAction(data: { name: string; email: string; product: string; subject: string; lang: 'ar' | 'en' }) {
+  return _sendOutreachAction(data);
+}
+
+export async function subscribeToNewsletter(email: string) {
+  return _subscribeToNewsletter(email);
+}
 
 export async function uploadImage(base64Data: string, skipWebPConversion = true) {
   try {
@@ -137,227 +208,6 @@ async function processImage(imageSource: string | null | undefined, skipWebPConv
   return imageSource;
 }
 
-export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
-  const { name, email, password } = formData;
-
-  if (!name || !email || !password) {
-    return { error: "Missing required fields" };
-  }
-
-  try {
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return { error: "User already exists with this email" };
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role,
-      },
-    });
-
-    if (role === "ARTISAN") {
-      const baseSlug = slugify(name);
-      const artisanSlug = baseSlug ? `${baseSlug}-${user.id.slice(-4)}` : `artisan-${user.id.slice(-4)}`;
-      await prisma.artisanProfile.create({
-        data: {
-          userId: user.id,
-          slug: artisanSlug,
-          bio: "",
-          location: "",
-          avatar: `https://api.dicebear.com/10.x/gaze/svg?seed=${name}`,
-        },
-      });
-    }
-
-    // Generate verification token and send email
-    const verificationToken = await generateVerificationToken(email);
-    await sendVerificationEmail(verificationToken.identifier, verificationToken.token);
-
-    // Auto-login the user immediately
-    try {
-      await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-      return { success: true, autoLogin: true };
-    } catch (error) {
-      // If auto-login fails, still return success for signup
-      return { success: true, autoLogin: false };
-    }
-  } catch (error) {
-    console.error("Signup error:", error);
-    return { error: "Something went wrong during registration" };
-  }
-}
-
-export async function login(formData: any) {
-  let email = "";
-  let password = "";
-
-  if (formData instanceof FormData) {
-    email = (formData.get("email") as string) || "";
-    password = (formData.get("password") as string) || "";
-  } else if (formData && typeof formData === "object") {
-    email = typeof formData.email === "string" ? formData.email : "";
-    password = typeof formData.password === "string" ? formData.password : "";
-  }
-
-  email = email.trim().toLowerCase();
-
-  if (!email || !password) {
-    return { error: "Please enter both email and password.", code: "MISSING_CREDENTIALS" };
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return { error: "Please enter a valid email address.", code: "INVALID_EMAIL" };
-  }
-
-  try {
-    await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    return { success: true };
-  } catch (error: any) {
-    // Preserve Next.js internal redirect exceptions
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "digest" in error &&
-      typeof (error as { digest?: unknown }).digest === "string" &&
-      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
-    ) {
-      throw error;
-    }
-
-    if (error instanceof AuthError || error?.name === "AuthError") {
-      const customCode = (error as any).code || (error as any).cause?.err?.message;
-      if (customCode === "UNVERIFIED_EMAIL") {
-        return {
-          error: "Please verify your email address before logging in. Check your inbox for a link!",
-          code: "UNVERIFIED_EMAIL",
-        };
-      }
-
-      if (error instanceof CredentialsSignin || error.type === "CredentialsSignin") {
-        return { error: "Invalid credentials.", code: "INVALID_CREDENTIALS" };
-      }
-
-      return { error: "Something went wrong.", code: error.type || "AUTH_ERROR" };
-    }
-
-    console.error("Login action error:", error);
-    return { error: "An unexpected error occurred.", code: "SERVER_ERROR" };
-  }
-}
-
-export async function resendVerificationEmailAction(email: string) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    if (!user) {
-      return { error: "User not found." };
-    }
-
-    if (user.emailVerified) {
-      return { error: "Email is already verified." };
-    }
-
-    const verificationToken = await generateVerificationToken(email);
-    await sendVerificationEmail(verificationToken.identifier, verificationToken.token);
-
-    return { success: true };
-  } catch (error) {
-    console.error("Resend verification error:", error);
-    return { error: "Failed to resend verification email." };
-  }
-}
-
-export async function getUserInfo(userId: string) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        name: true,
-        image: true,
-      }
-    });
-    return user;
-  } catch (error) {
-    console.error("Get user info error:", error);
-    return null;
-  }
-}
-
-export async function sendPasswordResetEmailAction(email: string) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: { accounts: true }
-    });
-    if (!user) return { error: "If an account exists with this email, we've sent a reset link." };
-
-    // Check if it's a social account (no password)
-    if (user.accounts.length > 0 && !user.password) {
-      return { error: "This account was created with Google. Please use Google Sign-in." };
-    }
-
-    const token = await generatePasswordResetToken(email);
-    const sent = await sendPasswordResetEmail(token.email, token.token);
-    if (!sent.success) {
-      return { error: "Mailing service is temporarily down. Please try again later." };
-    }
-    return { success: true };
-  } catch (error) {
-    console.error("Password reset error:", error);
-    return { error: "Failed to send reset email." };
-  }
-}
-
-export async function resetPasswordAction(token: string, password: any) {
-  try {
-    const existingToken = await prisma.passwordResetToken.findUnique({ where: { token } });
-    if (!existingToken) return { error: "This link is invalid or has already been used." };
-
-    const hasExpired = new Date(existingToken.expires) < new Date();
-    if (hasExpired) {
-      await prisma.passwordResetToken.delete({ where: { id: existingToken.id } });
-      return { error: "This link has expired. Please request a new one." };
-    }
-
-    const user = await prisma.user.findUnique({ where: { email: existingToken.email } });
-    if (!user) return { error: "Something went wrong. User not found." };
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword }
-    });
-
-    await prisma.passwordResetToken.delete({ where: { id: existingToken.id } });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Reset password error:", error);
-    return { error: "Failed to reset password." };
-  }
-}
 
 const SEARCH_SYNONYMS: Record<string, { categories?: string[]; subcategories?: string[]; custom?: boolean; extraKeywords?: string[] }> = {
   // Bags
@@ -3121,212 +2971,6 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
   }
 }
 
-/**
- * Dispatches an order to Bosta shipping with 1-click
- */
-export async function shipOrderWithBosta(orderId: string) {
-  try {
-    const session = await auth();
-    if (session?.user?.role !== "ADMIN") {
-      return { error: "Unauthorized: Admin privileges required" };
-    }
-
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        user: true,
-        items: {
-          include: {
-            product: {
-              include: {
-                artisan: true
-              }
-            }
-          }
-        }
-      }
-    });
-
-    if (!order) {
-      return { error: "Order not found" };
-    }
-
-    if (!order.shippingAddress) {
-      return { error: "Shipping address is missing for this order" };
-    }
-
-    if (!order.clientPhone && !order.user?.email) {
-      return { error: "Customer phone number is required for Bosta shipping" };
-    }
-
-    // Determine clean customer drop-off city name
-    const matchedCustomerGov = matchEgyptGovernorate({}, order.shippingCity || order.shippingAddress);
-    const dropOffCityName = matchedCustomerGov?.nameEn || order.shippingCity || "Cairo";
-
-    const customerName = order.user?.name || "Giftisan Customer";
-    const nameParts = customerName.trim().split(" ");
-    const firstName = nameParts[0] || "Customer";
-    const lastName = nameParts.slice(1).join(" ") || "";
-
-    // Group items by artisan to create tailored Bosta shipments per artisan pickup location
-    const artisanGroups = new Map<string, { artisan: any; items: typeof order.items }>();
-    for (const item of order.items) {
-      const artId = item.product.artisanId || "platform";
-      if (!artisanGroups.has(artId)) {
-        artisanGroups.set(artId, { artisan: item.product.artisan, items: [] });
-      }
-      artisanGroups.get(artId)!.items.push(item);
-    }
-
-    const createdTrackings: string[] = [];
-
-    // Process shipment creation for each artisan
-    for (const [artisanId, group] of artisanGroups.entries()) {
-      const artisan = group.artisan;
-      const groupItemsSummary = group.items.map(i => `${i.quantity}x ${i.product.name}`).join(", ");
-      const groupTotalCount = group.items.reduce((sum, item) => sum + item.quantity, 0);
-
-      // Determine clean pickup address from artisan profile (if configured)
-      let pickupPayload: any = undefined;
-      if (artisan?.pickupAddress) {
-        const matchedArtisanGov = matchEgyptGovernorate({}, artisan.pickupCity || artisan.pickupAddress);
-        pickupPayload = {
-          firstLine: `${artisan.pickupAddress}${artisan.pickupBuilding ? `, Building: ${artisan.pickupBuilding}` : ""}${artisan.pickupDistrict ? `, District: ${artisan.pickupDistrict}` : ""}`,
-          city: matchedArtisanGov?.nameEn || artisan.pickupCity || "Cairo",
-          district: artisan.pickupDistrict || undefined,
-        };
-      }
-
-      // Call Bosta API for this artisan's parcel
-      const bostaResult = await createBostaDelivery({
-        type: 10, // Standard delivery
-        cod: 0, // Online prepaid
-        businessReference: `${order.id}${artisanGroups.size > 1 ? `-${artisanId.slice(-4)}` : ""}`,
-        receiver: {
-          firstName,
-          lastName,
-          phone: order.clientPhone || "01000000000",
-          email: order.clientEmail || order.user?.email || undefined
-        },
-        dropOffAddress: {
-          firstLine: order.shippingAddress,
-          city: dropOffCityName,
-        },
-        pickupAddress: pickupPayload,
-        notes: [
-          (() => {
-            const cleanNotes = (order.orderNotes || "")
-              .replace(/\[(COD - Cash on Delivery|Paymob Online)\]/gi, "")
-              .replace(/\[Gift Note:[^\]]*\]/gi, "")
-              .trim();
-            return cleanNotes ? `Customer Instructions: ${cleanNotes}` : "";
-          })(),
-          order.isGift ? `Gift Message: ${order.giftMessage}` : "",
-          artisan?.pickupNotes ? `Pickup note: ${artisan.pickupNotes}` : ""
-        ].filter(Boolean).join(" | "),
-        itemsCount: groupTotalCount,
-        description: groupItemsSummary.slice(0, 100) || "Handmade Giftisan Products"
-      });
-
-      const trackingNumber = String(bostaResult.trackingNumber);
-      if (trackingNumber) {
-        createdTrackings.push(trackingNumber);
-
-        // Update items belonging to this artisan
-        const itemIds = group.items.map(i => i.id);
-        await prisma.orderItem.updateMany({
-          where: { id: { in: itemIds } },
-          data: {
-            status: "SHIPPED",
-            carrier: "Bosta",
-            trackingNumber: trackingNumber
-          }
-        });
-      }
-    }
-
-    if (createdTrackings.length === 0) {
-      return { error: "Failed to generate tracking numbers with Bosta." };
-    }
-
-    const primaryTracking = createdTrackings.join(", ");
-
-    // Update parent order
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: "SHIPPED",
-        carrier: "Bosta",
-        trackingNumber: primaryTracking
-      }
-    });
-
-    // Send customer shipping email notification
-    const recipientEmail = order.user?.email || order.clientEmail;
-    if (recipientEmail) {
-      sendOrderStatusUpdateEmail(
-        recipientEmail,
-        customerName,
-        order.id,
-        "SHIPPED",
-        order.items[0]?.product?.name || "Your gift package",
-        order.items[0]?.product?.slug || undefined,
-        primaryTracking,
-        "Bosta"
-      ).catch(err => console.error("[Bosta Shipping Action] Email notification error:", err));
-    }
-
-    revalidatePath("/admin", "layout");
-    revalidatePath("/admin/orders");
-    revalidatePath("/studio");
-    revalidatePath("/profile");
-
-    return { 
-      success: true, 
-      trackingNumber: primaryTracking,
-      trackings: createdTrackings
-    };
-  } catch (error: any) {
-    console.error("[shipOrderWithBosta Error]:", error);
-    return { error: error.message || "Failed to create shipment on Bosta" };
-  }
-}
-
-/**
- * Gets the Airway Bill (AWB) for an order from Bosta
- */
-export async function getBostaAWBAction(deliveryIdOrTracking: string) {
-  try {
-    const session = await auth();
-    if (session?.user?.role !== "ADMIN") {
-      return { error: "Unauthorized" };
-    }
-
-    const awbData = await getBostaAWB(deliveryIdOrTracking);
-    return { success: true, data: awbData };
-  } catch (error: any) {
-    console.error("[getBostaAWBAction Error]:", error);
-    return { error: error.message || "Failed to fetch Bosta AWB" };
-  }
-}
-
-
-export async function subscribeToNewsletter(email: string) {
-  try {
-    const subscriber = await prisma.newsletterSubscriber.create({
-      data: { email }
-    });
-
-    // Send the welcome email to the new subscriber
-    await sendWelcomeEmail(email, "Friend");
-    return { success: true };
-  } catch (err: any) {
-    if (err.code === "P2002") {
-      return { error: "This email is already waiting for the next drop!" };
-    }
-    return { error: "Something went wrong." };
-  }
-}
 
 export async function trackProductView(productId: string) {
   try {
@@ -4427,62 +4071,6 @@ export async function markMessagesAsRead(userId: string, senderId: string) {
   }
 }
 
-export async function deleteAccountAction(userId: string) {
-  try {
-    // Auth guard: a user may only delete their own account
-    const session = await auth();
-    if (!session?.user || session.user.id !== userId) {
-      return { error: "Unauthorized" };
-    }
-
-    await prisma.user.delete({
-      where: { id: userId }
-    });
-    return { success: true };
-  } catch (error) {
-    console.error("Delete account error:", error);
-    return { error: "Failed to delete account. Please try again." };
-  }
-}
-
-export async function submitInquiry(data: { name: string; email: string; message: string }) {
-  try {
-    const inquiry = await prisma.contactInquiry.create({
-      data: {
-        name: data.name,
-        email: data.email,
-        message: data.message,
-      }
-    });
-
-    // Send notification email to support team
-    sendInquiryNotification(data.name, data.email, data.message)
-      .catch(err => console.error("Failed to send inquiry email:", err));
-
-    // Send Discord webhook notification
-    sendDiscordInquiryNotification(data.name, data.email, data.message)
-      .catch(err => console.error("Failed to send Discord webhook notification:", err));
-
-    return { success: true, data: inquiry };
-  } catch (error: any) {
-    console.error("Inquiry submission error:", error);
-    return { success: false, error: "Failed to send message. Please try again later." };
-  }
-}
-
-export async function sendOutreachAction(data: { name: string; email: string; product: string; subject: string; lang: 'ar' | 'en' }) {
-  try {
-    const result = await sendArtisanOutreachEmail(data.email, data.name, data.product, data.subject, data.lang);
-    if (!result.success) {
-      return { success: false, error: "Failed to send email via Resend" };
-    }
-    return { success: true };
-  } catch (error) {
-    console.error("Outreach Action Error:", error);
-    return { success: false, error: "Internal Server Error" };
-  }
-}
-
 export async function sendCustomEmailAction(data: {
   to: string;
   subject: string;
@@ -5291,74 +4879,6 @@ export async function deleteArtisanCoupon(couponId: string) {
   } catch (error) {
     console.error("Delete coupon error:", error);
     return { error: "Failed to delete coupon" };
-  }
-}
-
-export async function convertGuestToAccount({
-  orderId,
-  password,
-}: {
-  orderId: string;
-  password: string;
-}) {
-  try {
-    if (!password || password.length < 8) {
-      return { success: false, error: "Password must be at least 8 characters long." };
-    }
-
-    const order = await prisma.order.findUnique({
-      where: { id: orderId }
-    });
-
-    if (!order || !order.clientEmail) {
-      return { success: false, error: "Order or customer email not found." };
-    }
-
-    const email = order.clientEmail.toLowerCase().trim();
-
-    // Check if user already exists
-    let user = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    if (user) {
-      if (!user.password) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { password: hashedPassword }
-        });
-      } else {
-        return { success: false, error: "An account with this email already exists. Please log in to view your orders." };
-      }
-    } else {
-      const clientName = (order as any).clientName || email.split("@")[0];
-      user = await prisma.user.create({
-        data: {
-          email,
-          name: clientName,
-          password: hashedPassword,
-          role: "CLIENT"
-        }
-      });
-    }
-
-    // Connect all guest orders under this email to the user
-    await prisma.order.updateMany({
-      where: {
-        clientEmail: email,
-        userId: null
-      },
-      data: {
-        userId: user.id
-      }
-    });
-
-    return { success: true, email: user.email };
-  } catch (error: any) {
-    console.error("convertGuestToAccount error:", error);
-    return { success: false, error: error?.message || "Failed to create account." };
   }
 }
 

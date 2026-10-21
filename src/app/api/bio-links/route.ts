@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         artisanId: artisan.id,
         title: title.trim(),
         url: url.trim(),
-        icon: icon || "🔗",
+        icon: icon || "link",
         isFeatured: Boolean(isFeatured),
         order: nextOrder,
       },

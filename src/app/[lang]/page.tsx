@@ -5,8 +5,7 @@ import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 import { getDictionary, hasLocale } from "./dictionaries";
 import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 60; // ISR: Cache the landing page for 60 seconds to prevent database pool exhaustion
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;

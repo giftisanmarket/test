@@ -85,10 +85,10 @@ export default function StudioLoading() {
             <div className="h-[200px] md:h-[350px] w-full bg-cream/20 rounded-xl md:rounded-[2rem] border border-primary/5 animate-pulse relative">
                <div className="absolute inset-0 flex items-end px-4 md:px-12 pb-4 md:pb-8 gap-2 md:gap-4">
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="flex-1 bg-primary/5 rounded-t-lg animate-pulse block md:hidden" style={{ height: `${Math.random() * 60 + 20}%` }} />
+                    <div key={i} className="flex-1 bg-primary/5 rounded-t-lg animate-pulse block md:hidden" style={{ height: `${[35, 60, 45, 75, 50, 65][i % 6]}%` }} />
                   ))}
                   {[...Array(12)].map((_, i) => (
-                    <div key={i} className="flex-1 bg-primary/5 rounded-t-lg animate-pulse hidden md:block" style={{ height: `${Math.random() * 60 + 20}%` }} />
+                    <div key={i} className="flex-1 bg-primary/5 rounded-t-lg animate-pulse hidden md:block" style={{ height: `${[40, 65, 30, 85, 50, 70, 45, 90, 60, 75, 55, 80][i % 12]}%` }} />
                   ))}
                </div>
             </div>

@@ -24,6 +24,10 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
     return <GiftsHubClient initialProducts={initialProducts} dict={dict} />;
   }
 
+  return <CategoryDetailView slug={slug} initialProducts={initialProducts} dict={dict} />;
+}
+
+function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const params = useParams();
   const lang = (params?.lang as string) || (dict?.common?.home === "الرئيسية" ? "ar" : "en");

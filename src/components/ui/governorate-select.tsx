@@ -42,19 +42,16 @@ export function GovernorateSelect({
     );
   });
 
-  // Check available viewport space to prevent overlapping or clipping
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
+  // Check available viewport space when opening to prevent clipping
+  const toggleDropdown = () => {
+    if (!isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      if (spaceBelow < 280 && spaceAbove > 280) {
-        setOpenUpward(true);
-      } else {
-        setOpenUpward(false);
-      }
+      setOpenUpward(spaceBelow < 280 && spaceAbove > 280);
     }
-  }, [isOpen]);
+    setIsOpen((prev) => !prev);
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -72,7 +69,7 @@ export function GovernorateSelect({
       {/* Trigger Button */}
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggleDropdown}
         className={cn(
           "w-full h-12 px-3.5 bg-white border rounded-xl transition-all flex items-center justify-between text-start cursor-pointer shadow-2xs hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15",
           hasError 

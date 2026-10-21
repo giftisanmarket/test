@@ -74,7 +74,9 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
   }, [products]);
 
   const yearsExp = artisan.yearsOfExperience ?? (
-    Math.max(1, (new Date().getFullYear() - new Date(artisan.createdAt || Date.now()).getFullYear()) + 1)
+    artisan.createdAt
+      ? Math.max(1, new Date().getFullYear() - new Date(artisan.createdAt).getFullYear() + 1)
+      : 1
   );
 
   const availableProducts = useMemo(() => {

@@ -40,7 +40,8 @@ import {
   Save,
   Link2,
   LayoutGrid,
-  Square
+  Square,
+  Lightbulb
 } from "lucide-react";
 import { FaInstagram, FaFacebook, FaTiktok, FaPinterest } from "react-icons/fa6";
 import QRCode from "react-qr-code";
@@ -916,7 +917,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                   </div>
 
                   <div className="text-xs text-charcoal/60 bg-cream/40 rounded-xl p-3 border border-primary/10 max-w-sm w-full md:w-auto shrink-0 flex items-start gap-2.5">
-                    <span className="text-base leading-none">💡</span>
+                    <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
                       <p className="font-bold text-primary text-[11px]">{isAr ? "نصيحة لزيادة المبيعات:" : "Packaging Tip:"}</p>
                       <p className="text-[11px] leading-relaxed">

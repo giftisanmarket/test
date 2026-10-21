@@ -348,7 +348,7 @@ function renderHtmlSuccess(item: any) {
     </div>
 
     <div class="py-3 px-4 bg-[#123524]/5 rounded-xl text-[#123524] text-xs font-bold flex items-center justify-center gap-2">
-      <span>🎉 Thank you for confirming this delivery!</span>
+      <span>Thank you for confirming this delivery!</span>
     </div>
   </div>
 </body>

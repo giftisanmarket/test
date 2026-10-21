@@ -1045,7 +1045,7 @@ export function OutreachClient({
                   type="button"
                   onClick={() => {
                     isAbortedRef.current = true;
-                    toast(isAr ? "جاري إيقاف الإرسال..." : "Stopping send...", { icon: "🛑" });
+                    toast.error(isAr ? "جاري إيقاف الإرسال..." : "Stopping send...");
                   }}
                   className="px-5 h-12 sm:h-14 bg-red-600 hover:bg-red-700 text-white font-heading font-black text-xs uppercase tracking-widest rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all cursor-pointer"
                 >

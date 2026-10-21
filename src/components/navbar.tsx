@@ -18,8 +18,6 @@ import { VerificationBanner } from "./verification-banner";
 import { FoundingBanner } from "./founding-banner";
 import { toast } from "react-hot-toast";
 
-import { getDictionary } from "@/app/[lang]/dictionaries";
-
 export function Navbar({ dict }: { dict?: any }) {
   // Safe fallback if dict is not provided
   const d = dict || {

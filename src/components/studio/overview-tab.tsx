@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { 
@@ -15,7 +15,16 @@ import {
   ArrowUpRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SalesChart } from "@/components/sales-chart";
+import dynamic from "next/dynamic";
+
+const SalesChart = dynamic(() => import("@/components/sales-chart").then(mod => mod.SalesChart), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[250px] mt-4 md:mt-8 rounded-2xl bg-cream/10 border border-primary/5 flex items-center justify-center animate-pulse">
+      <div className="w-8 h-8 rounded-full border-2 border-primary/10 border-t-primary animate-spin" />
+    </div>
+  ),
+});
 
 interface OverviewTabProps {
   dict: any;

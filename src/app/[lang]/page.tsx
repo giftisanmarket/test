@@ -21,10 +21,10 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 }
 
 const CURATED_FEATURED_ARTISAN_SLUGS = [
-  "ur-own-flower",
-  "gl-crochet-m4of",
+  "charm-threads-0e2u",
   "rimo-crochet-handmade",
-  "charm-threads-0e2u"
+  "gl-crochet-m4of",
+  "ur-own-flower"
 ];
 
 const productSelect = {
@@ -48,6 +48,7 @@ const productSelect = {
       slug: true,
       avatar: true,
       status: true,
+      isVerified: true,
       user: {
         select: {
           name: true
@@ -124,6 +125,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
   // Fetch categorized product rows and featured artisans concurrently in parallel
   const [
+    allFeedProducts,
     trendingProducts,
     bagProducts,
     homeDecorProducts,
@@ -133,7 +135,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     featuredArtisans,
     artisanCount
   ] = await Promise.all([
-    // 1. Top Trending & Best Finds (10 items)
+    // 1. Comprehensive Catalog for Discovery Feed (all approved products, up to 150 items)
     prisma.product.findMany({
       where: {
         status: "APPROVED",
@@ -142,65 +144,81 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         }
       },
       select: productSelect,
-      take: 10,
+      take: 150,
       orderBy: [
         { isFeatured: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 2. Handcrafted Bags & Leather Goods (up to 8 items)
+    // 2. Top Trending for Web Shelf (up to 24 items)
+    prisma.product.findMany({
+      where: {
+        status: "APPROVED",
+        artisan: {
+          status: "APPROVED"
+        }
+      },
+      select: productSelect,
+      take: 24,
+      orderBy: [
+        { isFeatured: 'desc' },
+        { createdAt: 'desc' }
+      ]
+    }),
+
+    // 3. Handcrafted Bags & Leather Goods (up to 24 items)
     prisma.product.findMany({
       where: {
         status: "APPROVED",
         artisan: {
           status: "APPROVED"
         },
-        category: { in: ["bags-and-purses", "accessories"], mode: "insensitive" }
+        category: { in: ["bags-and-purses", "handbags", "leatherwork"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 8,
+      take: 24,
       orderBy: [
         { isFeatured: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 3. Artisan Woodwork & Home Collectibles (up to 8 items)
+    // 4. Artisan Ceramics, Woodwork & Home Collectibles (up to 24 items)
     prisma.product.findMany({
       where: {
         status: "APPROVED",
         artisan: {
           status: "APPROVED"
         },
-        category: { in: ["home-and-living", "woodwork", "ceramics"], mode: "insensitive" }
+        category: { in: ["home-and-living", "woodwork", "ceramics", "fine-art-ceramics", "sculpture", "art-and-collectibles"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 8,
+      take: 24,
       orderBy: [
         { isFeatured: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 4. Bespoke Jewelry & Adornments (up to 8 items)
+    // 5. Bespoke Jewelry & Adornments (up to 36 items)
     prisma.product.findMany({
       where: {
         status: "APPROVED",
         artisan: {
           status: "APPROVED"
         },
-        category: { in: ["jewelry", "accessories"], mode: "insensitive" }
+        category: { in: ["jewelry", "necklaces", "earrings", "bracelets", "pins-clips", "brooches-pins-clips", "hair-accessories", "accessories"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 8,
+      take: 36,
       orderBy: [
         { isFeatured: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 5. Handmade Crochet & Apparel (up to 8 items)
+    // 6. Handmade Crochet & Apparel (up to 24 items)
     prisma.product.findMany({
       where: {
         status: "APPROVED",
@@ -210,31 +228,31 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         category: { in: ["clothing", "fashion", "textiles", "wearables"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 8,
+      take: 24,
       orderBy: [
         { isFeatured: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 6. Curated Gift Sets & Celebrations (up to 8 items)
+    // 7. Curated Gift Sets & Keepsakes (up to 24 items)
     prisma.product.findMany({
       where: {
         status: "APPROVED",
         artisan: {
           status: "APPROVED"
         },
-        category: { in: ["gifts-sets", "gifts", "toys-and-games", "weddings"], mode: "insensitive" }
+        category: { in: ["gifts-sets", "gifts", "gifts-mementos", "keychains-lanyards", "toys-and-games", "weddings", "games-puzzles", "paper"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 8,
+      take: 24,
       orderBy: [
         { isFeatured: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 7. Featured Master Artisans (curated top Egyptian makers, including Charm Threads)
+    // 8. Featured Master Artisans (curated top Egyptian makers, including Charm Threads)
     prisma.artisanProfile.findMany({
       where: {
         status: "APPROVED",
@@ -267,7 +285,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       return curated;
     }),
 
-    // 8. Artisan Count
+    // 9. Artisan Count
     prisma.artisanProfile.count({
       where: { status: "APPROVED" }
     })
@@ -275,6 +293,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
   return (
     <HomeClient
+      allProducts={sanitizeProducts(allFeedProducts)}
       trendingProducts={sanitizeProducts(trendingProducts)}
       bagProducts={sanitizeProducts(bagProducts)}
       homeDecorProducts={sanitizeProducts(homeDecorProducts)}

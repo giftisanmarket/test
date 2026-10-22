@@ -3183,6 +3183,10 @@ export async function promoteToArtisan(userId: string, studioData: any) {
       return { error: "Shop Name, Location, and Phone Number are required for artisan registration." };
     }
 
+    if (studioData.agreedToTerms !== true) {
+      return { error: "You must review and agree to the Giftisan Artisan Partnership Agreement to launch your shop." };
+    }
+
     await prisma.user.update({
       where: { id: userId },
       data: { role: "ARTISAN" }
@@ -3221,6 +3225,8 @@ export async function promoteToArtisan(userId: string, studioData: any) {
       location: cleanLocation,
       phoneNumber: cleanPhoneNumber,
       avatar: (session.user as any)?.image || `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(cleanStudioName || userId)}`,
+      termsAcceptedAt: new Date(),
+      termsVersion: studioData.termsVersion || "2026-v1",
       ...(cleanInstagram ? { instagram: cleanInstagram } : {}),
       ...(cleanBrandColor ? { brandColor: cleanBrandColor } : {}),
       ...(derivedGov ? { pickupCity: derivedGov } : {}),

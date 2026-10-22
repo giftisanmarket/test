@@ -34,7 +34,7 @@ import { GovernorateSelect } from "@/components/ui/governorate-select";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "react-hot-toast";
-import { isNativePlatform } from "@/lib/native";
+import { isNativePlatform, getCurrentCoordinates } from "@/lib/native";
 
 export function CheckoutClient({ dict }: { dict: any }) {
   const params = useParams();
@@ -152,59 +152,48 @@ export function CheckoutClient({ dict }: { dict: any }) {
     }
   };
 
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      setError(isAr ? "خدمة تحديد الموقع غير مدعومة في متصفحك." : "Geolocation is not supported by your browser.");
-      return;
-    }
-
+  const handleDetectLocation = async () => {
     setIsDetectingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const googleMapsPin = `https://maps.google.com/?q=${latitude},${longitude}`;
+    setError("");
 
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-          const data = await res.json();
-          if (data && data.address) {
-            const detectedCity = data.address.city || data.address.state || data.address.town || data.address.governorate || "Cairo";
-            const detectedStreet = [data.address.road, data.address.suburb, data.address.neighbourhood].filter(Boolean).join(", ") || data.display_name?.split(",")[0] || "";
+    try {
+      const { latitude, longitude } = await getCurrentCoordinates();
+      const googleMapsPin = `https://maps.google.com/?q=${latitude},${longitude}`;
 
-            const matchedGov = matchEgyptGovernorate(data.address, data.display_name || "");
-            if (matchedGov) {
-              setSelectedGovernorateId(matchedGov.id);
-              const matched = findZoneForGovernorate(matchedGov.id, shippingMethods);
-              if (matched) setSelectedMethod(matched);
-            }
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data = await res.json();
+      if (data && data.address) {
+        const detectedCity = data.address.city || data.address.state || data.address.town || data.address.governorate || "Cairo";
+        const detectedStreet = [data.address.road, data.address.suburb, data.address.neighbourhood].filter(Boolean).join(", ") || data.display_name?.split(",")[0] || "";
 
-            setGpsPinUrl(googleMapsPin);
-
-            setShippingData(prev => ({
-              ...prev,
-              address: detectedStreet || prev.address,
-              city: matchedGov ? (isAr ? matchedGov.nameAr : matchedGov.nameEn) : detectedCity
-            }));
-
-            toast.success(
-              isAr
-                ? "تم تحديد موقعك بدقة. يرجى كتابة رقم المبنى والشقة."
-                : "Exact GPS detected. Please add your Building & Apt/Floor number.",
-              { duration: 5000 }
-            );
-          }
-        } catch (err) {
-          setError(isAr ? "تعذر تحديد العنوان تلقائياً." : "Could not fetch address details.");
-        } finally {
-          setIsDetectingLocation(false);
+        const matchedGov = matchEgyptGovernorate(data.address, data.display_name || "");
+        if (matchedGov) {
+          setSelectedGovernorateId(matchedGov.id);
+          const matched = findZoneForGovernorate(matchedGov.id, shippingMethods);
+          if (matched) setSelectedMethod(matched);
         }
-      },
-      (err) => {
-        setIsDetectingLocation(false);
-        setError(isAr ? "يرجى السماح بالوصول للموقع لتحديد العنوان." : "Location access was denied or unavailable.");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+
+        setGpsPinUrl(googleMapsPin);
+
+        setShippingData(prev => ({
+          ...prev,
+          address: detectedStreet || prev.address,
+          city: matchedGov ? (isAr ? matchedGov.nameAr : matchedGov.nameEn) : detectedCity
+        }));
+
+        toast.success(
+          isAr
+            ? "تم تحديد موقعك بدقة. يرجى كتابة رقم المبنى والشقة."
+            : "Exact GPS detected. Please add your Building & Apt/Floor number.",
+          { duration: 5000 }
+        );
+      }
+    } catch (err: any) {
+      console.warn("Location detection error:", err);
+      setError(isAr ? "يرجى السماح بالوصول للموقع لتحديد العنوان." : "Location access was denied or unavailable.");
+    } finally {
+      setIsDetectingLocation(false);
+    }
   };
 
   const handleApplyCoupon = async () => {

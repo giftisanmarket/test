@@ -40,8 +40,89 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        idToken: { label: "ID Token", type: "text" },
+        isGoogleNative: { label: "isGoogleNative", type: "text" },
       },
       async authorize(credentials) {
+        // Native Android/iOS Google Sign-In exchange
+        if (credentials?.isGoogleNative === "true" && credentials?.idToken) {
+          try {
+            const tokenRes = await fetch(
+              `https://oauth2.googleapis.com/tokeninfo?id_token=${credentials.idToken}`
+            );
+            if (!tokenRes.ok) {
+              console.error("Google token verification failed:", await tokenRes.text());
+              return null;
+            }
+            const payload = await tokenRes.json();
+
+            const validClientIds = [
+              process.env.GOOGLE_CLIENT_ID,
+              process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+              process.env.GOOGLE_ANDROID_CLIENT_ID,
+              "57073334809-61ac8q40c6furmrmgh441mi7o6b3aalk.apps.googleusercontent.com",
+              "57073334809-9f7vkmkudc7asoh655avb870n39aqc01.apps.googleusercontent.com",
+            ].filter(Boolean) as string[];
+
+            const isAudMatch = validClientIds.includes(payload.aud);
+            const isAzpMatch = payload.azp ? validClientIds.includes(payload.azp) : false;
+
+            if (validClientIds.length > 0 && !isAudMatch && !isAzpMatch) {
+              console.error("Google idToken audience/azp mismatch:", { aud: payload.aud, azp: payload.azp });
+              return null;
+            }
+
+            if (!payload.email) return null;
+
+            const normalizedEmail = String(payload.email).toLowerCase();
+
+            let user = await prisma.user.findUnique({
+              where: { email: normalizedEmail },
+              include: { accounts: true },
+            });
+
+            if (!user) {
+              user = await prisma.user.create({
+                data: {
+                  email: normalizedEmail,
+                  name: payload.name || normalizedEmail.split("@")[0],
+                  image: payload.picture,
+                  emailVerified: new Date(),
+                  role: "CLIENT",
+                },
+                include: { accounts: true },
+              });
+            } else if (!user.emailVerified) {
+              user = await prisma.user.update({
+                where: { id: user.id },
+                data: { emailVerified: new Date() },
+                include: { accounts: true },
+              });
+            }
+
+            if (!user) return null;
+
+            const hasGoogleAccount = user.accounts?.some((a) => a.provider === "google");
+            if (!hasGoogleAccount) {
+              await prisma.account
+                .create({
+                  data: {
+                    userId: user.id,
+                    type: "oauth",
+                    provider: "google",
+                    providerAccountId: String(payload.sub),
+                  },
+                })
+                .catch(() => {});
+            }
+
+            return user;
+          } catch (err) {
+            console.error("Native Google auth authorize error:", err);
+            return null;
+          }
+        }
+
         if (!credentials?.email || !credentials?.password) return null;
         
         const user = await prisma.user.findUnique({

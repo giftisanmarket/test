@@ -26,6 +26,7 @@ import { Footer } from "@/components/footer";
 import { BespokeImage } from "@/components/bespoke-image";
 import { useFavorites } from "@/context/favorites-context";
 import { cn } from "@/lib/utils";
+import { useIsNative } from "@/lib/native";
 
 export interface GiftsHubClientProps {
   initialProducts: any[];
@@ -40,6 +41,7 @@ export function GiftsHubClient({
   dict,
   lang: langProp,
 }: GiftsHubClientProps) {
+  const isNative = useIsNative();
   const { toggleFavorite, isFavorite } = useFavorites();
 
   const isAr = dict?.common?.home === "الرئيسية" || dict?.common?.search?.includes("ابحث");
@@ -169,37 +171,37 @@ export function GiftsHubClient({
     {
       name: isAr ? "أعياد الميلاد" : "Birthday",
       icon: Cake,
-      href: `/${lang}/gifts/for-friends`,
+      href: `/${lang}/gifts/all?occasion=birthday`,
       color: "bg-amber-50 text-amber-700 border-amber-200/60",
     },
     {
       name: isAr ? "الخطوبة والزفاف" : "Wedding & Engagement",
       icon: Sparkles,
-      href: `/${lang}/gifts/for-couples`,
+      href: `/${lang}/gifts/all?occasion=wedding`,
       color: "bg-rose-50 text-rose-700 border-rose-200/60",
     },
     {
       name: isAr ? "عيد الأم والتكريم" : "Mother's Day & Gratitude",
       icon: Heart,
-      href: `/${lang}/gifts/for-mom`,
+      href: `/${lang}/gifts/all?occasion=mom`,
       color: "bg-purple-50 text-purple-700 border-purple-200/60",
     },
     {
       name: isAr ? "التخرج والنجاح" : "Graduation",
       icon: GraduationCap,
-      href: `/${lang}/gifts/for-him`,
+      href: `/${lang}/gifts/all?occasion=graduation`,
       color: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
     },
     {
       name: isAr ? "مباركة البيت الجديد" : "Housewarming",
       icon: Home,
-      href: `/${lang}/category/home-and-living`,
+      href: `/${lang}/gifts/all?occasion=housewarming`,
       color: "bg-teal-50 text-teal-700 border-teal-200/60",
     },
     {
       name: isAr ? "السبوع والمواليد" : "Baby & Sebou'",
       icon: Baby,
-      href: `/${lang}/gifts/for-kids`,
+      href: `/${lang}/gifts/all?occasion=baby`,
       color: "bg-blue-50 text-blue-700 border-blue-200/60",
     },
   ];
@@ -210,7 +212,7 @@ export function GiftsHubClient({
   const ArrowIcon = isAr ? ArrowLeft : ArrowRight;
 
   return (
-    <main className="min-h-screen bg-cream">
+    <main className={cn("min-h-screen bg-cream", isNative && "pb-32")}>
       <Navbar dict={dict} />
 
       {/* 1. Etsy Editorial Hero Section */}
@@ -326,7 +328,7 @@ export function GiftsHubClient({
       </section>
 
       {/* 3. Occasions Quick Exploration Strip */}
-      <section className="py-8 border-b border-primary/5 bg-white/60 backdrop-blur-xs">
+      <section id="occasions" className="py-8 border-b border-primary/5 bg-white/60 backdrop-blur-xs">
         <div className="container mx-auto px-4 md:px-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>

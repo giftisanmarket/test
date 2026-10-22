@@ -11,6 +11,8 @@ import {
 import { motion } from "framer-motion";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useIsNative } from "@/lib/native";
+import { NativeCategoriesView } from "@/components/native/native-categories-view";
 
 interface DepartmentData {
   name: string;
@@ -102,7 +104,18 @@ const departmentGroupMap: Record<string, string> = {
   "Bath & Apothecary": "gifting"
 };
 
-export function CategoriesClient({ categories, dict }: { categories: DepartmentData[], dict: any }) {
+export function CategoriesClient({
+  categories,
+  dict,
+  lang = "en",
+  masterProducts = [],
+}: {
+  categories: DepartmentData[];
+  dict: any;
+  lang?: string;
+  masterProducts?: any[];
+}) {
+  const isNative = useIsNative();
   const [activeFilter, setActiveFilter] = useState<string>("all");
 
   const categoryTabs = [
@@ -126,6 +139,17 @@ export function CategoriesClient({ categories, dict }: { categories: DepartmentD
     if (activeFilter === "all") return sortedCategories;
     return sortedCategories.filter(cat => departmentGroupMap[cat.name] === activeFilter);
   }, [sortedCategories, activeFilter]);
+
+  if (isNative) {
+    return (
+      <NativeCategoriesView
+        categories={sortedCategories}
+        dict={dict}
+        lang={lang}
+        masterProducts={masterProducts}
+      />
+    );
+  }
 
   return (
     <main className="min-h-screen bg-cream">

@@ -15,13 +15,20 @@ import {
   Sparkles,
   Navigation,
   Package,
-  Award
+  Award,
+  Scale,
+  FileText,
+  ShieldCheck,
+  ExternalLink,
+  Calendar,
 } from "lucide-react";
+import Link from "next/link";
 import { updateArtisanProfile, updateProfileAvatar, checkSlugAvailability, uploadImage } from "@/lib/actions";
 import { uploadMediaToCloudinary } from "@/lib/client-upload";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
+import { getCurrentCoordinates } from "@/lib/native";
 import { cn, stripEmojis } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
@@ -67,46 +74,34 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   const [pickupNotes, setPickupNotes] = useState(artisan.pickupNotes || "");
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
-  const handleDetectLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error(lang === "ar" ? "خدمة تحديد الموقع غير مدعومة في متصفحك." : "Geolocation is not supported by your browser.");
-      return;
-    }
-
+  const handleDetectLocation = async () => {
     setIsDetectingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const googleMapsPin = `https://maps.google.com/?q=${latitude},${longitude}`;
-          setGpsPinUrl(googleMapsPin);
 
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-          const data = await res.json();
-          if (data && data.address) {
-            const detectedCity = data.address.city || data.address.state || data.address.town || data.address.governorate || "Cairo";
-            const detectedDistrict = data.address.suburb || data.address.neighbourhood || data.address.quarter || "";
-            const detectedStreet = [data.address.road, data.address.house_number].filter(Boolean).join(", ") || data.display_name?.split(",")[0] || "";
+    try {
+      const { latitude, longitude } = await getCurrentCoordinates();
+      const googleMapsPin = `https://maps.google.com/?q=${latitude},${longitude}`;
+      setGpsPinUrl(googleMapsPin);
 
-            if (detectedStreet) setPickupAddress(detectedStreet);
-            if (detectedDistrict) setPickupDistrict(detectedDistrict);
-            if (detectedCity) setPickupCity(detectedCity);
-            if (!location && detectedCity) setLocation(`${detectedDistrict ? detectedDistrict + ", " : ""}${detectedCity}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data = await res.json();
+      if (data && data.address) {
+        const detectedCity = data.address.city || data.address.state || data.address.town || data.address.governorate || "Cairo";
+        const detectedDistrict = data.address.suburb || data.address.neighbourhood || data.address.quarter || "";
+        const detectedStreet = [data.address.road, data.address.house_number].filter(Boolean).join(", ") || data.display_name?.split(",")[0] || "";
 
-            toast.success(lang === "ar" ? "تم تحديد موقعك بدقة وتسجيل الدبوس الجغرافي." : "Exact location detected and GPS pin saved.");
-          }
-        } catch (err) {
-          toast.error(lang === "ar" ? "تعذر تحديد العنوان تلقائياً." : "Could not fetch address details.");
-        } finally {
-          setIsDetectingLocation(false);
-        }
-      },
-      (err) => {
-        setIsDetectingLocation(false);
-        toast.error(lang === "ar" ? "يرجى السماح بالوصول للموقع لتحديد العنوان." : "Location access was denied or unavailable.");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+        if (detectedStreet) setPickupAddress(detectedStreet);
+        if (detectedDistrict) setPickupDistrict(detectedDistrict);
+        if (detectedCity) setPickupCity(detectedCity);
+        if (!location && detectedCity) setLocation(`${detectedDistrict ? detectedDistrict + ", " : ""}${detectedCity}`);
+
+        toast.success(lang === "ar" ? "تم تحديد موقعك بدقة وتسجيل الدبوس الجغرافي." : "Exact location detected and GPS pin saved.");
+      }
+    } catch (err: any) {
+      console.warn("Settings location detection error:", err);
+      toast.error(lang === "ar" ? "يرجى السماح بالوصول للموقع لتحديد العنوان." : "Location access was denied or unavailable.");
+    } finally {
+      setIsDetectingLocation(false);
+    }
   };
 
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
@@ -262,6 +257,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   const navItems = [
     { id: "profile", icon: User, label: dict.studio_profile.profile_tab },
     { id: "branding", icon: Palette, label: dict.studio_profile.brand_tab },
+    { id: "legal", icon: Scale, label: lang === "ar" ? "وثيقة الشراكة والعقد" : "Partnership Agreement" },
   ];
 
   return (
@@ -797,6 +793,149 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                     </button>
                   </div>
                 </motion.form>
+              ) : activeSettingsTab === "legal" ? (
+                <motion.div
+                  key="legal"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-8"
+                >
+                  {/* Agreement Status Banner */}
+                  <div className="p-6 md:p-8 rounded-3xl bg-cream/40 border border-primary/10 shadow-xs space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
+                          <Scale className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-heading font-black text-primary">
+                            {lang === "ar" ? "وثيقة الشراكة والعقد المعتمد" : "Artisan Partnership Agreement"}
+                          </h3>
+                          <p className="text-xs text-charcoal/60 font-medium">
+                            {lang === "ar" ? "السجل الرقمي الرسمي لعقد متجرك مع منصة جيفتيزان" : "Official digital audit record of your agreement with Giftisan"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold self-start sm:self-auto">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                        <span>{lang === "ar" ? "ساري وموثق إلكترونياً" : "Active & Verified"}</span>
+                      </div>
+                    </div>
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                      <div className="p-4 rounded-2xl bg-white border border-primary/10 space-y-1">
+                        <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
+                          {lang === "ar" ? "إصدار العقد المعتمد" : "Agreement Version"}
+                        </p>
+                        <p className="text-sm font-black text-primary font-mono">
+                          {artisan.termsVersion || "2026-v1"}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-white border border-primary/10 space-y-1">
+                        <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
+                          {lang === "ar" ? "تاريخ التوثيق الرقمي" : "Accepted Timestamp"}
+                        </p>
+                        <p className="text-xs font-bold text-primary">
+                          {artisan.termsAcceptedAt
+                            ? new Date(artisan.termsAcceptedAt).toLocaleDateString(
+                                lang === "ar" ? "ar-EG" : "en-US",
+                                { year: "numeric", month: "short", day: "numeric" }
+                              )
+                            : (lang === "ar" ? "موسم 2026 (مؤسس)" : "2026 Season (Founding)")}
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-white border border-primary/10 space-y-1">
+                        <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
+                          {lang === "ar" ? "نسبة العمولة المتفق عليها" : "Agreed Commission"}
+                        </p>
+                        <p className="text-sm font-black text-emerald-700">
+                          {lang === "ar" ? "0% (برنامج المؤسسين)" : "0% (Founding Program)"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Guaranteed Maker Rights Recap */}
+                  <div className="space-y-4">
+                    <h4 className="text-base font-bold text-primary">
+                      {lang === "ar" ? "حقوقك وضماناتك الأساسية كصانع في جيفتيزان:" : "Core Protections Guaranteed Under This Agreement:"}
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                        <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                        <div className="space-y-0.5 text-xs">
+                          <p className="font-bold text-primary">
+                            {lang === "ar" ? "ملكية فكرية كاملة 100%" : "100% Intellectual Property"}
+                          </p>
+                          <p className="text-charcoal/60 leading-relaxed">
+                            {lang === "ar" ? "تحتفظ بكامل ملكية تصاميمك وحرفتك واسم ورشتك دون أي تنازل." : "You retain absolute ownership of all original craft designs and studio marks."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                        <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                        <div className="space-y-0.5 text-xs">
+                          <p className="font-bold text-primary">
+                            {lang === "ar" ? "حماية من إرجاع القطع المنفذة بالطلب" : "Custom Order Protection"}
+                          </p>
+                          <p className="text-charcoal/60 leading-relaxed">
+                            {lang === "ar" ? "القطع المنقوشة أو المصنوعة خصيصاً لا يمكن إرجاعها لمجرد تغيير رأي العميل." : "Personalized and bespoke pieces are strictly exempt from change-of-mind returns."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                        <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                        <div className="space-y-0.5 text-xs">
+                          <p className="font-bold text-primary">
+                            {lang === "ar" ? "دورة تحويل أسبوعية آمنة" : "7-Day Escrow Payouts"}
+                          </p>
+                          <p className="text-charcoal/60 leading-relaxed">
+                            {lang === "ar" ? "تُحوّل أرباحك بأمان إلى إنستاباي أو فودافون كاش بعد تأكيد التسليم." : "Funds are released directly to your InstaPay or mobile wallet 7 days post-delivery."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                        <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                        <div className="space-y-0.5 text-xs">
+                          <p className="font-bold text-primary">
+                            {lang === "ar" ? "استلام شحن مريح من الورشة" : "Doorstep Courier Pickup"}
+                          </p>
+                          <p className="text-charcoal/60 leading-relaxed">
+                            {lang === "ar" ? "مندوبو شركات الشحن يستلمون الطرود المغلفة مباشرة من عنوانك." : "Partner couriers collect safely boxed parcels right at your door or studio."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                    <p className="text-xs text-charcoal/70">
+                      {lang === "ar"
+                        ? "يمكنك في أي وقت مراجعة بنود العقد كاملة أو طباعة نسخة رسمية مختومة لملف ورشتك."
+                        : "You can review the full terms or print an official stamped PDF copy anytime."}
+                    </p>
+
+                    <Link
+                      href={`/${lang}/artisan-terms`}
+                      target="_blank"
+                      className="w-full sm:w-auto shrink-0 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>{lang === "ar" ? "عرض وطباعة العقد كاملاً" : "View & Print Full Contract"}</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </motion.div>
               ) : null}
 
             </AnimatePresence>

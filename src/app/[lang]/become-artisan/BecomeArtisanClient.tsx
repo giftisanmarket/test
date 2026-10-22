@@ -41,6 +41,10 @@ import {
   Tag,
   Shapes,
   Headphones,
+  Scale,
+  FileText,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { FaInstagram } from "react-icons/fa6";
 import { cn, slugify, stripEmojis } from "@/lib/utils";
@@ -104,6 +108,8 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const wizardRef = useRef<HTMLDivElement>(null);
   const shopNameInputRef = useRef<HTMLInputElement>(null);
@@ -277,6 +283,15 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
       return;
     }
 
+    if (!agreedToTerms) {
+      toast.error(
+        isAr
+          ? "يرجى قراءة والموافقة على عقد وشروط انضمام الحرفيين لإطلاق متجرك."
+          : "Please review and agree to the Artisan Agreement to launch your shop."
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -300,6 +315,8 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
         phoneNumber: cleanPhone,
         instagram: cleanInsta,
         brandColor: formData.brandColor,
+        agreedToTerms: true,
+        termsVersion: "2026-v1",
       });
 
       if (res.success) {
@@ -800,6 +817,76 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                       </div>
                     </div>
 
+                    {/* Artisan Partnership Agreement Acceptance Card */}
+                    <div className="p-4 sm:p-5 rounded-2xl bg-white border border-primary/15 shadow-xs space-y-3.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Scale className="w-4 h-4 text-accent" />
+                          <h4 className="text-xs sm:text-sm font-black text-primary">
+                            {dict?.artisan_terms?.agreement_card_title || (isAr ? "عقد وشروط انضمام الحرفيين" : "Artisan Partnership Agreement")}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20">
+                          {dict?.artisan_terms?.agreement_card_badge || (isAr ? "إلزامي لإطلاق المتجر" : "Required for Launch")}
+                        </span>
+                      </div>
+
+                      {/* Brief Key Guarantees */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-charcoal/70 bg-cream/40 p-2.5 rounded-xl border border-primary/5">
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                          <span>{isAr ? "عمولة 0% لموسم 2026" : "0% Founding Commission"}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                          <span>{isAr ? "صناعة يدوية أصيلة فقط" : "100% Handcrafted Pieces"}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                          <span>{isAr ? "استلام شحن من باب ورشتك" : "Doorstep Courier Pickup"}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                          <span>{isAr ? "تحويل أسبوعي عبر إنستاباي" : "Weekly InstaPay Payouts"}</span>
+                        </div>
+                      </div>
+
+                      {/* Agreement Checkbox & Modal Trigger */}
+                      <div className="pt-1 space-y-2">
+                        <label className="flex items-start gap-3 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={agreedToTerms}
+                            onChange={(e) => setAgreedToTerms(e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded text-accent border-primary/30 focus:ring-accent/20 accent-[#DA7B5A] cursor-pointer shrink-0"
+                          />
+                          <span className="text-xs text-charcoal/90 font-medium leading-relaxed">
+                            {dict?.artisan_terms?.agreement_checkbox || (isAr ? "أقر بأنني قرأت وفهمت وأوافق على عقد وشروط انضمام الحرفيين في جيفتيزان." : "I have read, understood, and agree to the Giftisan Artisan Agreement & Seller Terms.")}
+                          </span>
+                        </label>
+
+                        <div className="flex items-center gap-3 ps-7 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setShowTermsModal(true)}
+                            className="font-bold text-accent hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>{dict?.artisan_terms?.review_contract || (isAr ? "قراءة بنود العقد كاملة" : "Read Full Contract")}</span>
+                          </button>
+                          <span className="text-charcoal/30">•</span>
+                          <Link
+                            href={`/${lang}/artisan-terms`}
+                            target="_blank"
+                            className="text-charcoal/60 hover:text-primary flex items-center gap-1 transition-colors"
+                          >
+                            <span>{isAr ? "فتح في صفحة جديدة" : "Open in new tab"}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Launch Reassurance Badge */}
                     <div className="p-3 sm:p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-200/60 flex items-start sm:items-center gap-2.5 sm:gap-3 text-emerald-950">
                       <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
@@ -1018,6 +1105,110 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
       </section>
 
       <Footer dict={dict} />
+
+      {/* Full Artisan Agreement Modal */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
+            onClick={() => setShowTermsModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl max-h-[85vh] bg-cream rounded-3xl border border-primary/20 shadow-2xl flex flex-col overflow-hidden text-charcoal"
+            >
+              {/* Modal Header */}
+              <div className="p-5 sm:p-6 border-b border-primary/10 flex items-center justify-between gap-3 bg-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-primary/5 flex items-center justify-center text-accent">
+                    <Scale className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-primary leading-tight">
+                      {dict?.artisan_terms?.modal_title || (isAr ? "عقد اتفاقية شراكة الحرفيين في جيفتيزان" : "Giftisan Artisan Partnership Agreement")}
+                    </h3>
+                    <p className="text-[11px] text-charcoal/60">
+                      {dict?.artisan_terms?.effective_badge || (isAr ? "الشروط المعتمدة لموسم 2026" : "Official 2026 Vendor Terms")}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTermsModal(false)}
+                  className="w-8 h-8 rounded-full bg-cream border border-primary/10 flex items-center justify-center text-charcoal/60 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Scrollable Content */}
+              <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm leading-relaxed text-charcoal/80">
+                <div className="p-3.5 bg-primary/5 rounded-2xl border border-primary/10 text-xs text-primary font-medium">
+                  {dict?.artisan_terms?.description}
+                </div>
+
+                {/* 8 Articles preview in modal */}
+                {[
+                  { title: dict?.artisan_terms?.section1_title, desc: dict?.artisan_terms?.section1_desc },
+                  { title: dict?.artisan_terms?.section2_title, desc: dict?.artisan_terms?.section2_desc },
+                  { title: dict?.artisan_terms?.section3_title, desc: dict?.artisan_terms?.section3_desc },
+                  { title: dict?.artisan_terms?.section4_title, desc: dict?.artisan_terms?.section4_desc },
+                  { title: dict?.artisan_terms?.section5_title, desc: dict?.artisan_terms?.section5_desc },
+                  { title: dict?.artisan_terms?.section6_title, desc: dict?.artisan_terms?.section6_desc },
+                  { title: dict?.artisan_terms?.section7_title, desc: dict?.artisan_terms?.section7_desc },
+                  { title: dict?.artisan_terms?.section8_title, desc: dict?.artisan_terms?.section8_desc },
+                ].map((sec, i) => (
+                  <div key={i} className="p-3.5 rounded-xl bg-white border border-primary/10 space-y-1.5">
+                    <h5 className="font-bold text-primary text-xs sm:text-sm">{sec.title}</h5>
+                    <p className="text-[11px] sm:text-xs text-charcoal/70 leading-relaxed">{sec.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 sm:p-5 border-t border-primary/10 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
+                <Link
+                  href={`/${lang}/artisan-terms`}
+                  target="_blank"
+                  className="text-xs text-charcoal/60 hover:text-primary flex items-center gap-1 transition-colors"
+                >
+                  <span>{isAr ? "فتح النسخة الكاملة القابلة للطباعة" : "Open printable version"}</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsModal(false)}
+                    className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-primary/15 text-charcoal/70 font-bold text-xs hover:bg-cream transition-colors cursor-pointer"
+                  >
+                    {dict?.artisan_terms?.modal_close || (isAr ? "إغلاق" : "Close")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAgreedToTerms(true);
+                      setShowTermsModal(false);
+                      toast.success(isAr ? "تم تأكيد موافقتك على عقد الشراكة" : "Agreement accepted");
+                    }}
+                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-accent text-white font-bold text-xs hover:bg-accent-light active:scale-95 transition-all shadow-md shadow-accent/20 cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{dict?.artisan_terms?.modal_agree || (isAr ? "أوافق على بنود العقد" : "I Accept & Agree")}</span>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

@@ -41,7 +41,7 @@ export default async function StudioPage({
 
   // Basic Auth Check
   if (!session?.user) {
-    redirect(`/login?callbackUrl=/${lang}/studio`);
+    redirect(`/${lang}/login?callbackUrl=/${lang}/studio`);
   }
 
   // Admins can view any studio, Artisans can only view their own
@@ -79,7 +79,7 @@ export default async function StudioPage({
     if (!userExists) {
       console.error(`[Studio] CRITICAL: User record ${targetUserId} not found in database! Session might be stale.`);
       // Sign out or redirect to login to refresh session
-      redirect(`/login?callbackUrl=/${lang}/studio`);
+      redirect(`/${lang}/login?callbackUrl=/${lang}/studio`);
     }
 
     console.log(`[Studio] User record found: ${userExists.email}. Auto-creating/verifying profile...`);

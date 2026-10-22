@@ -65,6 +65,7 @@ import { GrowthTab } from "./studio/growth-tab";
 import { PaymentTab } from "./studio/payment-tab";
 import { ReviewsTab } from "./studio/reviews-tab";
 import { SettingsTab } from "./studio/settings-tab";
+import { useIsNative } from "@/lib/native";
 
 
 interface StudioClientProps {
@@ -78,6 +79,7 @@ interface StudioClientProps {
 }
 
 export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview = false, dict, lang }: StudioClientProps) {
+  const isNative = useIsNative();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showMask, setShowMask] = useState(true);
@@ -252,7 +254,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
   return (
     <>
       <div>
-        <main className="no-print max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-4 md:py-6">
+        <main className={cn("no-print max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-4 md:py-6", isNative && "pb-32")}>
 
           <AnimatePresence>
             {productToDelete && (

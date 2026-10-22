@@ -375,13 +375,46 @@ export default async function CategoriesPage({ params }: { params: Promise<{ lan
 
 
 
+  const masterProducts = await prisma.product.findMany({
+    where: {
+      status: "APPROVED",
+      artisan: {
+        status: "APPROVED"
+      }
+    },
+    take: 24,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      price: true,
+      images: true,
+      category: true,
+      artisan: {
+        select: {
+          studioName: true,
+          slug: true
+        }
+      }
+    },
+    orderBy: [
+      { isFeatured: "desc" },
+      { createdAt: "desc" }
+    ]
+  });
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <CategoriesClient categories={categories} dict={dict} />
+      <CategoriesClient
+        categories={categories}
+        dict={dict}
+        lang={lang}
+        masterProducts={masterProducts}
+      />
     </>
   );
 }

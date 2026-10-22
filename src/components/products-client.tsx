@@ -9,7 +9,9 @@ import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { useFavorites } from "@/context/favorites-context";
 import { cn } from "@/lib/utils";
 import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useFilterPersistence } from "@/lib/use-filter-persistence";
+import { useIsNative, registerNativeBackHandler } from "@/lib/native";
 
 interface ProductsClientProps {
   initialProducts: any[];
@@ -18,6 +20,7 @@ interface ProductsClientProps {
 }
 
 export function ProductsClient({ initialProducts, dict, lang }: ProductsClientProps) {
+  const isNative = useIsNative();
   const { toggleFavorite, isFavorite } = useFavorites();
   
   const isAr = lang === "ar" || dict?.common?.home === "الرئيسية" || dict?.common?.search?.includes("ابحث");
@@ -71,27 +74,41 @@ export function ProductsClient({ initialProducts, dict, lang }: ProductsClientPr
 
   // Measure exact bottom of sticky navbar to ensure flawless alignment without overlap
   useEffect(() => {
+    const getHeaderElement = () => {
+      return (
+        document.querySelector("header.sticky, header[class*='sticky'], .sticky nav, nav, header")?.closest(".sticky, header") ||
+        document.querySelector("header, .sticky")
+      ) as HTMLElement | null;
+    };
+
     const updateStickyTop = () => {
-      const navContainer = document.querySelector("nav")?.closest(".sticky") as HTMLElement;
-      if (navContainer) {
-        setStickyTop(navContainer.offsetHeight);
+      const headerEl = getHeaderElement();
+      if (headerEl) {
+        setStickyTop(headerEl.offsetHeight);
       }
     };
 
     updateStickyTop();
+    const timer = setTimeout(updateStickyTop, 100);
     window.addEventListener("resize", updateStickyTop);
 
     let observer: ResizeObserver | null = null;
-    const navContainer = document.querySelector("nav")?.closest(".sticky");
-    if (navContainer && typeof ResizeObserver !== "undefined") {
+    const headerEl = getHeaderElement();
+    if (headerEl && typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(updateStickyTop);
-      observer.observe(navContainer);
+      observer.observe(headerEl);
     }
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("resize", updateStickyTop);
       observer?.disconnect();
     };
+  }, []);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   // Prevent background scroll when mobile filter drawer is open
@@ -104,6 +121,15 @@ export function ProductsClient({ initialProducts, dict, lang }: ProductsClientPr
     return () => {
       document.body.style.overflow = "unset";
     };
+  }, [isMobileDrawerOpen]);
+
+  // Handle Android hardware back button to dismiss filter drawer
+  useEffect(() => {
+    if (!isMobileDrawerOpen) return;
+    return registerNativeBackHandler(() => {
+      setIsMobileDrawerOpen(false);
+      return true;
+    });
   }, [isMobileDrawerOpen]);
 
   // Close dropdown on outside click or Escape key
@@ -249,7 +275,12 @@ export function ProductsClient({ initialProducts, dict, lang }: ProductsClientPr
       <div
         ref={toolbarRef}
         style={stickyTop !== null ? { top: `${stickyTop}px` } : undefined}
-        className="sticky top-[105px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2.5 md:py-3 border-y border-primary/5 mb-6 md:mb-8 transition-all"
+        className={cn(
+          "sticky z-30 bg-[#FDFCF0]/95 backdrop-blur-md py-2 md:py-3 border-y border-primary/10 transition-all",
+          isNative
+            ? "top-[calc(3.5rem+env(safe-area-inset-top,0px))] mb-3"
+            : "top-[56px] md:top-[124px] mb-6 md:mb-8"
+        )}
       >
         <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           
@@ -722,9 +753,10 @@ export function ProductsClient({ initialProducts, dict, lang }: ProductsClientPr
       </section>
 
       {/* Mobile Filter & Sort Bottom Sheet Drawer */}
-      <AnimatePresence>
-        {isMobileDrawerOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden">
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isMobileDrawerOpen && (
+            <div className="fixed inset-0 z-[100] md:hidden">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -933,7 +965,7 @@ export function ProductsClient({ initialProducts, dict, lang }: ProductsClientPr
               </div>
 
               {/* Sticky Drawer Footer: Apply / View Count */}
-              <div className="p-4 border-t border-primary/10 bg-cream/90 backdrop-blur-sm">
+              <div className="p-4 pb-safe border-t border-primary/10 bg-cream/90 backdrop-blur-sm">
                 <button
                   type="button"
                   onClick={() => setIsMobileDrawerOpen(false)}
@@ -949,7 +981,9 @@ export function ProductsClient({ initialProducts, dict, lang }: ProductsClientPr
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       <Footer dict={dict} />
     </main>

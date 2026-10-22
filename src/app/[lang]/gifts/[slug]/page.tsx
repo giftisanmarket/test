@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getProductsByCategory } from "@/lib/actions";
 import { SITE_URL } from "@/lib/constants";
 import { getDictionary, hasLocale } from "../../dictionaries";
@@ -13,6 +13,11 @@ const VALID_SLUGS: RecipientSlug[] = [
   "for-friends",
   "for-kids",
   "all",
+  "anniversary",
+  "wedding",
+  "birthday",
+  "ramadan",
+  "home-decor",
 ];
 
 const META_MAP: Record<RecipientSlug, { titleEn: string; titleAr: string; descEn: string; descAr: string }> = {
@@ -52,6 +57,36 @@ const META_MAP: Record<RecipientSlug, { titleEn: string; titleAr: string; descEn
     descEn: "Safe, imaginative Montessori wooden blocks and hand-knit plush dolls for kids.",
     descAr: "ألعاب خشبية تعليمية آمنة وعرائس كروشيه يدوية تشعل خيال ومرح الأطفال.",
   },
+  "anniversary": {
+    titleEn: "Handcrafted Anniversary Gifts | Heirloom Keepsakes & Custom Sets | Giftisan Egypt",
+    titleAr: "هدايا الذكرى السنوية وعيد الزواج | تذكارات محفورة وأطقم راقية | جيفتيزان مصر",
+    descEn: "Celebrate your milestone with bespoke handcrafted anniversary gifts from Egyptian artisans.",
+    descAr: "احتفل بأجمل الذكريات مع هدايا سنوية مصنوعة يدوياً خصيصاً لكما بأيدي حرفيين مصريين.",
+  },
+  "wedding": {
+    titleEn: "Handcrafted Wedding & Engagement Gifts | Custom Trays & Keepsakes | Giftisan Egypt",
+    titleAr: "هدايا الزفاف والخطوبة | صواني شبكة وتذكارات عرسان راقية | جيفتيزان مصر",
+    descEn: "Cherish forever with handcrafted engagement trays, custom rings boxes, and wedding keepsakes.",
+    descAr: "وثق أجمل البدايات بصواني شبكة وتذكارات عرسان صنعت خصيصاً لتوثيق الفرحة.",
+  },
+  "home-decor": {
+    titleEn: "Housewarming & Home Decor Gifts | Handmade Ceramics & Woodwork | Giftisan Egypt",
+    titleAr: "هدايا المنزل والديكور ومباركة البيت | فخار وأخشاب طبيعية راقية | جيفتيزان مصر",
+    descEn: "Warm up any home with unique handcrafted ceramics, wooden trays, and artisanal decor.",
+    descAr: "قطع ديكور فريدة، فخار يدوي، وصواني خشبية تضفي دفئاً وجمالاً على كل زاوية في البيت.",
+  },
+  "birthday": {
+    titleEn: "Unique Handmade Birthday Gifts | Personalized Surprises | Giftisan Egypt",
+    titleAr: "هدايا أعياد الميلاد | مفاجآت مبهجة وقطع مخصصة بالاسم | جيفتيزان مصر",
+    descEn: "Make birthdays unforgettable with curated, customizable gifts crafted by local artisans.",
+    descAr: "اجعل أعياد الميلاد استثنائية مع هدايا يدوية مخصصة ومبهجة صنعت بحب.",
+  },
+  "ramadan": {
+    titleEn: "Handcrafted Ramadan & Eid Gifts | Traditional Lanterns & Decor | Giftisan Egypt",
+    titleAr: "هدايا رمضان والأعياد | فوانيس صدفية، ديكورات إسلامية، ومباخر | جيفتيزان مصر",
+    descEn: "Celebrate holy occasions with authentic Egyptian copper lanterns, incense burners, and tableware.",
+    descAr: "استقبل المناسبات المباركة بفوانيس نحاسية يدوية، مباخر خزفية، وتحف إسلامية أصيلة.",
+  },
   "all": {
     titleEn: "All Handcrafted Gifts | Curated Egyptian Artisan Marketplace | Giftisan",
     titleAr: "جميع الهدايا الحرفية | تسوق هدايا يدوية أصلية من مصر | جيفتيزان",
@@ -66,9 +101,10 @@ export async function generateMetadata({
   params: Promise<{ lang: string; slug: string }>;
 }): Promise<Metadata> {
   const { lang, slug } = await params;
-  if (!hasLocale(lang) || !VALID_SLUGS.includes(slug as RecipientSlug)) return {};
+  const normalizedSlug = decodeURIComponent(slug).trim().replace(/\s*-\s*/g, "-") as RecipientSlug;
+  if (!hasLocale(lang) || !VALID_SLUGS.includes(normalizedSlug)) return {};
   const isAr = lang === "ar";
-  const validSlug = slug as RecipientSlug;
+  const validSlug = normalizedSlug;
   const meta = META_MAP[validSlug];
 
   const title = isAr ? meta.titleAr : meta.titleEn;
@@ -79,17 +115,17 @@ export async function generateMetadata({
     title,
     description,
     alternates: {
-      canonical: `${SITE_URL}/${lang}/gifts/${slug}`,
+      canonical: `${SITE_URL}/${lang}/gifts/${validSlug}`,
       languages: {
-        "en-US": `${SITE_URL}/en/gifts/${slug}`,
-        "ar-EG": `${SITE_URL}/ar/gifts/${slug}`,
-        "x-default": `${SITE_URL}/en/gifts/${slug}`,
+        "en-US": `${SITE_URL}/en/gifts/${validSlug}`,
+        "ar-EG": `${SITE_URL}/ar/gifts/${validSlug}`,
+        "x-default": `${SITE_URL}/en/gifts/${validSlug}`,
       },
     },
     openGraph: {
       title,
       description,
-      url: `${SITE_URL}/${lang}/gifts/${slug}`,
+      url: `${SITE_URL}/${lang}/gifts/${validSlug}`,
       images: [
         {
           url: ogImage,
@@ -118,7 +154,14 @@ export default async function RecipientGiftsPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { lang, slug } = await params;
-  if (!hasLocale(lang) || !VALID_SLUGS.includes(slug as RecipientSlug)) {
+  const normalizedSlug = decodeURIComponent(slug).trim().replace(/\s*-\s*/g, "-") as RecipientSlug;
+
+  // Auto-heal URLs with spaces or casing issues (e.g., "for -him" -> "for-him")
+  if (hasLocale(lang) && normalizedSlug !== slug && VALID_SLUGS.includes(normalizedSlug)) {
+    redirect(`/${lang}/gifts/${normalizedSlug}`);
+  }
+
+  if (!hasLocale(lang) || !VALID_SLUGS.includes(normalizedSlug)) {
     notFound();
   }
 
@@ -136,10 +179,12 @@ export default async function RecipientGiftsPage({
     }
   }
 
+  const initialOccasion = typeof resolvedSearchParams?.occasion === "string" ? resolvedSearchParams.occasion : undefined;
+
   const dict = await getDictionary(lang as any);
   const products = await getProductsByCategory("gifts");
 
-  const validSlug = slug as RecipientSlug;
+  const validSlug = normalizedSlug;
   const meta = META_MAP[validSlug];
   const isAr = lang === "ar";
 
@@ -179,6 +224,7 @@ export default async function RecipientGiftsPage({
         dict={dict}
         slug={validSlug}
         initialPrice={initialPrice}
+        initialOccasion={initialOccasion}
         lang={lang}
       />
     </>

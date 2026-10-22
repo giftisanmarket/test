@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Heart } from "lucide-react";
 import { BespokeImage } from "@/components/bespoke-image";
 import { useFavorites } from "@/context/favorites-context";
+import { triggerHaptic } from "@/lib/native";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -34,7 +35,7 @@ export function ProductCard({ product, dict }: ProductCardProps) {
 
   return (
     <div className="group cursor-pointer block">
-      <Link href={productUrl}>
+      <Link href={productUrl} onClick={() => triggerHaptic("light")}>
         <div className="relative aspect-square rounded-xl md:rounded-2xl overflow-hidden mb-2.5 shadow-sm hover:shadow-md transition-shadow border border-primary/5 bg-cream/20">
           <BespokeImage
             type="product"
@@ -52,17 +53,23 @@ export function ProductCard({ product, dict }: ProductCardProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                triggerHaptic("medium");
                 toggleFavorite(product);
               }}
               className={cn(
-                "p-1.5 md:p-2 rounded-full transition-all scale-95 active:scale-75 shadow-md",
+                "p-1.5 md:p-2 rounded-full transition-all duration-200 active:scale-75 shadow-md",
                 isFavorite(product.id)
                   ? "bg-red-50 text-red-500 opacity-100"
                   : "bg-white/90 backdrop-blur text-primary opacity-80 md:opacity-0 md:group-hover:opacity-100 hover:bg-white"
               )}
               aria-label="Save to favorites"
             >
-              <Heart className={cn("w-3.5 h-3.5 md:w-4 md:h-4", isFavorite(product.id) && "fill-current")} />
+              <Heart
+                className={cn(
+                  "w-3.5 h-3.5 md:w-4 md:h-4 transition-all duration-200",
+                  isFavorite(product.id) && "fill-current animate-heart-pop scale-110"
+                )}
+              />
             </button>
           </div>
 

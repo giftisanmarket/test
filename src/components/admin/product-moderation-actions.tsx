@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, X, ExternalLink, Star } from "lucide-react";
 import { updateProductStatus, toggleProductFeatured } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 import { toast } from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
 type ProductStatus = "PENDING" | "APPROVED" | "REJECTED" | "DRAFT";
@@ -29,6 +29,8 @@ export function ProductModerationActions({
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [reason, setReason] = useState("");
   const router = useRouter();
+  const params = useParams();
+  const lang = (params?.lang as string) || "en";
 
   const handleUpdateStatus = async (newStatus: ProductStatus, updateReason?: string) => {
     setIsLoading(true);
@@ -130,7 +132,9 @@ export function ProductModerationActions({
         </div>
 
         <Link 
-          href={`/products/${slug || productId}`}
+          href={`/${lang}/products/${slug || productId}`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="w-10 h-10 rounded-2xl bg-white text-primary/20 flex items-center justify-center hover:bg-primary hover:text-white transition-all border border-primary/5 shadow-sm"
         >
           <ExternalLink className="w-4 h-4" />

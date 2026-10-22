@@ -21,20 +21,35 @@ import {
   X,
   Compass,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { BespokeImage } from "@/components/bespoke-image";
 import { useFavorites } from "@/context/favorites-context";
+import { useIsNative, triggerHaptic, registerNativeBackHandler } from "@/lib/native";
 import { cn } from "@/lib/utils";
 import { useFilterPersistence } from "@/lib/use-filter-persistence";
 
-export type RecipientSlug = "for-her" | "for-him" | "for-mom" | "for-couples" | "for-friends" | "for-kids" | "all";
+export type RecipientSlug =
+  | "for-her"
+  | "for-him"
+  | "for-mom"
+  | "for-couples"
+  | "for-friends"
+  | "for-kids"
+  | "all"
+  | "anniversary"
+  | "wedding"
+  | "birthday"
+  | "ramadan"
+  | "home-decor";
 
 export interface RecipientGiftsClientProps {
   initialProducts: any[];
   dict: any;
   slug: RecipientSlug;
   initialPrice?: string;
+  initialOccasion?: string;
   lang: string;
 }
 
@@ -43,8 +58,10 @@ export function RecipientGiftsClient({
   dict,
   slug,
   initialPrice,
+  initialOccasion,
   lang,
 }: RecipientGiftsClientProps) {
+  const isNative = useIsNative();
   const { toggleFavorite, isFavorite } = useFavorites();
 
   const isAr = lang === "ar" || dict?.common?.home === "الرئيسية";
@@ -57,13 +74,32 @@ export function RecipientGiftsClient({
       case "for-her": return "her";
       case "for-him": return "him";
       case "for-mom": return "mom";
-      case "for-couples": return "couples";
+      case "for-couples":
+      case "anniversary":
+      case "wedding":
+        return "couples";
       case "for-friends": return "friends";
       case "for-kids": return "kids";
       case "all":
+      case "birthday":
+      case "ramadan":
+      case "home-decor":
       default:
         return "all";
     }
+  }, [slug]);
+
+  const defaultOccasion = useMemo(() => {
+    if (initialOccasion) return initialOccasion;
+    if (slug === "anniversary" || slug === "wedding") return "wedding";
+    if (slug === "birthday") return "birthday";
+    if (slug === "home-decor") return "housewarming";
+    return "ALL";
+  }, [slug, initialOccasion]);
+
+  const defaultCraft = useMemo(() => {
+    if (slug === "home-decor") return "home-decor";
+    return "ALL";
   }, [slug]);
 
   // Filter States
@@ -74,8 +110,8 @@ export function RecipientGiftsClient({
   const [selectedPriceRange, setSelectedPriceRange] = useState<string>(defaultPriceRange);
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "price-low" | "price-high">("popular");
   const [selectedRecipient, setSelectedRecipient] = useState<string>(recipientTarget);
-  const [selectedOccasion, setSelectedOccasion] = useState<string>("ALL");
-  const [selectedCraft, setSelectedCraft] = useState<string>("ALL");
+  const [selectedOccasion, setSelectedOccasion] = useState<string>(defaultOccasion);
+  const [selectedCraft, setSelectedCraft] = useState<string>(defaultCraft);
   const [openDropdown, setOpenDropdown] = useState<"price" | "sort" | "recipient" | "occasion" | "craft" | null>(null);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [stickyTop, setStickyTop] = useState<number | null>(null);
@@ -103,8 +139,8 @@ export function RecipientGiftsClient({
       showPicksOnly: false,
       selectedPriceRange: defaultPriceRange,
       selectedRecipient: recipientTarget,
-      selectedOccasion: "ALL",
-      selectedCraft: "ALL",
+      selectedOccasion: defaultOccasion,
+      selectedCraft: defaultCraft,
       sortBy: "popular" as const,
     },
     paramMapping: {
@@ -118,12 +154,19 @@ export function RecipientGiftsClient({
   });
   const dragControls = useDragControls();
 
-  // Measure navbar height for sticky toolbar
+  // Measure exact sticky header height to ensure zero gap on both native and web
   useEffect(() => {
+    const getHeaderElement = () => {
+      return (
+        document.querySelector("header.sticky, header[class*='sticky'], .sticky nav, nav")?.closest(".sticky, header") ||
+        document.querySelector("header.sticky, .sticky")
+      ) as HTMLElement | null;
+    };
+
     const updateStickyTop = () => {
-      const navContainer = document.querySelector("nav")?.closest(".sticky") as HTMLElement;
-      if (navContainer) {
-        setStickyTop(navContainer.offsetHeight);
+      const headerEl = getHeaderElement();
+      if (headerEl) {
+        setStickyTop(headerEl.offsetHeight);
       }
     };
 
@@ -131,16 +174,21 @@ export function RecipientGiftsClient({
     window.addEventListener("resize", updateStickyTop);
 
     let observer: ResizeObserver | null = null;
-    const navContainer = document.querySelector("nav")?.closest(".sticky");
-    if (navContainer && typeof ResizeObserver !== "undefined") {
+    const headerEl = getHeaderElement();
+    if (headerEl && typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(updateStickyTop);
-      observer.observe(navContainer);
+      observer.observe(headerEl);
     }
 
     return () => {
       window.removeEventListener("resize", updateStickyTop);
       observer?.disconnect();
     };
+  }, []);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   // Prevent background scroll when mobile filter drawer is open
@@ -153,6 +201,15 @@ export function RecipientGiftsClient({
     return () => {
       document.body.style.overflow = "unset";
     };
+  }, [isMobileDrawerOpen]);
+
+  // Handle Android hardware back button to dismiss filter drawer
+  useEffect(() => {
+    if (!isMobileDrawerOpen) return;
+    return registerNativeBackHandler(() => {
+      setIsMobileDrawerOpen(false);
+      return true;
+    });
   }, [isMobileDrawerOpen]);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -190,10 +247,12 @@ export function RecipientGiftsClient({
     { id: "ALL", label: isAr ? "جميع المناسبات" : "All Occasions" },
     { id: "birthday", label: isAr ? "أعياد الميلاد" : "Birthday" },
     { id: "wedding", label: isAr ? "الخطوبة والزفاف" : "Wedding & Engagement" },
+    { id: "anniversary", label: isAr ? "ذكرى سنوية ورومانسية" : "Anniversary" },
     { id: "mom", label: isAr ? "عيد الأم والتكريم" : "Mother's Day & Gratitude" },
     { id: "graduation", label: isAr ? "التخرج والنجاح" : "Graduation" },
     { id: "housewarming", label: isAr ? "مباركة البيت الجديد" : "Housewarming" },
     { id: "baby", label: isAr ? "السبوع والمواليد" : "Baby & Sebou'" },
+    { id: "ramadan", label: isAr ? "رمضان والأعياد المباركة" : "Ramadan & Eid" },
   ];
 
   const craftOptions = [
@@ -225,8 +284,8 @@ export function RecipientGiftsClient({
     setShowPicksOnly(false);
     setSelectedPriceRange(defaultPriceRange);
     setSelectedRecipient(slug === "all" ? "all" : recipientTarget);
-    setSelectedOccasion("ALL");
-    setSelectedCraft("ALL");
+    setSelectedOccasion(defaultOccasion);
+    setSelectedCraft(defaultCraft);
     setSortBy("popular");
     setOpenDropdown(null);
     clearPersistedFilters();
@@ -423,6 +482,18 @@ export function RecipientGiftsClient({
         ];
         return cat.includes("kids") || cat.includes("baby") || cat.includes("toys") || keywords.some(kw => textCorpus.includes(kw));
       }
+      case "anniversary": {
+        const keywords = [
+          "anniversary", "سنوية", "ذكرى", "عيد زواج", "تاريخ", "رومانسية", "حب", "كابلز", "couples", "love", "memory"
+        ];
+        return cat.includes("wedding") || cat.includes("couples") || keywords.some(kw => textCorpus.includes(kw));
+      }
+      case "ramadan": {
+        const keywords = [
+          "ramadan", "eid", "رمضان", "فانوس", "هلال", "مبخرة", "سبحة", "صلاة", "قرآن", "عيد", "بخور"
+        ];
+        return keywords.some(kw => textCorpus.includes(kw));
+      }
       default:
         return true;
     }
@@ -544,6 +615,31 @@ export function RecipientGiftsClient({
           title: hubDict.for_kids_title || (isAr ? "هدايا للأطفال" : "Gifts for Kids"),
           subtitle: hubDict.for_kids_desc || (isAr ? "ألعاب ومصنوعات خشبية وكروشيه تشعل خيالهم ومرحهم." : "Imaginative and fun—just like them."),
         };
+      case "anniversary":
+        return {
+          title: isAr ? "هدايا الذكرى السنوية وعيد الزواج" : "Anniversary Gifts & Keepsakes",
+          subtitle: isAr ? "احتفل بأجمل الذكريات مع هدايا سنوية وتذكارات محفورة بالاسم صنعت بحب." : "Celebrate enduring love with custom-crafted anniversary keepsakes.",
+        };
+      case "wedding":
+        return {
+          title: isAr ? "هدايا الزفاف والخطوبة" : "Wedding & Engagement Gifts",
+          subtitle: isAr ? "صواني شبكة وتذكارات عرسان وتطريز فاخر يوثق أجمل البدايات." : "Engagement trays, custom hoops, and bespoke keepsakes for the big day.",
+        };
+      case "home-decor":
+        return {
+          title: isAr ? "هدايا المنزل ومباركة البيت" : "Housewarming & Home Decor Gifts",
+          subtitle: isAr ? "فخار أسواني وأخشاب طبيعية وشموع تضفي دفئاً على كل بيت." : "Warm up any home with unique handcrafted ceramics, wooden trays, and decor.",
+        };
+      case "birthday":
+        return {
+          title: isAr ? "هدايا أعياد الميلاد" : "Birthday Gifts & Surprises",
+          subtitle: isAr ? "مفاجآت مبهجة وقطع يدوية مخصصة بالاسم تسعد قلوب أحبائك." : "Make birthdays truly special with customizable gifts crafted with heart.",
+        };
+      case "ramadan":
+        return {
+          title: isAr ? "هدايا رمضان والأعياد المباركة" : "Ramadan & Eid Gifts",
+          subtitle: isAr ? "فوانيس نحاسية يدوية ومباخر صدفية وديكورات إسلامية أصيلة." : "Traditional handmade lanterns, incense burners, and celebratory artisan crafts.",
+        };
       case "all":
       default:
         return {
@@ -560,7 +656,7 @@ export function RecipientGiftsClient({
       <Navbar dict={dict} />
 
       {/* Breadcrumbs Strip */}
-      <div className="bg-cream-dark/40 border-b border-primary/5 py-2.5">
+      <div className={cn("bg-cream-dark/40 border-b border-primary/5 py-2.5", isNative && "hidden md:block")}>
         <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-charcoal/60">
             <Link href={`/${lang}`} className="hover:text-primary transition-colors">
@@ -579,31 +675,44 @@ export function RecipientGiftsClient({
       </div>
 
       {/* Recipient Header */}
-      <section className="pt-6 sm:pt-8 2xl:pt-10 pb-4 sm:pb-5 w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <section className={cn(
+        "w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16",
+        isNative ? "pt-3 pb-2" : "pt-6 sm:pt-8 2xl:pt-10 pb-4 sm:pb-5"
+      )}>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 md:gap-4">
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl 2xl:text-5xl font-serif text-[#222222] font-normal tracking-tight">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <h1 className={cn(
+                "font-serif text-[#222222] font-normal tracking-tight",
+                isNative ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl md:text-4xl 2xl:text-5xl"
+              )}>
                 {pageMeta.title}
               </h1>
-              <span className="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary">
-                {filteredProducts.length} {isAr ? "هدية متاحة" : "gifts"}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary shrink-0">
+                {filteredProducts.length} {isAr ? "هدية" : "gifts"}
               </span>
             </div>
-            <p className="text-xs sm:text-sm 2xl:text-base text-charcoal/70 mt-1.5 font-normal max-w-2xl 2xl:max-w-3xl leading-relaxed">
-              {pageMeta.subtitle}
-            </p>
+            {pageMeta.subtitle && (
+              <p className={cn(
+                "text-charcoal/70 font-normal max-w-2xl 2xl:max-w-3xl leading-relaxed",
+                isNative ? "text-xs mt-1 line-clamp-2" : "text-xs sm:text-sm 2xl:text-base mt-1.5"
+              )}>
+                {pageMeta.subtitle}
+              </p>
+            )}
           </div>
 
           {/* Return to Full Gift Guide Link */}
-          <Link
-            href={`/${lang}/gifts`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-accent transition-colors self-start md:self-auto shrink-0 bg-white/80 border border-primary/10 px-3.5 py-1.5 rounded-full shadow-xs hover:border-primary/30"
-          >
-            <Compass className="w-3.5 h-3.5 text-accent" />
-            <span>{isAr ? "استكشف دليل الهدايا الكامل" : "Explore Gift Guide Hub"}</span>
-            <ArrowIcon className="w-3 h-3" />
-          </Link>
+          {!isNative && (
+            <Link
+              href={`/${lang}/gifts`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-accent transition-colors self-start md:self-auto shrink-0 bg-white/80 border border-primary/10 px-3.5 py-1.5 rounded-full shadow-xs hover:border-primary/30"
+            >
+              <Compass className="w-3.5 h-3.5 text-accent" />
+              <span>{isAr ? "استكشف دليل الهدايا الكامل" : "Explore Gift Guide Hub"}</span>
+              <ArrowIcon className="w-3 h-3" />
+            </Link>
+          )}
         </div>
       </section>
 
@@ -611,7 +720,12 @@ export function RecipientGiftsClient({
       <div
         ref={toolbarRef}
         style={stickyTop !== null ? { top: `${stickyTop}px` } : undefined}
-        className="sticky top-[105px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2.5 md:py-3 border-y border-primary/5 mb-6 md:mb-8 transition-all"
+        className={cn(
+          "sticky z-30 bg-[#FDFCF0]/95 backdrop-blur-md py-2 md:py-3 border-y border-primary/10 transition-all",
+          isNative
+            ? "top-[calc(3.5rem+env(safe-area-inset-top,0px))] mb-3"
+            : "top-[56px] md:top-[124px] mb-4 md:mb-8"
+        )}
       >
         <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           
@@ -619,7 +733,10 @@ export function RecipientGiftsClient({
           <div className="flex md:hidden items-center gap-2 w-full">
             <button
               type="button"
-              onClick={() => setIsMobileDrawerOpen(true)}
+              onClick={() => {
+                triggerHaptic("light");
+                setIsMobileDrawerOpen(true);
+              }}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border shadow-xs shrink-0 active:scale-95",
                 activeFiltersCount > 0
@@ -642,7 +759,10 @@ export function RecipientGiftsClient({
               {/* Quick Recipient Toggle: For Her */}
               <button
                 type="button"
-                onClick={() => setSelectedRecipient(prev => prev === "her" ? (slug === "all" ? "all" : recipientTarget) : "her")}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSelectedRecipient(prev => prev === "her" ? (slug === "all" ? "all" : recipientTarget) : "her");
+                }}
                 className={cn(
                   "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
                   selectedRecipient === "her"
@@ -656,7 +776,10 @@ export function RecipientGiftsClient({
               {/* Quick Recipient Toggle: For Him */}
               <button
                 type="button"
-                onClick={() => setSelectedRecipient(prev => prev === "him" ? (slug === "all" ? "all" : recipientTarget) : "him")}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSelectedRecipient(prev => prev === "him" ? (slug === "all" ? "all" : recipientTarget) : "him");
+                }}
                 className={cn(
                   "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
                   selectedRecipient === "him"
@@ -669,7 +792,10 @@ export function RecipientGiftsClient({
 
               <button
                 type="button"
-                onClick={() => setSelectedPriceRange(prev => prev === "UNDER_250" ? "ALL" : "UNDER_250")}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSelectedPriceRange(prev => prev === "UNDER_250" ? "ALL" : "UNDER_250");
+                }}
                 className={cn(
                   "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
                   selectedPriceRange === "UNDER_250"
@@ -682,7 +808,10 @@ export function RecipientGiftsClient({
 
               <button
                 type="button"
-                onClick={() => setSelectedPriceRange(prev => prev === "UNDER_500" ? "ALL" : "UNDER_500")}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setSelectedPriceRange(prev => prev === "UNDER_500" ? "ALL" : "UNDER_500");
+                }}
                 className={cn(
                   "flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
                   selectedPriceRange === "UNDER_500"
@@ -695,7 +824,10 @@ export function RecipientGiftsClient({
 
               <button
                 type="button"
-                onClick={() => setShowPicksOnly(!showPicksOnly)}
+                onClick={() => {
+                  triggerHaptic("light");
+                  setShowPicksOnly(!showPicksOnly);
+                }}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border shrink-0 active:scale-95",
                   showPicksOnly
@@ -710,11 +842,14 @@ export function RecipientGiftsClient({
               {activeFiltersCount > 0 && (
                 <button
                   type="button"
-                  onClick={resetAllFilters}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold text-accent bg-accent/10 border border-accent/20 shrink-0"
+                  onClick={() => {
+                    triggerHaptic("light");
+                    resetAllFilters();
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-bold text-accent bg-accent/10 border border-accent/20 shrink-0 active:scale-95"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>{hubDict.clear_filters || (isAr ? "إلغاء" : "Reset")}</span>
+                  <span>{hubDict.clear_filters || (isAr ? "إعادة ضبط" : "Clear all")}</span>
                 </button>
               )}
             </div>
@@ -1025,96 +1160,118 @@ export function RecipientGiftsClient({
 
           {/* Active Filter Chips Strip */}
           {activeFiltersCount > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pt-2.5 border-t border-primary/10 mt-2.5 animate-in fade-in duration-200">
-              <div className="text-[11px] font-bold text-charcoal/60 flex items-center gap-1 shrink-0">
-                <SlidersHorizontal className="w-3 h-3" />
-                <span>{isAr ? "الفلاتر النشطة:" : "Active filters:"}</span>
+            <div className="flex items-center gap-2 pt-2 border-t border-primary/10 mt-2 animate-in fade-in duration-200">
+              <div className="text-[11px] font-bold text-charcoal/70 flex items-center gap-1 shrink-0">
+                <SlidersHorizontal className="w-3 h-3 text-primary" />
+                <span className="hidden sm:inline">{isAr ? "الفلاتر النشطة:" : "Active filters:"}</span>
+                <span className="sm:hidden">{isAr ? "النشطة:" : "Active:"}</span>
               </div>
 
-              {/* Recipient chip */}
-              {isRecipientFilterActive && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20">
-                  <span>{recipientOptions.find(r => r.id === selectedRecipient)?.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRecipient(slug === "all" ? "all" : recipientTarget)}
-                    className="hover:bg-primary/20 rounded-full p-0.5 transition-colors ms-0.5"
-                    aria-label="Remove recipient filter"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
+              {/* Scrollable strip of chips on mobile, wrapping on desktop */}
+              <div className="flex-1 flex md:flex-wrap items-center gap-1.5 overflow-x-auto md:overflow-x-visible scrollbar-none py-0.5">
+                {/* Recipient chip */}
+                {isRecipientFilterActive && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold border border-primary/20 shrink-0 whitespace-nowrap">
+                    <span>{recipientOptions.find(r => r.id === selectedRecipient)?.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setSelectedRecipient(slug === "all" ? "all" : recipientTarget);
+                      }}
+                      className="hover:bg-primary/20 rounded-full p-0.5 transition-colors ms-0.5 active:scale-90"
+                      aria-label="Remove recipient filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
 
-              {/* Occasion chip */}
-              {selectedOccasion !== "ALL" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
-                  <span>{occasionOptions.find(o => o.id === selectedOccasion)?.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedOccasion("ALL")}
-                    className="hover:bg-accent/20 rounded-full p-0.5 transition-colors ms-0.5"
-                    aria-label="Remove occasion filter"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
+                {/* Occasion chip */}
+                {selectedOccasion !== "ALL" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20 shrink-0 whitespace-nowrap">
+                    <span>{occasionOptions.find(o => o.id === selectedOccasion)?.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setSelectedOccasion("ALL");
+                      }}
+                      className="hover:bg-accent/20 rounded-full p-0.5 transition-colors ms-0.5 active:scale-90"
+                      aria-label="Remove occasion filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
 
-              {/* Craft chip */}
-              {selectedCraft !== "ALL" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold border border-teal-200">
-                  <span>{craftOptions.find(c => c.id === selectedCraft)?.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedCraft("ALL")}
-                    className="hover:bg-teal-200/50 rounded-full p-0.5 transition-colors ms-0.5"
-                    aria-label="Remove craft filter"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
+                {/* Craft chip */}
+                {selectedCraft !== "ALL" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-800 text-xs font-semibold border border-teal-200 shrink-0 whitespace-nowrap">
+                    <span>{craftOptions.find(c => c.id === selectedCraft)?.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setSelectedCraft("ALL");
+                      }}
+                      className="hover:bg-teal-200/50 rounded-full p-0.5 transition-colors ms-0.5 active:scale-90"
+                      aria-label="Remove craft filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
 
-              {/* Price chip */}
-              {selectedPriceRange !== "ALL" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
-                  <span>{priceRanges.find(r => r.id === selectedPriceRange)?.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPriceRange("ALL")}
-                    className="hover:bg-amber-200/50 rounded-full p-0.5 transition-colors ms-0.5"
-                    aria-label="Remove price filter"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
+                {/* Price chip */}
+                {selectedPriceRange !== "ALL" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200 shrink-0 whitespace-nowrap">
+                    <span>{priceRanges.find(r => r.id === selectedPriceRange)?.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setSelectedPriceRange("ALL");
+                      }}
+                      className="hover:bg-amber-200/50 rounded-full p-0.5 transition-colors ms-0.5 active:scale-90"
+                      aria-label="Remove price filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
 
-              {/* Giftisan's Picks chip */}
-              {showPicksOnly && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20">
-                  <Sparkles className="w-3 h-3 text-accent" />
-                  <span>{isAr ? "مختارات جيفتيزان" : "Giftisan's Picks"}</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPicksOnly(false)}
-                    className="hover:bg-accent/20 rounded-full p-0.5 transition-colors ms-0.5"
-                    aria-label="Remove Giftisan's Picks filter"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
+                {/* Giftisan's Picks chip */}
+                {showPicksOnly && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-accent/10 text-accent text-xs font-semibold border border-accent/20 shrink-0 whitespace-nowrap">
+                    <Sparkles className="w-3 h-3 text-accent" />
+                    <span>{isAr ? "مختارات جيفتيزان" : "Giftisan's Picks"}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic("light");
+                        setShowPicksOnly(false);
+                      }}
+                      className="hover:bg-accent/20 rounded-full p-0.5 transition-colors ms-0.5 active:scale-90"
+                      aria-label="Remove Giftisan's Picks filter"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+              </div>
 
               {/* Clear all button */}
               <button
                 type="button"
-                onClick={resetAllFilters}
-                className="inline-flex items-center gap-1 text-xs font-bold text-accent hover:underline ms-auto px-2 py-0.5"
+                onClick={() => {
+                  triggerHaptic("light");
+                  resetAllFilters();
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-accent bg-accent/10 hover:bg-accent/15 px-2.5 py-1 rounded-full shrink-0 transition-all active:scale-95"
               >
                 <RotateCcw className="w-3 h-3" />
-                <span>{hubDict.clear_filters || (isAr ? "مسح الكل" : "Clear all")}</span>
+                <span>{hubDict.clear_filters || (isAr ? "إعادة ضبط" : "Clear all")}</span>
               </button>
             </div>
           )}
@@ -1271,9 +1428,10 @@ export function RecipientGiftsClient({
       </section>
 
       {/* Mobile Filter & Sort Bottom Sheet Drawer */}
-      <AnimatePresence>
-        {isMobileDrawerOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden">
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isMobileDrawerOpen && (
+            <div className="fixed inset-0 z-[100] md:hidden">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1498,7 +1656,7 @@ export function RecipientGiftsClient({
               </div>
 
               {/* Drawer Bottom Sticky Action */}
-              <div className="p-4 bg-white/95 backdrop-blur-md border-t border-primary/10">
+              <div className="p-4 pb-safe bg-white/95 backdrop-blur-md border-t border-primary/10">
                 <button
                   type="button"
                   onClick={() => setIsMobileDrawerOpen(false)}
@@ -1514,7 +1672,9 @@ export function RecipientGiftsClient({
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       <Footer dict={dict} />
     </main>

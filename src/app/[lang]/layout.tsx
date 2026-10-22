@@ -8,6 +8,8 @@ import dynamic from "next/dynamic";
 const CartDrawer = dynamic(() => import("@/components/cart-drawer").then((mod) => mod.CartDrawer));
 const AuthDrawer = dynamic(() => import("@/components/auth-drawer").then((mod) => mod.AuthDrawer));
 import { NativeBottomNav } from "@/components/native-bottom-nav";
+import { NativePullToRefresh } from "@/components/native-pull-to-refresh";
+import { NativePageTransition } from "@/components/native/native-page-transition";
 import Script from "next/script";
 
 const outfit = Outfit({
@@ -34,6 +36,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  themeColor: "#FDFCF0",
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
@@ -254,7 +257,11 @@ export default async function RootLayout({
             <FavoritesProvider>
               <CartProvider>
                 <AuthModalProvider>
-                  {children}
+                  <NativePullToRefresh>
+                    <NativePageTransition>
+                      {children}
+                    </NativePageTransition>
+                  </NativePullToRefresh>
                   <CartDrawer dict={dict} lang={lang} />
                   <AuthDrawer dict={dict} lang={lang} />
                   <NativeBottomNav dict={dict} lang={lang} />

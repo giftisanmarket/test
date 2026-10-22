@@ -153,6 +153,10 @@ model ArtisanProfile {
   payoutAddress   String?       // E.g., mobile number for Vodafone Cash or InstaPay handle
   payoutName      String?       // Beneficiary full name
 
+  // Terms & Partnership Agreement Legal Audit Trail
+  termsAcceptedAt DateTime?
+  termsVersion    String?       // E.g., "2026-v1"
+
   // Financial ledger relationships
   balances        ArtisanBalance[]
   transactions    ArtisanTransaction[]

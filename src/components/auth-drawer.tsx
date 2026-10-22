@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuthModal } from "@/context/auth-modal-context";
 import { login, signUp } from "@/lib/actions";
 import { useSession, signIn as socialSignIn } from "next-auth/react";
@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { X, Lock, Mail, User, Eye, EyeOff, ArrowRight, Loader2, Sparkles, CheckCircle2 } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { isNativePlatform, performGoogleSignIn, triggerHaptic } from "@/lib/native";
+import { isNativePlatform, performGoogleSignIn, triggerHaptic, registerNativeBackHandler } from "@/lib/native";
 import toast from "react-hot-toast";
 import Image from "next/image";
 
@@ -22,6 +22,15 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
   const { update } = useSession();
   const router = useRouter();
   const dragControls = useDragControls();
+
+  // Close auth modal on Android hardware back button
+  useEffect(() => {
+    if (!isOpen) return;
+    return registerNativeBackHandler(() => {
+      closeAuthModal();
+      return true;
+    });
+  }, [isOpen, closeAuthModal]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

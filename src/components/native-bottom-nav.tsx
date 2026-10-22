@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Home, Compass, Heart, ShoppingBag, User, Store } from "lucide-react";
+import { Home, Search, Heart, ShoppingCart, User, Store } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useFavorites } from "@/context/favorites-context";
@@ -39,13 +39,13 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
       pathname === `/${lang}` ||
       pathname === `/${lang}/`);
 
-  const isExploreActive =
+  const isShopActive =
     !isCartOpen &&
     (pathname.includes("/categories") ||
       pathname.includes("/category") ||
       pathname.includes("/gifts") ||
-      pathname.includes("/products") ||
       pathname.includes("/search") ||
+      pathname.includes("/products") ||
       pathname.includes("/artisans"));
 
   const isFavoritesActive = !isCartOpen && pathname.includes("/favorites");
@@ -61,6 +61,7 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
     action();
   };
 
+  // Exact 5-tab Etsy App order: Home -> Shop -> Favorites -> You -> Cart
   const navItems = [
     {
       id: "home",
@@ -75,10 +76,10 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
         }),
     },
     {
-      id: "explore",
-      label: dict?.common?.categories || (isArabic ? "استكشف" : "Explore"),
-      icon: Compass,
-      isActive: isExploreActive,
+      id: "shop",
+      label: isArabic ? "تسوق" : (dict?.common?.shop || "Shop"),
+      icon: Search,
+      isActive: isShopActive,
       badge: null,
       onClick: () =>
         handleTabClick(() => {
@@ -97,14 +98,6 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
           if (isCartOpen) setIsCartOpen(false);
           router.push(`/${lang}/favorites`);
         }),
-    },
-    {
-      id: "cart",
-      label: dict?.common?.cart || (isArabic ? "السلة" : "Cart"),
-      icon: ShoppingBag,
-      isActive: isCartOpen,
-      badge: totalItems > 0 ? totalItems : null,
-      onClick: () => handleTabClick(() => setIsCartOpen(!isCartOpen)),
     },
     isArtisan
       ? {
@@ -135,14 +128,23 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
               }
             }),
         },
+    {
+      id: "cart",
+      label: dict?.common?.cart || (isArabic ? "السلة" : "Cart"),
+      icon: ShoppingCart,
+      isActive: isCartOpen,
+      badge: totalItems > 0 ? totalItems : null,
+      onClick: () => handleTabClick(() => setIsCartOpen(!isCartOpen)),
+    },
   ];
 
   return (
     <nav
       aria-label="App Navigation"
-      className="fixed bottom-0 start-0 end-0 z-[95] bg-[#FDFCF0]/95 backdrop-blur-xl border-t border-primary/10 shadow-[0_-8px_30px_rgba(6,78,59,0.06)] pb-safe select-none transition-transform"
+      className="fixed bottom-3 inset-x-0 z-[95] px-3 pointer-events-none select-none transition-all duration-300 pb-safe"
     >
-      <div className="max-w-md mx-auto px-2 h-16 flex items-center justify-around">
+      {/* Etsy Floating Frosted Capsule Dock - Giftisan Cream & Forest Green Style */}
+      <div className="max-w-[410px] mx-auto h-[62px] px-2 bg-[#FDFCF0]/95 backdrop-blur-2xl rounded-full border border-primary/15 shadow-[0_12px_36px_rgba(6,78,59,0.14)] flex items-center justify-around pointer-events-auto ring-1 ring-primary/5">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -151,34 +153,31 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
               type="button"
               onClick={item.onClick}
               className={cn(
-                "relative flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-all active:scale-90 group",
+                "relative flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 transition-all duration-150 active:scale-90 group",
                 item.isActive ? "text-primary" : "text-primary/45 hover:text-primary/75"
               )}
             >
               <div className="relative flex items-center justify-center">
                 <Icon
                   className={cn(
-                    "w-5 h-5 transition-transform duration-200",
-                    item.isActive ? "scale-110 stroke-[2.4]" : "stroke-[1.8]"
+                    "w-[21px] h-[21px] transition-transform duration-200",
+                    item.isActive ? "scale-105 stroke-[2.4] fill-primary" : "stroke-[1.9]"
                   )}
                 />
                 {item.badge !== null && (
-                  <span className="absolute -top-1.5 -end-2.5 min-w-[16px] h-[16px] px-1 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border border-cream shadow-xs animate-in zoom-in-75">
+                  <span className="absolute -top-1.5 -end-2.5 min-w-[17px] h-[17px] px-1 bg-[#D97706] text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-[#FDFCF0] shadow-xs animate-in zoom-in-75">
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}
               </div>
               <span
                 className={cn(
-                  "text-[10px] tracking-tight font-medium transition-colors",
-                  item.isActive ? "font-bold text-primary" : "text-primary/60"
+                  "text-[10px] tracking-tight transition-colors duration-150",
+                  item.isActive ? "font-black text-primary" : "font-medium text-primary/55"
                 )}
               >
                 {item.label}
               </span>
-              {item.isActive && (
-                <span className="w-1 h-1 rounded-full bg-accent mt-0.5 animate-in zoom-in-50" />
-              )}
             </button>
           );
         })}

@@ -31,12 +31,14 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut } from "next-auth/react";
+import { performSignOut, useIsNative } from "@/lib/native";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 import { retryPaymentAction, cancelPendingOrderAction, submitRefundRequestAction } from "@/lib/actions";
 import { useParams } from "next/navigation";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { toast } from "react-hot-toast";
+import { NativeProfileView } from "@/components/native/native-profile-view";
 
 interface ProfileClientProps {
   user: any;
@@ -57,8 +59,10 @@ const getTrackingUrl = (carrier?: string, trackingNumber?: string) => {
 };
 
 export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
+  const isNative = useIsNative();
   const params = useParams();
-  const isAr = params?.lang === "ar";
+  const lang = (params?.lang as string) || "en";
+  const isAr = lang === "ar";
   const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
   const [retryError, setRetryError] = useState<string | null>(null);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
@@ -252,10 +256,24 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
 
   return (
     <main className="min-h-screen bg-cream">
-      <Navbar dict={dict} />
+      {isNative ? (
+        <NativeProfileView
+          user={user}
+          orders={orders}
+          dict={dict}
+          lang={lang}
+          onRetryPayment={handleRetryPayment}
+          onCancelOrder={executeCancelOrder}
+          onOpenRefundModal={openRefundModal}
+          retryingOrderId={retryingOrderId}
+          cancellingOrderId={cancellingOrderId}
+        />
+      ) : (
+        <>
+          <Navbar dict={dict} />
 
-      <div className="container mx-auto px-4 pt-24 md:pt-32 pb-20">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 md:gap-12">
+          <div className="container mx-auto px-4 pt-24 md:pt-32 pb-20">
+            <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 md:gap-12">
           
           {/* Sidebar / Profile Header */}
           <aside className="lg:col-span-4 space-y-6 md:space-y-8">
@@ -312,7 +330,7 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                     </Link>
                   )}
                   <button 
-                    onClick={() => signOut({ callbackUrl: "/" })}
+                    onClick={() => performSignOut(lang)}
                     className="flex items-center justify-between w-full p-3 md:p-4 bg-red-50 rounded-2xl text-red-500 font-bold hover:bg-red-500 hover:text-white transition-all group text-sm cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
@@ -673,7 +691,9 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
       </div>
     </div>
 
-      <Footer dict={dict} />
+          <Footer dict={dict} />
+        </>
+      )}
 
       <ConfirmationModal
         isOpen={orderToCancel !== null}

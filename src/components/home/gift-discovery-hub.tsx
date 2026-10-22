@@ -104,7 +104,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "هدايا مفرحة ومجهزة لتسعد قلوب أصحاب العيد",
       icon: Cake,
       color: "from-amber-500/10 to-amber-600/5 text-amber-700 border-amber-200/60",
-      href: `/${lang}/search?q=birthday`,
+      href: `/${lang}/gifts/all?occasion=birthday`,
     },
     {
       id: "wedding",
@@ -114,7 +114,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "صواني شبكة، علب دبل محفورة، وتذكارات كتب الكتاب",
       icon: Heart,
       color: "from-rose-500/10 to-rose-600/5 text-rose-700 border-rose-200/60",
-      href: `/${lang}/search?q=wedding`,
+      href: `/${lang}/gifts/all?occasion=wedding`,
     },
     {
       id: "graduation",
@@ -124,7 +124,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "تذكارات محفورة بالاسم والتواريخ لتخليد التخرج",
       icon: GraduationCap,
       color: "from-emerald-500/10 to-emerald-600/5 text-emerald-800 border-emerald-200/60",
-      href: `/${lang}/search?q=graduation`,
+      href: `/${lang}/gifts/all?occasion=graduation`,
     },
     {
       id: "baby",
@@ -134,7 +134,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "منسوجات قطنية ناعمة، تابلوهات بالاسم، وتذكارات السبوع",
       icon: Baby,
       color: "from-sky-500/10 to-sky-600/5 text-sky-800 border-sky-200/60",
-      href: `/${lang}/search?q=baby`,
+      href: `/${lang}/gifts/all?occasion=baby`,
     },
     {
       id: "housewarming",
@@ -144,7 +144,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "خزف يدوي، مجموعات كونكريت، وديكورات حائط أصيلة",
       icon: Home,
       color: "from-stone-500/10 to-stone-600/5 text-stone-700 border-stone-200/60",
-      href: `/${lang}/category/home-and-living`,
+      href: `/${lang}/gifts/all?occasion=housewarming`,
     },
     {
       id: "anniversary",
@@ -154,7 +154,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "حلي منقوشة بالتواريخ وصناديق لحفظ أجمل الذكريات",
       icon: Sparkles,
       color: "from-purple-500/10 to-purple-600/5 text-purple-800 border-purple-200/60",
-      href: `/${lang}/gifts/for-couples`,
+      href: `/${lang}/gifts/all?occasion=anniversary`,
     },
   ];
 

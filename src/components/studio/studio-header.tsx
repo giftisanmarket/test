@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { performSignOut } from "@/lib/native";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { 
   LayoutDashboard, 
@@ -360,7 +361,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                       type="button"
                       onClick={() => {
                         setIsProfileOpen(false);
-                        signOut({ callbackUrl: `/${lang}` });
+                        performSignOut(lang);
                       }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-red-50 text-red-600 font-bold text-xs transition-colors"
                     >
@@ -522,7 +523,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                   type="button"
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    signOut({ callbackUrl: `/${lang}` });
+                    performSignOut(lang);
                   }}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-red-600 bg-red-50/50 hover:bg-red-50 font-bold text-xs transition-colors"
                 >

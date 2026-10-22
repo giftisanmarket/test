@@ -29,7 +29,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ lang: 
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect(`/login?callbackUrl=/${lang}/profile`);
+    redirect(`/${lang}/login?callbackUrl=/${lang}/profile`);
   }
 
   // Fetch fresh user data from database to ensure updates are reflected

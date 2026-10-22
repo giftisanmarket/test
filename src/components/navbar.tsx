@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package } from "lucide-react";
+import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useNotifications } from "./notification-provider";
 import { useFavorites } from "@/context/favorites-context";
 import { useAuthModal } from "@/context/auth-modal-context";
-import { useIsNative, triggerHaptic } from "@/lib/native";
+import { useIsNative, triggerHaptic, performSignOut, shareNativeContent } from "@/lib/native";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -427,22 +427,29 @@ export function Navbar({ dict }: { dict?: any }) {
   };
 
   if (isNative) {
-    const isSubPage = pathname !== "/" && pathname !== "/en" && pathname !== "/ar" && pathname !== "/en/" && pathname !== "/ar/";
     const isArabic = pathname.startsWith("/ar");
+    const isProductDetail = Boolean(pathname.match(/\/(products|product)\/[^/]+/));
+    const isSubPage = pathname !== "/" && pathname !== "/en" && pathname !== "/ar" && pathname !== "/en/" && pathname !== "/ar/";
+    const searchPlaceholder = isArabic ? "ابحث عن شيء مميز..." : "Search for something special";
 
-    return (
-      <header className="sticky top-0 z-40 w-full pt-safe bg-[#FDFCF0]/95 backdrop-blur-md border-b border-primary/10 shadow-xs select-none">
-        <div className="px-3.5 h-14 flex items-center justify-between gap-2.5">
-          {/* Leading: Back Button on subpage OR Giftisan Brand on home */}
-          {isSubPage ? (
+    // 1. Sleek Etsy-style top action bar on Product Detail Pages
+    if (isProductDetail) {
+      return (
+        <header className="sticky top-0 z-40 w-full pt-safe bg-[#FDFCF0]/95 backdrop-blur-xl border-b border-primary/10 shadow-xs select-none transition-colors">
+          <div className="px-3.5 py-2 flex items-center justify-between gap-2.5">
+            {/* Back Button */}
             <button
               type="button"
               onClick={() => {
                 triggerHaptic("light");
-                router.back();
+                if (typeof window !== "undefined" && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push(isArabic ? "/ar/products" : "/en/products");
+                }
               }}
               aria-label="Go back"
-              className="p-2 -ms-1 text-primary hover:bg-primary/5 rounded-full active:scale-95 transition-all cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center text-primary bg-white/80 hover:bg-white rounded-full border border-primary/10 shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0"
             >
               {isArabic ? (
                 <ChevronRight className="w-5 h-5 stroke-[2.5]" />
@@ -450,28 +457,99 @@ export function Navbar({ dict }: { dict?: any }) {
                 <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
               )}
             </button>
-          ) : (
-            <Link
-              href="/"
-              onClick={() => triggerHaptic("light")}
-              className="flex items-center gap-1.5 shrink-0"
-            >
-              <div className="relative w-7 h-7 overflow-hidden rounded-md shadow-xs">
-                <Image
-                  src="/icon.png"
-                  alt="Giftisan Logo"
-                  fill
-                  className="object-cover"
-                  sizes="28px"
-                />
-              </div>
-              <span className="text-lg font-heading font-black text-primary tracking-tighter">
+
+            {/* Subtle Brand Center */}
+            <div className="flex-1 flex items-center justify-center min-w-0 px-2">
+              <span className="text-sm font-heading font-black text-primary tracking-tight truncate">
                 Giftisan
               </span>
-            </Link>
+            </div>
+
+            {/* Trailing Actions: Quick Search + Native Share + Cart Drawer */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Quick Search Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("light");
+                  router.push(isArabic ? "/ar/search" : "/en/search");
+                }}
+                aria-label="Search"
+                className="w-10 h-10 flex items-center justify-center text-primary/75 hover:text-primary bg-white/80 hover:bg-white rounded-full border border-primary/10 shadow-2xs active:scale-95 transition-all cursor-pointer"
+              >
+                <Search className="w-4 h-4 stroke-[2.2]" />
+              </button>
+
+              {/* Native OS Share Sheet */}
+              <button
+                type="button"
+                onClick={async () => {
+                  triggerHaptic("light");
+                  const pageTitle = typeof document !== "undefined" ? document.title : "Giftisan";
+                  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+                  const shared = await shareNativeContent({
+                    title: pageTitle,
+                    url: pageUrl,
+                    dialogTitle: isArabic ? "مشاركة هذا المنتج" : "Share this handcrafted gift",
+                  });
+                  if (!shared) {
+                    toast.success(isArabic ? "تم نسخ الرابط بنجاح" : "Link copied to clipboard", {
+                      icon: <CheckCircle2 className="w-5 h-5 text-accent" />,
+                    });
+                  }
+                }}
+                aria-label="Share"
+                className="w-10 h-10 flex items-center justify-center text-primary/75 hover:text-primary bg-white/80 hover:bg-white rounded-full border border-primary/10 shadow-2xs active:scale-95 transition-all cursor-pointer"
+              >
+                <Share2 className="w-4 h-4 stroke-[2.2]" />
+              </button>
+
+              {/* Cart Drawer Trigger with Live Badge */}
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic("medium");
+                  setIsCartOpen(true);
+                }}
+                aria-label="Cart"
+                className="relative w-10 h-10 flex items-center justify-center text-primary bg-white/80 hover:bg-white rounded-full border border-primary/10 shadow-2xs active:scale-95 transition-all cursor-pointer"
+              >
+                <ShoppingCart className="w-4 h-4 stroke-[2.2]" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 bg-accent text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                    {totalItems > 99 ? "99+" : totalItems}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    return (
+      <header className="sticky top-0 z-40 w-full pt-safe bg-[#FDFCF0]/95 backdrop-blur-xl border-b border-primary/10 shadow-xs select-none transition-colors">
+        <div className="px-3.5 py-2.5 flex items-center gap-2.5">
+          {/* Back Button on subpages */}
+          {isSubPage && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic("light");
+                router.back();
+              }}
+              aria-label="Go back"
+              className="p-2 -ms-1 text-primary hover:bg-primary/5 rounded-full active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              {isArabic ? (
+                <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+              ) : (
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              )}
+            </button>
           )}
 
-          {/* Search Pill (Etsy Style) */}
+          {/* Full-Width Etsy Search Pill - Giftisan Brand Style */}
           <div ref={mobileSearchRef} className="flex-1 relative">
             <form onSubmit={handleSearch} className="w-full relative group">
               <input
@@ -482,38 +560,42 @@ export function Navbar({ dict }: { dict?: any }) {
                   setShowResults(true);
                 }}
                 onFocus={() => setShowResults(true)}
-                placeholder={d.common.search_placeholder}
-                className="w-full py-2 ps-9 pe-8 bg-white border border-primary/15 rounded-full focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent text-primary text-xs font-medium placeholder:text-primary/40 shadow-xs transition-all"
+                placeholder={searchPlaceholder}
+                className="w-full h-11 ps-10 pe-16 bg-white border border-primary/20 rounded-full focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent text-primary text-[13px] font-medium placeholder:text-primary/45 shadow-[0_2px_8px_rgba(6,78,59,0.05)] transition-all"
               />
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-charcoal/40 w-3.5 h-3.5 group-focus-within:text-accent transition-colors" />
-              {searchQuery && (
+              <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 text-primary/50 w-4 h-4 group-focus-within:text-accent transition-colors pointer-events-none" />
+
+              {/* Trailing Controls: Clear button + Compact Language Pill */}
+              <div className="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                    className="text-primary/40 hover:text-primary p-1 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-charcoal/30 hover:text-charcoal p-1 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerHaptic("light");
+                    const nextLang = pathname.startsWith("/en") ? "ar" : "en";
+                    document.cookie = `NEXT_LOCALE=${nextLang}; path=/; max-age=31536000`;
+                    const nextPath = pathname.replace(/^\/(en|ar)/, `/${nextLang}`);
+                    router.push(nextPath);
+                  }}
+                  className="px-2.5 py-0.5 rounded-full bg-primary/5 hover:bg-primary/10 border border-primary/10 text-[10px] font-bold text-primary active:scale-95 transition-all"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  {pathname.startsWith("/en") ? "عربي" : "EN"}
                 </button>
-              )}
+              </div>
+
               {renderSearchOverlay(true)}
             </form>
-          </div>
-
-          {/* Trailing: Language Switcher Pill */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                triggerHaptic("light");
-                const nextLang = pathname.startsWith("/en") ? "ar" : "en";
-                document.cookie = `NEXT_LOCALE=${nextLang}; path=/; max-age=31536000`;
-                const nextPath = pathname.replace(/^\/(en|ar)/, `/${nextLang}`);
-                router.push(nextPath);
-              }}
-              className="px-2.5 py-1 rounded-full bg-primary/5 border border-primary/10 text-[11px] font-black uppercase tracking-wider text-primary hover:text-accent active:scale-95 transition-all cursor-pointer"
-            >
-              {pathname.startsWith("/en") ? "عربي" : "EN"}
-            </button>
           </div>
         </div>
       </header>
@@ -768,7 +850,7 @@ export function Navbar({ dict }: { dict?: any }) {
                           type="button"
                           onClick={() => {
                             setIsProfileMenuOpen(false);
-                            signOut({ callbackUrl: "/" });
+                            performSignOut(pathname.startsWith("/ar") ? "ar" : "en");
                           }}
                           className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 transition-colors"
                         >
@@ -1076,7 +1158,7 @@ export function Navbar({ dict }: { dict?: any }) {
               </>
             ) : (
               <button
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={() => performSignOut(pathname.startsWith("/ar") ? "ar" : "en")}
                 className="w-full h-12 border border-red-100 bg-red-50/50 text-red-500 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-all"
               >
                 <LogOut className="w-4 h-4" />

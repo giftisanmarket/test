@@ -12,7 +12,7 @@ import { useCart } from "@/context/cart-context";
 import { useFavorites } from "@/context/favorites-context";
 import { addReview, trackProductView } from "@/lib/actions";
 import { useSession } from "next-auth/react";
-import { useIsNative, triggerHaptic } from "@/lib/native";
+import { useIsNative, triggerHaptic, shareNativeContent } from "@/lib/native";
 import { BespokeImage } from "./bespoke-image";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
@@ -77,6 +77,40 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
       setSelectedVariant(match || null);
     }
   }, [selectedOptions, product.variants]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && product?.id) {
+      try {
+        // Legacy ID list for backwards compatibility
+        const stored = JSON.parse(localStorage.getItem("giftisan_recently_viewed") || "[]");
+        const updated = [product.id, ...stored.filter((id: string) => id !== product.id)].slice(0, 10);
+        localStorage.setItem("giftisan_recently_viewed", JSON.stringify(updated));
+
+        // Rich browsing history item for Etsy-style continue browsing shelf
+        const storedRich = JSON.parse(localStorage.getItem("giftisan_recent_views_v1") || "[]");
+        const richItem = {
+          id: product.id,
+          slug: product.slug || null,
+          name: product.name,
+          price: product.price,
+          category: product.category || null,
+          image: product.images?.[0] || "/placeholder.jpg",
+          artisanName: product.artisan?.studioName || product.artisan?.user?.name || null,
+          viewedAt: Date.now(),
+        };
+        const updatedRich = [richItem, ...storedRich.filter((item: any) => item.id !== product.id)].slice(0, 16);
+        localStorage.setItem("giftisan_recent_views_v1", JSON.stringify(updatedRich));
+
+        // Category affinity increment for personalized feed ranking
+        if (product.category) {
+          const catKey = product.category.toLowerCase().trim();
+          const storedAffinities = JSON.parse(localStorage.getItem("giftisan_category_affinities_v1") || "{}");
+          storedAffinities[catKey] = (storedAffinities[catKey] || 0) + 1;
+          localStorage.setItem("giftisan_category_affinities_v1", JSON.stringify(storedAffinities));
+        }
+      } catch {}
+    }
+  }, [product]);
 
   const isOptionValueAvailable = (optionName: string, value: string) => {
     if (!product.variants || product.variants.length === 0) return true;
@@ -182,23 +216,17 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
   };
 
   const handleShare = async () => {
-    const shareData = {
-      title: `${product.name} | Giftisan product`,
-      text: `I found this incredible '${product.name}' by ${product.artisan.studioName || product.artisan.user.name} on Giftisan. Check it out!`,
+    const shared = await shareNativeContent({
+      title: `${product.name} | Giftisan`,
+      text: `I found this incredible '${product.name}' by ${product.artisan?.studioName || product.artisan?.user?.name || "Egyptian Artisan"} on Giftisan. Check it out!`,
       url: window.location.href,
-    };
+      dialogTitle: dict?.product?.share || "Share Gift",
+    });
 
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success(dict.product.share_copied, {
-          icon: <CheckCircle2 className="w-5 h-5 text-accent" />,
-        });
-      }
-    } catch (err) {
-      console.error("Error sharing:", err);
+    if (!shared) {
+      toast.success(dict?.product?.share_copied || (isAr ? "تم نسخ الرابط بنجاح" : "Link copied to clipboard"), {
+        icon: <CheckCircle2 className="w-5 h-5 text-accent" />,
+      });
     }
   };
 
@@ -243,12 +271,15 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
   };
 
   return (
-    <main className="min-h-screen bg-cream overflow-x-hidden">
+    <main className={cn("min-h-screen bg-cream overflow-x-hidden", isNative ? "pb-32" : "pb-20 md:pb-0")}>
       <Navbar dict={dict} />
 
-      <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16 py-6 md:py-12 2xl:py-16">
-        {/* Navigation Breadcrumb & Back Action */}
-        <div className="mb-6 flex items-center justify-between gap-4">
+      <div className={cn(
+        "w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 lg:px-12 2xl:px-12 3xl:px-16",
+        isNative ? "pt-2.5 pb-6 md:py-12 2xl:py-16" : "py-6 md:py-12 2xl:py-16"
+      )}>
+        {/* Navigation Breadcrumb & Back Action (Hidden on Native Mobile where the top bar handles it) */}
+        <div className={cn("mb-4 md:mb-6 flex items-center justify-between gap-4", isNative && "hidden sm:flex")}>
           <button
             type="button"
             onClick={() => {
@@ -434,14 +465,14 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                     <ArrowRight className="w-6 h-6 rtl:rotate-180 ltr:rotate-0" />
                   </button>
                   
-                  {/* Dots Indicator */}
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                  {/* Floating Frosted Dots Indicator */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-10 px-3 py-1 rounded-full bg-[#1F2937]/40 backdrop-blur-md shadow-xs">
                     {product.images.map((_: any, i: number) => (
                       <div
                         key={i}
                         className={cn(
-                          "w-1.5 h-1.5 rounded-full transition-all duration-300",
-                          selectedImage === i ? "bg-primary w-4" : "bg-primary/20"
+                          "rounded-full transition-all duration-300",
+                          selectedImage === i ? "bg-white w-4 h-1.5 shadow-xs" : "bg-white/50 w-1.5 h-1.5"
                         )}
                       />
                     ))}
@@ -506,7 +537,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                   <span className="text-xs md:text-sm text-charcoal/40 font-medium">({product.reviews?.length || 0} {dict.product.reviews})</span>
                 </div>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className={cn("flex gap-2 shrink-0", isNative && "hidden")}>
                 <button
                   onClick={handleShare}
                   className="p-2.5 md:p-3 border border-primary/10 rounded-full hover:bg-white transition-all text-primary group"
@@ -749,7 +780,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                   triggerHaptic("medium");
                   const ok = executeAddToCart(true);
                   if (ok) {
-                    window.location.href = "/checkout";
+                    window.location.href = `/${lang}/checkout`;
                   }
                 }}
                 disabled={(displayStock || 0) <= 0}

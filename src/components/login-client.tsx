@@ -35,6 +35,8 @@ export function LoginClient({ dict }: { dict: any }) {
     }
   }, [loginError, signupSuccess, emailVerified, dict.auth]);
 
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -47,7 +49,7 @@ export function LoginClient({ dict }: { dict: any }) {
        });
        setIsLoading(false);
     } else if (res?.success) {
-      window.location.href = "/";
+      window.location.href = callbackUrl;
     }
   };
 
@@ -107,7 +109,7 @@ export function LoginClient({ dict }: { dict: any }) {
           <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
             <button 
               type="button"
-              onClick={() => performGoogleSignIn("/")}
+              onClick={() => performGoogleSignIn(callbackUrl)}
               className="w-full py-4 md:py-5 bg-white border border-primary/10 text-primary font-bold rounded-xl md:rounded-2xl hover:bg-primary/5 transition-all shadow-sm flex items-center justify-center gap-3 group text-xs md:text-base active:scale-95"
             >
               <FcGoogle className="w-5 h-5 md:w-6 md:h-6" />

@@ -37,7 +37,7 @@ export default function RecipientGiftsLoading() {
       </section>
 
       {/* Sticky Filter Toolbar Skeleton */}
-      <div className="sticky top-[105px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2.5 md:py-3 border-y border-primary/5 mb-6 md:mb-8">
+      <div className="sticky top-[56px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2 md:py-3 border-y border-primary/10 mb-4 md:mb-8">
         <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           {/* Mobile Toolbar */}
           <div className="flex md:hidden items-center gap-2 w-full overflow-hidden">

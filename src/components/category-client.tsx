@@ -11,7 +11,9 @@ import { Heart, SlidersHorizontal, ArrowUpDown, CheckCircle2, ChevronDown, Spark
 import { useFavorites } from "@/context/favorites-context";
 import { cn } from "@/lib/utils";
 import { GiftsHubClient } from "@/components/gifts-hub-client";
+import { createPortal } from "react-dom";
 import { useFilterPersistence } from "@/lib/use-filter-persistence";
+import { useIsNative, registerNativeBackHandler } from "@/lib/native";
 
 interface CategoryClientProps {
   slug: string;
@@ -28,6 +30,7 @@ export function CategoryClient({ slug, initialProducts, dict }: CategoryClientPr
 }
 
 function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps) {
+  const isNative = useIsNative();
   const { toggleFavorite, isFavorite } = useFavorites();
   const params = useParams();
   const lang = (params?.lang as string) || (dict?.common?.home === "الرئيسية" ? "ar" : "en");
@@ -76,27 +79,41 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
 
   // Measure exact bottom of sticky navbar to ensure flawless alignment without overlap
   useEffect(() => {
+    const getHeaderElement = () => {
+      return (
+        document.querySelector("header.sticky, header[class*='sticky'], .sticky nav, nav, header")?.closest(".sticky, header") ||
+        document.querySelector("header, .sticky")
+      ) as HTMLElement | null;
+    };
+
     const updateStickyTop = () => {
-      const navContainer = document.querySelector("nav")?.closest(".sticky") as HTMLElement;
-      if (navContainer) {
-        setStickyTop(navContainer.offsetHeight);
+      const headerEl = getHeaderElement();
+      if (headerEl) {
+        setStickyTop(headerEl.offsetHeight);
       }
     };
 
     updateStickyTop();
+    const timer = setTimeout(updateStickyTop, 100);
     window.addEventListener("resize", updateStickyTop);
 
     let observer: ResizeObserver | null = null;
-    const navContainer = document.querySelector("nav")?.closest(".sticky");
-    if (navContainer && typeof ResizeObserver !== "undefined") {
+    const headerEl = getHeaderElement();
+    if (headerEl && typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(updateStickyTop);
-      observer.observe(navContainer);
+      observer.observe(headerEl);
     }
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("resize", updateStickyTop);
       observer?.disconnect();
     };
+  }, []);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
   // Prevent background scroll when mobile filter drawer is open
@@ -109,6 +126,15 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
     return () => {
       document.body.style.overflow = "unset";
     };
+  }, [isMobileDrawerOpen]);
+
+  // Handle Android hardware back button to dismiss filter drawer
+  useEffect(() => {
+    if (!isMobileDrawerOpen) return;
+    return registerNativeBackHandler(() => {
+      setIsMobileDrawerOpen(false);
+      return true;
+    });
   }, [isMobileDrawerOpen]);
 
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -183,7 +209,7 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
   const categoryName = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, " ");
 
   return (
-    <main className="min-h-screen bg-cream">
+    <main className={cn("min-h-screen bg-cream", isNative && "pb-32")}>
       <Navbar dict={dict} />
 
       {/* Category Header */}
@@ -223,7 +249,12 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
       <div
         ref={toolbarRef}
         style={stickyTop !== null ? { top: `${stickyTop}px` } : undefined}
-        className="sticky top-[105px] md:top-[124px] z-30 bg-cream/95 backdrop-blur-md py-2.5 md:py-3 border-y border-primary/5 mb-6 md:mb-8 transition-all"
+        className={cn(
+          "sticky z-30 bg-[#FDFCF0]/95 backdrop-blur-md py-2 md:py-3 border-y border-primary/10 transition-all",
+          isNative
+            ? "top-[calc(3.5rem+env(safe-area-inset-top,0px))] mb-3"
+            : "top-[56px] md:top-[124px] mb-6 md:mb-8"
+        )}
       >
         <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
           
@@ -630,9 +661,10 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
       </section>
 
       {/* Mobile Filter & Sort Bottom Sheet Drawer */}
-      <AnimatePresence>
-        {isMobileDrawerOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden">
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isMobileDrawerOpen && (
+            <div className="fixed inset-0 z-[100] md:hidden">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -817,7 +849,7 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
               </div>
 
               {/* Sticky Drawer Footer: Apply / View Count */}
-              <div className="p-4 border-t border-primary/10 bg-cream/90 backdrop-blur-sm">
+              <div className="p-4 pb-safe border-t border-primary/10 bg-cream/90 backdrop-blur-sm">
                 <button
                   type="button"
                   onClick={() => setIsMobileDrawerOpen(false)}
@@ -833,7 +865,9 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
 
       <Footer dict={dict} />
     </main>

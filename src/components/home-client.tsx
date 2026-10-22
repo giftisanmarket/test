@@ -5,6 +5,8 @@ import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { TrustBar } from "@/components/home/trust-bar";
 import { GiftDiscoveryHub } from "@/components/home/gift-discovery-hub";
+import { NativeHomeView } from "@/components/native/native-home-view";
+import { useIsNative } from "@/lib/native";
 import { ArtisanSpotlightRow } from "@/components/home/artisan-spotlight-row";
 import { ProductShelfRow, ShelfProduct } from "@/components/home/product-shelf-row";
 import { MissionStatementBar } from "@/components/home/mission-statement-bar";
@@ -12,6 +14,7 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { Footer } from "@/components/footer";
 
 interface HomeClientProps {
+  allProducts?: ShelfProduct[];
   trendingProducts?: ShelfProduct[];
   bagProducts?: ShelfProduct[];
   homeDecorProducts?: ShelfProduct[];
@@ -29,6 +32,7 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({
+  allProducts = [],
   trendingProducts,
   bagProducts = [],
   homeDecorProducts = [],
@@ -42,6 +46,7 @@ export default function HomeClient({
   products,
 }: HomeClientProps) {
   const isArabic = dict?.common?.home === "الرئيسية" || dict?.common?.search?.includes("ابحث");
+  const isNative = useIsNative();
 
   // Fallback for trending products if legacy props were passed
   const mainTrending = trendingProducts || featuredProducts || products || [];
@@ -56,6 +61,23 @@ export default function HomeClient({
       }
     }
   }, []);
+
+  if (isNative) {
+    return (
+      <NativeHomeView
+        allProducts={allProducts}
+        trendingProducts={mainTrending}
+        bagProducts={bagProducts}
+        homeDecorProducts={homeDecorProducts}
+        jewelryProducts={jewelryProducts}
+        crochetApparelProducts={crochetApparelProducts}
+        giftSetProducts={giftSetProducts}
+        featuredArtisans={featuredArtisans}
+        artisanCount={artisanCount}
+        dict={dict}
+      />
+    );
+  }
 
   return (
     <main className="min-h-screen bg-cream relative overflow-hidden selection:bg-primary/20">

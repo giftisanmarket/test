@@ -23,6 +23,7 @@ import { toggleFollowAction, checkFollowStatus } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { useFilterPersistence } from "@/lib/use-filter-persistence";
+import { useIsNative } from "@/lib/native";
 
 interface ArtisanClientProps {
   artisan: any;
@@ -31,6 +32,7 @@ interface ArtisanClientProps {
 }
 
 export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps) {
+  const isNative = useIsNative();
   const { data: session } = useSession();
   const [isFollowing, setIsFollowing] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -147,7 +149,7 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
   };
 
   return (
-    <main className="min-h-screen bg-cream">
+    <main className={cn("min-h-screen bg-cream", isNative && "pb-32")}>
       <Navbar dict={dict} />
 
       {/* Breadcrumbs Strip */}

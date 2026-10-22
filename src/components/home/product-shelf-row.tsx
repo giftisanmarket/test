@@ -13,7 +13,9 @@ export interface ShelfProduct {
   slug?: string | null;
   price: number;
   images: string[];
+  stock?: number;
   badge?: string | null;
+  isFeatured?: boolean;
   canPersonalize?: boolean;
   requiresClientImage?: boolean;
   category?: string;
@@ -21,6 +23,8 @@ export interface ShelfProduct {
     id?: string;
     studioName?: string | null;
     slug?: string | null;
+    avatar?: string | null;
+    isVerified?: boolean;
     user?: {
       name?: string | null;
     };
@@ -203,14 +207,17 @@ export function ProductShelfRow({
                     }}
                     aria-label="Save to favorites"
                     className={cn(
-                      "absolute top-2 end-2 z-10 p-1.5 2xl:p-2 rounded-full transition-all duration-200 shadow-sm",
+                      "absolute top-2 end-2 z-10 p-1.5 2xl:p-2 rounded-full transition-all duration-200 shadow-sm active:scale-75",
                       isFavorite(product.id)
                         ? "bg-red-50 text-red-500 opacity-100 scale-100"
-                        : "bg-white/90 text-primary opacity-0 group-hover/card:opacity-100 hover:bg-white hover:text-red-500 active:scale-75"
+                        : "bg-white/90 text-primary opacity-80 sm:opacity-0 sm:group-hover/card:opacity-100 hover:bg-white hover:text-red-500"
                     )}
                   >
                     <Heart
-                      className={cn("w-3.5 h-3.5 2xl:w-4 2xl:h-4", isFavorite(product.id) && "fill-current text-red-500")}
+                      className={cn(
+                        "w-3.5 h-3.5 2xl:w-4 2xl:h-4 transition-all duration-200",
+                        isFavorite(product.id) && "fill-current text-red-500 animate-heart-pop scale-110"
+                      )}
                     />
                   </button>
                 </div>

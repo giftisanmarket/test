@@ -62,15 +62,21 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
           setFavorites(mappedDbFavorites);
           localStorage.setItem("giftisan-favorites", JSON.stringify(mappedDbFavorites));
         } else if (localList.length > 0) {
-          const ids = localList.map((p: any) => p?.id).filter(Boolean);
+          const ids = localList
+            .map((p: any) => (typeof p === "string" ? p : p?.id))
+            .filter(Boolean);
           if (ids.length > 0) {
             const freshProducts = await getProductsByIds(ids);
             if (freshProducts && freshProducts.length > 0) {
               const freshMap = new Map(freshProducts.map((p: any) => [p.id, p]));
-              const updatedList = localList.map((p: any) => {
-                const fresh = freshMap.get(p.id);
-                return fresh ? { ...p, ...fresh } : p;
-              });
+              const updatedList = localList
+                .map((p: any) => {
+                  const pId = typeof p === "string" ? p : p?.id;
+                  const fresh = freshMap.get(pId);
+                  if (fresh) return fresh;
+                  return typeof p === "object" && p?.name ? p : null;
+                })
+                .filter(Boolean);
               setFavorites(updatedList as any);
               localStorage.setItem("giftisan-favorites", JSON.stringify(updatedList));
             }
@@ -104,26 +110,52 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [favoriteArtisans, isInitialized]);
 
-  const toggleFavorite = async (product: any) => {
+  const toggleFavorite = async (productInput: any) => {
     triggerHaptic("light");
-    const isAdding = !favorites.some((p) => p.id === product.id);
+    if (!productInput) return;
+
+    const productId = typeof productInput === "string" ? productInput : productInput.id;
+    if (!productId) return;
+
+    const isCurrentlyFav = favorites.some((p) =>
+      typeof p === "string" ? p === productId : p?.id === productId
+    );
+    const isAdding = !isCurrentlyFav;
+
+    const productObj =
+      typeof productInput === "object" && productInput !== null
+        ? productInput
+        : { id: productId };
 
     // Optimistic update
     setFavorites((prev) => {
-      const exists = prev.find((p) => p.id === product.id);
+      const exists = prev.some((p) =>
+        typeof p === "string" ? p === productId : p?.id === productId
+      );
       if (exists) {
-        return prev.filter((p) => p.id !== product.id);
+        return prev.filter((p) =>
+          typeof p === "string" ? p !== productId : p?.id !== productId
+        );
       }
-      return [...prev, product];
+      return [...prev, productObj];
     });
 
-    // If adding a product that might lack full details (e.g. stock or variants), enrich it in the background
-    if (isAdding && (product.stock === undefined || !product.variants)) {
-      getProductsByIds([product.id])
+    // If adding a product that might lack full details (or was passed only as an ID), enrich it
+    if (
+      isAdding &&
+      (typeof productInput === "string" ||
+        productInput.stock === undefined ||
+        !productInput.variants ||
+        !productInput.name)
+    ) {
+      getProductsByIds([productId])
         .then((fresh) => {
           if (fresh && fresh[0]) {
             setFavorites((prev) =>
-              prev.map((p) => (p.id === product.id ? { ...p, ...fresh[0] } : p)) as any
+              prev.map((p) => {
+                const pId = typeof p === "string" ? p : p?.id;
+                return pId === productId ? { ...(typeof p === "object" ? p : {}), ...fresh[0] } : p;
+              }) as any
             );
           }
         })
@@ -132,7 +164,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
     // DB sync if logged in
     if (session?.user?.id) {
-      const res = await toggleFavoriteAction(product.id, session.user.id);
+      const res = await toggleFavoriteAction(productId, session.user.id);
       if (res.error) {
         // Rollback on error
         console.error(res.error);
@@ -145,7 +177,10 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isFavorite = (productId: string) => {
-    return favorites.some((p) => p.id === productId);
+    if (!productId) return false;
+    return favorites.some((p) =>
+      typeof p === "string" ? p === productId : p?.id === productId
+    );
   };
 
   const toggleFavoriteArtisan = (artisan: any) => {

@@ -4,9 +4,15 @@ const config: CapacitorConfig = {
   appId: 'com.giftisan.app',
   appName: 'Giftisan',
   webDir: 'public',
+  backgroundColor: '#FAF8F5',
+  android: {
+    backgroundColor: '#FAF8F5',
+    allowMixedContent: true,
+    captureInput: true,
+  },
   server: {
     // In production, Capacitor loads directly from your live Next.js domain
-    // During local development, you can change this to your LAN IP (e.g., http://192.168.1.X:3000)
+    // During local development, set CAPACITOR_SERVER_URL to your LAN IP (e.g., http://192.168.1.X:3000)
     url: process.env.CAPACITOR_SERVER_URL || 'https://www.giftisan.com',
     cleartext: true,
     androidScheme: 'https',
@@ -33,8 +39,8 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       overlaysWebView: false,
-      backgroundColor: '#064E3B', // Giftisan brand primary forest green
-      style: 'DARK', // White text on dark green bar
+      backgroundColor: '#FDFCF0',
+      style: 'LIGHT',
     },
   },
 };

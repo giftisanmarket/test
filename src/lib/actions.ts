@@ -3221,9 +3221,11 @@ export async function promoteToArtisan(userId: string, studioData: any) {
       return { error: "Shop Name, Location, and Phone Number are required for artisan registration." };
     }
 
-    if (studioData.agreedToTerms !== true) {
-      return { error: "You must review and agree to the Giftisan Artisan Partnership Agreement to launch your shop." };
-    }
+    // Temporarily commented out agreement contract check
+    // if (studioData.agreedToTerms !== true) {
+    //   return { error: "You must review and agree to the Giftisan Artisan Partnership Agreement to launch your shop." };
+    // }
+
 
     const baseSlug = slugify(cleanStudioName);
     let artisanSlug = baseSlug ? baseSlug : `artisan-${userId.slice(-4)}`;

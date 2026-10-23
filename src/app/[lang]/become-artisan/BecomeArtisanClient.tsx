@@ -199,7 +199,22 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
   );
 
   const scrollToWizard = () => {
-    wizardRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (wizardRef.current) {
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      const navOffset = isMobile ? 80 : 130;
+      const elementPosition = wizardRef.current.getBoundingClientRect().top + window.pageYOffset;
+      const targetY = Math.max(0, elementPosition - navOffset);
+
+      window.scrollTo({
+        top: targetY,
+        behavior: "smooth",
+      });
+
+      // Smoothly focus the shop name input after scroll arrival
+      setTimeout(() => {
+        shopNameInputRef.current?.focus({ preventScroll: true });
+      }, 450);
+    }
   };
 
   const handleCopyLink = () => {
@@ -284,14 +299,16 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
       return;
     }
 
-    if (!agreedToTerms) {
-      toast.error(
-        isAr
-          ? "يرجى قراءة والموافقة على عقد وشروط انضمام الحرفيين لإطلاق متجرك."
-          : "Please review and agree to the Artisan Agreement to launch your shop."
-      );
-      return;
-    }
+    // Temporarily commented out agreement contract check
+    // if (!agreedToTerms) {
+    //   toast.error(
+    //     isAr
+    //       ? "يرجى قراءة والموافقة على عقد وشروط انضمام الحرفيين لإطلاق متجرك."
+    //       : "Please review and agree to the Artisan Agreement to launch your shop."
+    //   );
+    //   return;
+    // }
+
 
     setIsLoading(true);
 
@@ -465,101 +482,93 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
       </section>
 
       {/* THE 3-STEP GUIDED WIZARD */}
-      <section ref={wizardRef} id="wizard" className="py-8 sm:py-12 md:py-16 px-3 sm:px-4 scroll-mt-6">
-        <div className="container mx-auto max-w-3xl">
-          {/* Friendly Wizard Container */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-primary/10 shadow-xl shadow-primary/5">
-            {/* Wizard Header & Progress Bar */}
-            <div className="p-4 sm:p-6 md:p-8 bg-cream/50 border-b border-primary/10 space-y-3 sm:space-y-4 rounded-t-2xl sm:rounded-t-3xl">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-accent block">
-                    {isAr ? `الخطوة ${currentStep} من 3` : `Step ${currentStep} of 3`}
-                  </span>
-                  <h2 className="text-lg sm:text-xl md:text-2xl font-heading font-bold text-primary">
-                    {currentStep === 1 && (isAr ? "اختر اسماً مميزاً لمتجرك" : "Name your shop")}
-                    {currentStep === 2 && (isAr ? "أين يقع متجرك ومعلومات التواصل؟" : "Where is your shop based?")}
-                    {currentStep === 3 && (isAr ? "أخبر المقتنين قصتك الجميلة" : "Tell collectors your story")}
-                  </h2>
-                </div>
-
-                {/* Logged in status chip */}
-                {currentUser ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 bg-white border border-primary/10 rounded-full text-[11px] sm:text-xs font-medium text-charcoal/70 self-start sm:self-auto">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <span className="truncate max-w-[130px] sm:max-w-[140px]">{currentUser.name || currentUser.email}</span>
-                  </div>
-                ) : (
-                  <span className="text-[10px] sm:text-[11px] text-charcoal/50 self-start sm:self-auto">
-                    {isAr ? "بدون تسجيل مسبق • الحفظ تلقائي" : "Draft auto-saved"}
-                  </span>
-                )}
-              </div>
-
-              {/* Progress Bar & Step Dots */}
-              <div className="space-y-2 pt-1 sm:pt-2">
-                <div className="w-full h-1.5 sm:h-2 bg-primary/10 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-accent rounded-full"
-                    initial={{ width: "33%" }}
-                    animate={{ width: `${(currentStep / 3) * 100}%` }}
-                    transition={{ duration: 0.35, ease: "easeInOut" }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 text-center gap-1">
-                  {stepTitles.map((s) => {
-                    const StepIcon = s.icon;
-                    return (
+      <section ref={wizardRef} id="wizard" className="py-8 sm:py-12 md:py-16 px-3 sm:px-4 scroll-mt-24 sm:scroll-mt-28 md:scroll-mt-36">
+        <div className="container mx-auto max-w-2xl">
+          {/* Modern Minimalist Card */}
+          <div className="bg-white rounded-3xl border border-primary/10 shadow-xl shadow-primary/5 overflow-hidden">
+            {/* Sleek Step Rail & Header */}
+            <div className="p-6 sm:p-8 border-b border-primary/10 bg-white space-y-6">
+              {/* Stepper Rail */}
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                {stepTitles.map((s, idx) => {
+                  const isActive = currentStep === s.num;
+                  const isDone = currentStep > s.num;
+                  return (
+                    <div key={s.num} className="flex-1 flex items-center">
                       <button
-                        key={s.num}
                         type="button"
                         disabled={s.num > currentStep}
                         onClick={() => setCurrentStep(s.num as any)}
                         className={cn(
-                          "text-[10px] sm:text-[11px] font-bold py-1.5 px-1 sm:px-2 rounded-lg transition-colors flex items-center justify-center gap-1 sm:gap-1.5",
-                          currentStep === s.num
-                            ? "text-primary font-black bg-primary/5"
-                            : currentStep > s.num
-                            ? "text-accent hover:bg-accent/5 cursor-pointer"
+                          "flex items-center gap-2 sm:gap-2.5 text-xs font-bold transition-all text-start",
+                          isActive
+                            ? "text-primary font-black"
+                            : isDone
+                            ? "text-accent cursor-pointer"
                             : "text-charcoal/30 cursor-not-allowed"
                         )}
                       >
-                        <StepIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-                        <span className="hidden sm:inline">{isAr ? s.titleAr : s.titleEn}</span>
-                        <span className="sm:hidden">{isAr ? s.shortAr : s.shortEn}</span>
+                        <span
+                          className={cn(
+                            "w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-all shrink-0",
+                            isActive
+                              ? "bg-primary text-white shadow-sm ring-4 ring-primary/10"
+                              : isDone
+                              ? "bg-accent/15 text-accent"
+                              : "bg-charcoal/10 text-charcoal/40"
+                          )}
+                        >
+                          {isDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s.num}
+                        </span>
+                        <span className="hidden sm:inline font-semibold">
+                          {isAr ? s.titleAr : s.titleEn}
+                        </span>
                       </button>
-                    );
-                  })}
-                </div>
+                      {idx < stepTitles.length - 1 && (
+                        <div
+                          className={cn(
+                            "flex-1 h-0.5 mx-2 sm:mx-4 rounded-full transition-all",
+                            currentStep > s.num ? "bg-accent" : "bg-primary/10"
+                          )}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Step Title & Subtitle */}
+              <div className="space-y-1">
+                <h2 className="text-xl sm:text-2xl font-heading font-black text-primary tracking-tight">
+                  {currentStep === 1 && (isAr ? "اسم متجرك الحرفي" : "Name your shop")}
+                  {currentStep === 2 && (isAr ? "الموقع وبيانات التواصل" : "Location & Contact")}
+                  {currentStep === 3 && (isAr ? "نبذة عن ورشتك وعلامتك" : "Your Story & Brand")}
+                </h2>
+                <p className="text-xs sm:text-sm text-charcoal/60 font-normal leading-relaxed">
+                  {currentStep === 1 && (isAr ? "اختر اسماً بسيطاً يعبر عن شغفك. يمكنك تعديله دائماً." : "Give your handmade studio a name. You can change this anytime.")}
+                  {currentStep === 2 && (isAr ? "بيانات الموقع لاستلام شحنات الطلبات ورقم للتواصل السريع." : "Where courier pickups will happen, and your contact phone.")}
+                  {currentStep === 3 && (isAr ? "سطور بسيطة لتعريف المقتنين بحرفتك وإطلاق متجرك." : "A brief introduction for collectors discovering your craft.")}
+                </p>
               </div>
             </div>
 
             {/* Step Body */}
-            <div className="p-4 sm:p-6 md:p-10 rounded-b-2xl sm:rounded-b-3xl">
+            <div className="p-6 sm:p-8 md:p-10">
               <AnimatePresence mode="wait">
                 {/* STEP 1: SHOP NAME */}
                 {currentStep === 1 && (
                   <motion.div
                     key="step-1"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.25 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
                     className="space-y-6"
                   >
-                    <div className="space-y-1">
-                      <p className="text-sm text-charcoal/70">
-                        {isAr
-                          ? "اختر اسماً بسيطاً يعبر عن شغفك ويسهل تذكره. تذكر: لا داعي للقلق، يمكنك تغييره بأي وقت لاحقاً من إعدادات متجرك."
-                          : "Choose a memorable name that represents your work. Don't stress — you can always change it later in your shop settings!"}
-                      </p>
-                    </div>
-
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-primary flex items-center gap-1.5">
                         <Store className="w-3.5 h-3.5 text-accent" />
-                        <span>{isAr ? "اسم متجرك أو علامتك الحرفية *" : "Shop Name *"}</span>
+                        <span>{isAr ? "اسم المتجر *" : "Shop Name *"}</span>
                       </label>
                       <input
                         ref={shopNameInputRef}
@@ -575,50 +584,37 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           }
                           setFormData({ ...formData, studioName: clean });
                         }}
-                        placeholder={isAr ? "مثال: متجر الفخار الأصيل" : "e.g., Cairo Clay Shop"}
-                        className="w-full h-14 px-5 bg-cream/40 border border-primary/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-base font-bold text-primary placeholder:text-primary/30 transition-all"
+                        placeholder={isAr ? "مثال: متجر الفخار الأصيل" : "e.g., Cairo Clay Studio"}
+                        className="w-full h-13 sm:h-14 px-4 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-base font-bold text-primary placeholder:text-primary/30 transition-all"
                       />
 
-                      {/* Live Slug Preview */}
-                      <div className="p-2.5 sm:p-3 bg-cream/60 rounded-xl border border-primary/5 flex items-center justify-between gap-2 text-xs font-mono text-primary/80">
-                        <div className="flex items-center gap-1.5 sm:gap-2 truncate min-w-0">
+                      {/* Clean Inline URL Preview */}
+                      <div className="flex items-center justify-between gap-2 text-xs pt-1 px-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           <Globe className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span className="text-[11px] sm:text-xs truncate">giftisan.com/{lang}/artisan/</span>
-                          <span className="text-accent font-bold text-[11px] sm:text-xs truncate">{currentSlug}</span>
+                          <span className="font-mono text-[11px] sm:text-xs text-charcoal/40 truncate">giftisan.com/{lang}/artisan/</span>
+                          <span className="font-mono text-[11px] sm:text-xs text-accent font-bold truncate">{currentSlug}</span>
                         </div>
                         <button
                           type="button"
                           onClick={handleCopyLink}
-                          className="text-primary hover:text-accent p-1 transition-colors cursor-pointer shrink-0"
-                          title={isAr ? "نسخ الرابط" : "Copy link"}
+                          className="text-[11px] font-bold text-accent hover:text-accent-dark flex items-center gap-1 shrink-0 ps-2 cursor-pointer transition-colors"
                         >
-                          {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          {copiedLink ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedLink ? (isAr ? "تم النسخ" : "Copied") : (isAr ? "نسخ" : "Copy")}</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* Friendly Naming Tips */}
-                    <div className="p-3.5 sm:p-4 bg-primary/5 rounded-2xl space-y-1.5 border border-primary/10">
-                      <p className="text-xs font-bold text-primary flex items-center gap-1.5">
-                        <HelpCircle className="w-3.5 h-3.5 text-accent" />
-                        <span>{isAr ? "أفكار ذكية لاختيار اسم رائع:" : "Tips for a great shop name:"}</span>
-                      </p>
-                      <ul className="text-xs text-charcoal/60 space-y-1 list-disc list-inside">
-                        <li>{isAr ? "استخدم كلمتين أو ثلاث سهلة النطق والحفظ" : "Keep it short, memorable, and easy to spell"}</li>
-                        <li>{isAr ? "يمكنك استخدام اسمك مع حرفتك (مثل: جلود كريم، فخار نادين)" : "Combine your name with your craft (e.g., Karim Leather, Nadine Pottery)"}</li>
-                        <li>{isAr ? "الاسم يعكس روح الصناعة اليدوية واللمسة الشخصية" : "Reflect the handcrafted, personal nature of your work"}</li>
-                      </ul>
-                    </div>
-
                     {/* Step 1 Actions */}
-                    <div className="pt-4 flex flex-col sm:flex-row justify-end">
+                    <div className="pt-4 flex justify-end">
                       <button
                         type="button"
                         onClick={handleNextStep}
                         disabled={!canProceedStep1}
-                        className="h-12 sm:h-13 px-6 sm:px-8 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-primary/10 text-sm sm:text-base w-full sm:w-auto"
+                        className="w-full sm:w-auto h-12 sm:h-13 px-8 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40 cursor-pointer shadow-lg shadow-primary/10 text-sm"
                       >
-                        <span>{isAr ? "التالي: الموقع والتواصل" : "Next: Location & Contact"}</span>
+                        <span>{isAr ? "المتابعة: الموقع والتواصل" : "Continue to Location"}</span>
                         <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                       </button>
                     </div>
@@ -629,20 +625,12 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                 {currentStep === 2 && (
                   <motion.div
                     key="step-2"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.25 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
                     className="space-y-6"
                   >
-                    <div className="space-y-1">
-                      <p className="text-sm text-charcoal/70">
-                        {isAr
-                          ? "حدد المحافظة والمنطقة التي يعمل منها متجرك ورقم هاتفك للتواصل ومتابعة الطلبات."
-                          : "Tell us where your shop is located and your phone number for order updates."}
-                      </p>
-                    </div>
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 relative z-30">
                       {/* Governorate with Custom Dropdown */}
                       <div className="space-y-2">
@@ -654,7 +642,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           value={formData.governorate}
                           onChange={(govId) => setFormData({ ...formData, governorate: govId })}
                           isAr={isAr}
-                          buttonClassName="h-13 px-4 bg-cream/40 border-primary/20 rounded-2xl focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary shadow-none"
+                          buttonClassName="h-13 px-4 bg-cream/30 border-primary/20 rounded-2xl focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary shadow-none"
                         />
                       </div>
 
@@ -677,7 +665,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                             setFormData({ ...formData, district: clean });
                           }}
                           placeholder={isAr ? "مثال: المعادي، دجلة" : "e.g., Maadi / Degla"}
-                          className="w-full h-13 px-4 bg-cream/40 border border-primary/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary placeholder:text-primary/30 transition-all"
+                          className="w-full h-13 px-4 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary placeholder:text-primary/30 transition-all"
                         />
                       </div>
                     </div>
@@ -686,7 +674,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                     <div className="space-y-2 relative z-10">
                       <label className="text-xs font-bold text-primary flex items-center gap-1.5">
                         <Phone className="w-3.5 h-3.5 text-accent" />
-                        <span>{isAr ? "رقم الهاتف / الواتساب للتواصل *" : "Phone / WhatsApp Contact *"}</span>
+                        <span>{isAr ? "رقم الهاتف / الواتساب *" : "Phone / WhatsApp *"}</span>
                       </label>
                       <input
                         type="tel"
@@ -697,21 +685,21 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           setFormData({ ...formData, phoneNumber: clean });
                         }}
                         placeholder="+20 100 000 0000"
-                        className="w-full h-13 px-4 bg-cream/40 border border-primary/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary placeholder:text-primary/30 transition-all"
+                        className="w-full h-13 px-4 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary placeholder:text-primary/30 transition-all"
                       />
                       <p className="text-[11px] text-charcoal/50">
                         {isAr
-                          ? "يستخدم لإشعارات الطلبات والتواصل بخصوص متجرك."
-                          : "Used strictly for order updates and shop notifications."}
+                          ? "يستخدم لإشعارات الطلبات وتنسيق استلام شحنات متجرك."
+                          : "Used strictly for order updates and courier pickups."}
                       </p>
                     </div>
 
                     {/* Step 2 Actions */}
-                    <div className="pt-4 flex items-center justify-between gap-2 sm:gap-4 relative z-0">
+                    <div className="pt-4 flex items-center justify-between gap-3 relative z-0">
                       <button
                         type="button"
                         onClick={handlePrevStep}
-                        className="h-12 sm:h-13 px-3 sm:px-6 text-charcoal/60 hover:text-primary font-bold rounded-2xl transition-colors flex items-center gap-1.5 sm:gap-2 cursor-pointer text-xs sm:text-sm shrink-0"
+                        className="h-12 px-4 sm:px-6 text-charcoal/60 hover:text-primary font-bold rounded-2xl transition-colors flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm"
                       >
                         <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
                         <span>{isAr ? "رجوع" : "Back"}</span>
@@ -721,24 +709,23 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                         type="button"
                         onClick={handleNextStep}
                         disabled={!canProceedStep2}
-                        className="h-12 sm:h-13 px-4 sm:px-8 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all flex items-center justify-center gap-1.5 sm:gap-2 active:scale-95 disabled:opacity-50 cursor-pointer shadow-md shadow-primary/10 text-xs sm:text-base font-bold"
+                        className="h-12 sm:h-13 px-8 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40 cursor-pointer shadow-lg shadow-primary/10 text-sm"
                       >
-                        <span className="hidden sm:inline">{isAr ? "التالي: قصتك وإطلاق المتجر" : "Next: Your Story & Launch"}</span>
-                        <span className="sm:hidden">{isAr ? "التالي: قصتك" : "Next: Your Story"}</span>
+                        <span>{isAr ? "المتابعة: القصة والإطلاق" : "Continue to Story"}</span>
                         <ArrowRight className="w-4 h-4 rtl:rotate-180" />
                       </button>
                     </div>
                   </motion.div>
                 )}
 
-                {/* STEP 3: STORY, BRAND COLOR & LAUNCH REVIEW */}
+                {/* STEP 3: STORY, BRAND & LAUNCH REVIEW */}
                 {currentStep === 3 && (
                   <motion.div
                     key="step-3"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.25 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
                     className="space-y-6"
                   >
                     {/* Unverified Email Warning if applicable */}
@@ -759,7 +746,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           type="button"
                           onClick={handleResendVerification}
                           disabled={isResendingEmail || emailSentSuccess}
-                          className="w-full sm:w-auto justify-center shrink-0 px-3 py-2 sm:py-1.5 bg-amber-700 text-white rounded-xl text-xs font-bold hover:bg-amber-800 transition-all flex items-center gap-1.5 cursor-pointer"
+                          className="w-full sm:w-auto justify-center shrink-0 px-3 py-1.5 bg-amber-700 text-white rounded-xl text-xs font-bold hover:bg-amber-800 transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                           {isResendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
                           <span>{emailSentSuccess ? (isAr ? "تم الإرسال!" : "Sent!") : (isAr ? "إعادة إرسال الرابط" : "Resend Link")}</span>
@@ -772,7 +759,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                       <div className="flex justify-between items-center">
                         <label className="text-xs font-bold text-primary flex items-center gap-1.5">
                           <AlignLeft className="w-3.5 h-3.5 text-accent" />
-                          <span>{isAr ? "قصتك ونبذة عن شغفك (اختياري)" : "Your Story (Optional)"}</span>
+                          <span>{isAr ? "نبذة عن شغفك (اختياري)" : "Your Story (Optional)"}</span>
                         </label>
                         <span className="text-[11px] text-charcoal/40 font-mono">{formData.bio.length}/500</span>
                       </div>
@@ -790,10 +777,10 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                         }}
                         placeholder={
                           isAr
-                            ? "أخبر المقتنين بسطر بسيط عن شغفك، أو يمكنك إضافتها لاحقاً من إعدادات متجرك..."
-                            : "A short sentence about what inspires your craft, or feel free to skip and add this later..."
+                            ? "سطر بسيط عن ورشتك وما يميز قطعك اليدوية (يمكنك إضافتها لاحقاً)..."
+                            : "A short sentence about what inspires your craft (or add this later in settings)..."
                         }
-                        className="w-full h-24 p-3.5 bg-cream/40 border border-primary/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm text-primary placeholder:text-primary/30 transition-all resize-none leading-relaxed"
+                        className="w-full h-24 p-3.5 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm text-primary placeholder:text-primary/30 transition-all resize-none leading-relaxed"
                       />
                     </div>
 
@@ -813,12 +800,13 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                             setFormData({ ...formData, instagram: clean });
                           }}
                           placeholder="your_brand"
-                          className="w-full h-13 ps-9 pe-4 bg-cream/40 border border-primary/20 rounded-2xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary transition-all placeholder:text-primary/30"
+                          className="w-full h-13 ps-9 pe-4 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary transition-all placeholder:text-primary/30"
                         />
                       </div>
                     </div>
 
-                    {/* Artisan Partnership Agreement Acceptance Card */}
+                    {/* Artisan Partnership Agreement Acceptance Card (Temporarily commented out) */}
+                    {/*
                     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-primary/15 shadow-xs space-y-3.5">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -832,7 +820,6 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                         </span>
                       </div>
 
-                      {/* Brief Key Guarantees */}
                       <div className="grid grid-cols-2 gap-2 text-[11px] text-charcoal/70 bg-cream/40 p-2.5 rounded-xl border border-primary/5">
                         <div className="flex items-center gap-1.5 font-medium">
                           <Check className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -852,7 +839,6 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                         </div>
                       </div>
 
-                      {/* Agreement Checkbox & Modal Trigger */}
                       <div className="pt-1 space-y-2">
                         <label className="flex items-start gap-3 cursor-pointer select-none">
                           <input
@@ -887,30 +873,24 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                         </div>
                       </div>
                     </div>
+                    */}
 
-                    {/* Launch Reassurance Badge */}
-                    <div className="p-3 sm:p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-200/60 flex items-start sm:items-center gap-2.5 sm:gap-3 text-emerald-950">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-bold text-emerald-900 leading-snug">
-                          {isAr ? "متجرك جاهز للانطلاق!" : "Ready to launch your shop!"}
-                        </p>
-                        <p className="text-[11px] text-emerald-800/80 leading-snug">
-                          {isAr
-                            ? "يمكنك إضافة منتجاتك وتعديل كافة التفاصيل فوراً بعد تفعيل المتجر."
-                            : "You can add your handcrafted products and edit all shop details anytime from your dashboard."}
-                        </p>
-                      </div>
+                    {/* Minimalist Reassurance Chip */}
+                    <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-200/60 flex items-center gap-2.5 text-xs text-emerald-950">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <span className="font-bold text-emerald-900">
+                        {isAr
+                          ? "استلام من بابك في الـ 27 محافظة • تحويل مباشر عبر إنستاباي • عمولة 0%"
+                          : "Doorstep courier pickup across 27 governorates • Direct InstaPay payouts • 0% commission"}
+                      </span>
                     </div>
 
                     {/* Step 3 Final Launch Actions */}
-                    <div className="pt-2 flex items-center justify-between gap-2 sm:gap-4">
+                    <div className="pt-2 flex items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={handlePrevStep}
-                        className="h-12 sm:h-14 px-3 sm:px-6 text-charcoal/60 hover:text-primary font-bold rounded-2xl transition-colors flex items-center gap-1.5 sm:gap-2 cursor-pointer text-xs sm:text-sm shrink-0"
+                        className="h-12 px-4 sm:px-6 text-charcoal/60 hover:text-primary font-bold rounded-2xl transition-colors flex items-center gap-1.5 cursor-pointer text-xs sm:text-sm shrink-0"
                       >
                         <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
                         <span>{isAr ? "رجوع" : "Back"}</span>
@@ -920,7 +900,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                         type="button"
                         onClick={handleFinalSubmit}
                         disabled={isLoading}
-                        className="flex-1 h-12 sm:h-14 px-4 sm:px-8 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer text-xs sm:text-base md:text-lg group"
+                        className="flex-1 h-13 sm:h-14 px-6 sm:px-8 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer text-sm sm:text-base group"
                       >
                         {isLoading ? (
                           <div className="flex items-center gap-2">
@@ -929,15 +909,8 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           </div>
                         ) : (
                           <>
-                            {currentUser ? (
-                              <span>{isAr ? "إطلاق متجري الآن" : "Launch My Shop"}</span>
-                            ) : (
-                              <>
-                                <span className="hidden sm:inline">{isAr ? "حفظ ومتابعة الحساب لإطلاق المتجر" : "Save & Launch My Shop"}</span>
-                                <span className="sm:hidden">{isAr ? "حفظ وإطلاق المتجر" : "Save & Launch"}</span>
-                              </>
-                            )}
-                            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 rtl:rotate-180 transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
+                            <span>{isAr ? "إطلاق متجري الآن" : "Launch Your Studio"}</span>
+                            <Rocket className="w-4 h-4 text-accent transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                           </>
                         )}
                       </button>
@@ -946,7 +919,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                     <p className="text-center text-xs text-charcoal/50">
                       {isAr
                         ? "0% عمولة للمؤسسين طوال عام 2026 • لا توجد رسوم إدراج • تحكم كامل بمتجرك"
-                        : "0% commission for 2026 founding artisans • No listing fees • Full creative freedom"}
+                        : "0% commission for 2026 founders • No listing fees • Full store control"}
                     </p>
                   </motion.div>
                 )}

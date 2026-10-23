@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { getDictionary } from "../dictionaries";
 import { PrintButton } from "./PrintButton";
+import { ARTISAN_AGREEMENT_VERSION } from "@/lib/artisan-agreement";
 
 export async function generateMetadata({
   params,
@@ -135,6 +136,9 @@ export default async function ArtisanTermsPage({
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-full border border-accent/20">
                 {t.effective_badge}
+              </span>
+              <span className="text-xs font-bold text-primary/70 bg-primary/5 px-3 py-1 rounded-full border border-primary/10 font-mono">
+                {ARTISAN_AGREEMENT_VERSION}
               </span>
               <PrintButton label={t.print_contract} />
             </div>

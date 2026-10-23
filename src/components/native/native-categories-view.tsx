@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
-  Camera,
   ChevronDown,
   ChevronRight,
   ArrowRight,
@@ -101,6 +101,18 @@ const departmentIconMap: Record<string, any> = {
   "vintage-heritage": History,
   "Vintage & Heritage": History,
   "vintage": History,
+};
+
+// Curated real artisanal photography for top departments
+const departmentImageMap: Record<string, string> = {
+  "home-and-living": "/images/categories/woodwork.webp",
+  "jewelry": "/images/categories/jewelry.webp",
+  "bags-and-purses": "/images/categories/fashion.webp",
+  "clothing": "/images/categories/textiles.webp",
+  "gifts": "/images/categories/gift-boxes-sets.webp",
+  "art-and-collectibles": "/images/categories/art-collectibles.webp",
+  "bath-and-beauty": "/images/categories/beauty-apothecary.webp",
+  "kids-and-baby": "/images/gifts/gifts-for-kids.webp",
 };
 
 // Popular visual department circle keys for high-speed scanning
@@ -203,7 +215,6 @@ export function NativeCategoriesView({
                 ? "ابحث عن هدايا، ديكور، مجوهرات..."
                 : "Search gifts, decor, jewelry..."}
             </span>
-            <Camera className="w-3.5 h-3.5 text-primary/40 shrink-0 ms-auto" />
           </button>
 
           {/* Language Switcher Pill */}

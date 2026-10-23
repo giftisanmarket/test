@@ -23,7 +23,8 @@ import {
   Calendar,
 } from "lucide-react";
 import Link from "next/link";
-import { updateArtisanProfile, updateProfileAvatar, checkSlugAvailability, uploadImage } from "@/lib/actions";
+import { acceptCurrentArtisanAgreement, updateArtisanProfile, updateProfileAvatar, checkSlugAvailability, uploadImage } from "@/lib/actions";
+import { ARTISAN_AGREEMENT_VERSION } from "@/lib/artisan-agreement";
 import { uploadMediaToCloudinary } from "@/lib/client-upload";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -107,8 +108,29 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
   const [slug, setSlug] = useState(artisan.slug || "");
   const [isSaving, setIsSaving] = useState(false);
+  const [isAcceptingAgreement, setIsAcceptingAgreement] = useState(false);
+  const [agreementAcceptedThisSession, setAgreementAcceptedThisSession] = useState(false);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [slugAvailability, setSlugAvailability] = useState<'available' | 'taken' | 'idle'>('idle');
+  const hasCurrentAgreement = agreementAcceptedThisSession || (
+    artisan.termsVersion === ARTISAN_AGREEMENT_VERSION && Boolean(artisan.termsAcceptedAt)
+  );
+
+  const handleAcceptAgreement = async () => {
+    setIsAcceptingAgreement(true);
+    try {
+      const result = await acceptCurrentArtisanAgreement(lang === "ar" ? "ar" : "en");
+      if (result.success) {
+        setAgreementAcceptedThisSession(true);
+        toast.success(lang === "ar" ? "تم توثيق موافقتك على النسخة الحالية من العقد." : "Your acceptance of the current agreement has been recorded.");
+        router.refresh();
+      } else {
+        toast.error(result.error || (lang === "ar" ? "تعذر توثيق الموافقة." : "Unable to record your acceptance."));
+      }
+    } finally {
+      setIsAcceptingAgreement(false);
+    }
+  };
 
   useEffect(() => {
     if (!slug || slug === artisan.slug) {
@@ -272,22 +294,22 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-[240px_1fr] gap-8 lg:gap-16">
+        <div className="grid lg:grid-cols-[240px_1fr] gap-6 lg:gap-16">
           {/* Sub Navigation */}
-          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-12 lg:pb-0 scrollbar-hide">
+          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-3 lg:pb-0 scrollbar-hide -mx-1 px-1">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveSettingsTab(item.id)}
                 className={cn(
-                  "flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all shrink-0 active:scale-95",
+                  "flex items-center gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold transition-all shrink-0 active:scale-95 whitespace-nowrap",
                   activeSettingsTab === item.id
                     ? "bg-primary text-white shadow-[0_15px_40px_-10px_rgba(6,78,59,0.2)]"
                     : "text-primary/40 hover:bg-primary/5 hover:text-primary"
                 )}
               >
-                <item.icon className="w-5 h-5" />
-                <span className="text-sm md:text-base">{item.label}</span>
+                <item.icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                <span className="text-xs sm:text-sm md:text-base">{item.label}</span>
               </button>
             ))}
           </div>
@@ -802,41 +824,46 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                   className="space-y-8"
                 >
                   {/* Agreement Status Banner */}
-                  <div className="p-6 md:p-8 rounded-3xl bg-cream/40 border border-primary/10 shadow-xs space-y-6">
+                  <div className="p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl bg-cream/40 border border-primary/10 shadow-xs space-y-5 sm:space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-3.5">
-                        <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
-                          <Scale className="w-6 h-6" />
+                      <div className="flex items-start sm:items-center gap-3 sm:gap-3.5">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0 mt-0.5 sm:mt-0">
+                          <Scale className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
-                        <div>
-                          <h3 className="text-xl font-heading font-black text-primary">
+                        <div className="space-y-0.5">
+                          <h3 className="text-lg sm:text-xl font-heading font-black text-primary leading-snug">
                             {lang === "ar" ? "وثيقة الشراكة والعقد المعتمد" : "Artisan Partnership Agreement"}
                           </h3>
-                          <p className="text-xs text-charcoal/60 font-medium">
+                          <p className="text-xs text-charcoal/60 font-medium leading-relaxed">
                             {lang === "ar" ? "السجل الرقمي الرسمي لعقد متجرك مع منصة جيفتيزان" : "Official digital audit record of your agreement with Giftisan"}
                           </p>
                         </div>
                       </div>
 
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold self-start sm:self-auto">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                        <span>{lang === "ar" ? "ساري وموثق إلكترونياً" : "Active & Verified"}</span>
+                      <div className={cn(
+                        "inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold self-start sm:self-auto shrink-0",
+                        hasCurrentAgreement
+                          ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                          : "bg-amber-50 border border-amber-200 text-amber-800"
+                      )}>
+                        <ShieldCheck className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4", hasCurrentAgreement ? "text-emerald-600" : "text-amber-600")} />
+                        <span>{hasCurrentAgreement ? (lang === "ar" ? "ساري وموثق إلكترونياً" : "Active & Recorded") : (lang === "ar" ? "تتطلب مراجعة النسخة الحالية" : "Current review required")}</span>
                       </div>
                     </div>
 
                     {/* Metadata Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                      <div className="p-4 rounded-2xl bg-white border border-primary/10 space-y-1">
-                        <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
+                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 space-y-1">
+                        <p className="text-[10px] sm:text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
                           {lang === "ar" ? "إصدار العقد المعتمد" : "Agreement Version"}
                         </p>
                         <p className="text-sm font-black text-primary font-mono">
-                          {artisan.termsVersion || "2026-v1"}
+                          {hasCurrentAgreement ? ARTISAN_AGREEMENT_VERSION : artisan.termsVersion || (lang === "ar" ? "غير موثق" : "Not recorded")}
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-white border border-primary/10 space-y-1">
-                        <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
+                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 space-y-1">
+                        <p className="text-[10px] sm:text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
                           {lang === "ar" ? "تاريخ التوثيق الرقمي" : "Accepted Timestamp"}
                         </p>
                         <p className="text-xs font-bold text-primary">
@@ -845,12 +872,12 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                                 lang === "ar" ? "ar-EG" : "en-US",
                                 { year: "numeric", month: "short", day: "numeric" }
                               )
-                            : (lang === "ar" ? "موسم 2026 (مؤسس)" : "2026 Season (Founding)")}
+                            : (lang === "ar" ? "لم تُسجل بعد" : "Not yet recorded")}
                         </p>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-white border border-primary/10 space-y-1">
-                        <p className="text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
+                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 space-y-1">
+                        <p className="text-[10px] sm:text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
                           {lang === "ar" ? "نسبة العمولة المتفق عليها" : "Agreed Commission"}
                         </p>
                         <p className="text-sm font-black text-emerald-700">
@@ -860,14 +887,42 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                     </div>
                   </div>
 
+                  {!hasCurrentAgreement && (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <p className="text-xs text-amber-900/80 leading-relaxed max-w-xl text-center sm:text-start">
+                        {lang === "ar"
+                          ? `راجِع النسخة ${ARTISAN_AGREEMENT_VERSION} من العقد ثم أكد موافقتك. ستُسجل المنصة النسخة والوقت وحسابك كسجل تدقيقي.`
+                          : `Review agreement ${ARTISAN_AGREEMENT_VERSION}, then confirm your acceptance. Giftisan will record the version, time, and your account as an audit record.`}
+                      </p>
+                      <div className="flex flex-col sm:flex-row shrink-0 gap-2 w-full sm:w-auto">
+                        <Link
+                          href={`/${lang}/artisan-terms`}
+                          target="_blank"
+                          className="w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors"
+                        >
+                          {lang === "ar" ? "مراجعة العقد" : "Review agreement"}
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={isAcceptingAgreement}
+                          onClick={handleAcceptAgreement}
+                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-light transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                        >
+                          {isAcceptingAgreement && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                          {lang === "ar" ? "أوافق على النسخة الحالية" : "Accept current version"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Guaranteed Maker Rights Recap */}
                   <div className="space-y-4">
-                    <h4 className="text-base font-bold text-primary">
+                    <h4 className="text-sm sm:text-base font-bold text-primary">
                       {lang === "ar" ? "حقوقك وضماناتك الأساسية كصانع في جيفتيزان:" : "Core Protections Guaranteed Under This Agreement:"}
                     </h4>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
                         <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                         <div className="space-y-0.5 text-xs">
                           <p className="font-bold text-primary">
@@ -879,31 +934,31 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
                         <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                         <div className="space-y-0.5 text-xs">
                           <p className="font-bold text-primary">
                             {lang === "ar" ? "حماية من إرجاع القطع المنفذة بالطلب" : "Custom Order Protection"}
                           </p>
                           <p className="text-charcoal/60 leading-relaxed">
-                            {lang === "ar" ? "القطع المنقوشة أو المصنوعة خصيصاً لا يمكن إرجاعها لمجرد تغيير رأي العميل." : "Personalized and bespoke pieces are strictly exempt from change-of-mind returns."}
+                            {lang === "ar" ? "تحمى القطع المنفذة بالطلب من الإرجاع لتغيير الرأي بالقدر الذي يسمح به القانون." : "Bespoke pieces are protected from change-of-mind returns where the law permits."}
                           </p>
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
                         <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                         <div className="space-y-0.5 text-xs">
                           <p className="font-bold text-primary">
-                            {lang === "ar" ? "دورة تحويل أسبوعية آمنة" : "7-Day Escrow Payouts"}
+                            {lang === "ar" ? "دورة تحويل أسبوعية واضحة" : "Clear 7-Day Payout Cycle"}
                           </p>
                           <p className="text-charcoal/60 leading-relaxed">
-                            {lang === "ar" ? "تُحوّل أرباحك بأمان إلى إنستاباي أو فودافون كاش بعد تأكيد التسليم." : "Funds are released directly to your InstaPay or mobile wallet 7 days post-delivery."}
+                            {lang === "ar" ? "يظهر صافي أرباحك وحالة التحويل بوضوح في كشف الرصيد بعد تأكيد التسليم." : "Your net earnings and payout status remain visible in your balance ledger after confirmed delivery."}
                           </p>
                         </div>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
+                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
                         <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                         <div className="space-y-0.5 text-xs">
                           <p className="font-bold text-primary">
@@ -918,8 +973,8 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl bg-primary/5 border border-primary/10">
-                    <p className="text-xs text-charcoal/70">
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                    <p className="text-xs text-charcoal/70 leading-relaxed text-center sm:text-start">
                       {lang === "ar"
                         ? "يمكنك في أي وقت مراجعة بنود العقد كاملة أو طباعة نسخة رسمية مختومة لملف ورشتك."
                         : "You can review the full terms or print an official stamped PDF copy anytime."}
@@ -928,7 +983,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                     <Link
                       href={`/${lang}/artisan-terms`}
                       target="_blank"
-                      className="w-full sm:w-auto shrink-0 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                      className="w-full sm:w-auto shrink-0 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95"
                     >
                       <FileText className="w-4 h-4" />
                       <span>{lang === "ar" ? "عرض وطباعة العقد كاملاً" : "View & Print Full Contract"}</span>

@@ -10,7 +10,6 @@ import {
   ArrowRight,
   X,
   Clock,
-  Camera,
   Star,
   Sparkles,
   ChevronRight,
@@ -332,7 +331,7 @@ export function NativeSearchView({
             {/* 1. "Jump back in" (Popular Discovery Terms) */}
             <section className="space-y-2.5">
               <h3 className="font-serif text-lg font-bold text-primary tracking-tight">
-                {isArabic ? "استكشف أفكار الهدايا" : "Jump back in"}
+                {isArabic ? "أفكار مقترحة للهدايا" : "Popular gift ideas"}
               </h3>
               <div className="space-y-1">
                 {suggestedSearches.map((item, idx) => (
@@ -449,7 +448,7 @@ export function NativeSearchView({
             {/* 4. "Top searches this week" (Horizontal Badges with Photos) */}
             <section className="space-y-2.5 pt-1">
               <h3 className="font-serif text-lg font-bold text-primary tracking-tight">
-                {isArabic ? "الأكثر بحثاً هذا الأسبوع" : "Top searches this week"}
+                {isArabic ? "أقسام وتصنيفات مميزة" : "Popular categories"}
               </h3>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 {topSearchesThisWeek.map((item, idx) => (
@@ -480,21 +479,6 @@ export function NativeSearchView({
         )}
       </div>
 
-      {/* 3. Floating "Search by photo" Action Button (above bottom bar) */}
-      <div className="fixed bottom-24 inset-x-0 z-40 flex justify-center pointer-events-none px-4">
-        <button
-          type="button"
-          onClick={() => {
-            triggerHaptic("medium");
-            onClose();
-            router.push("/gifts");
-          }}
-          className="pointer-events-auto inline-flex items-center gap-2.5 px-5 py-3 rounded-full bg-primary text-white text-xs font-bold shadow-[0_8px_24px_rgba(6,78,59,0.28)] border border-white/20 active:scale-95 transition-all"
-        >
-          <Camera className="w-4 h-4 text-amber-300" />
-          <span>{isArabic ? "ابحث بصورة هدية" : "Search by photo"}</span>
-        </button>
-      </div>
     </div>
   );
 }

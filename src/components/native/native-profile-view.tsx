@@ -29,6 +29,7 @@ import {
   ShoppingBag,
   ExternalLink,
   ArrowRight,
+  FileText,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -232,7 +233,7 @@ export function NativeProfileView({
             </p>
             {user.role === "ARTISAN" && (
               <Link
-                href="/studio"
+                href={`/${lang}/studio`}
                 onClick={() => triggerHaptic("light")}
                 className="inline-flex items-center gap-1 text-[11px] font-bold text-accent mt-0.5 active:opacity-75"
               >
@@ -435,7 +436,7 @@ export function NativeProfileView({
             {/* Group 1: Account Controls */}
             <div className="bg-white rounded-2xl border border-primary/10 shadow-2xs overflow-hidden divide-y divide-primary/5">
               <Link
-                href="/profile/settings"
+                href={`/${lang}/profile/settings`}
                 onClick={() => triggerHaptic("light")}
                 className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
               >
@@ -457,7 +458,7 @@ export function NativeProfileView({
 
               {user.role === "ARTISAN" ? (
                 <Link
-                  href="/studio"
+                  href={`/${lang}/studio`}
                   onClick={() => triggerHaptic("light")}
                   className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
                 >
@@ -478,7 +479,7 @@ export function NativeProfileView({
                 </Link>
               ) : (
                 <Link
-                  href={`/${lang}/signup`}
+                  href={`/${lang}/become-artisan`}
                   onClick={() => triggerHaptic("light")}
                   className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
                 >
@@ -501,7 +502,7 @@ export function NativeProfileView({
 
               {user.role === "ADMIN" && (
                 <Link
-                  href="/admin"
+                  href={`/${lang}/admin`}
                   onClick={() => triggerHaptic("light")}
                   className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
                 >
@@ -526,7 +527,7 @@ export function NativeProfileView({
             {/* Group 2: Support & Policies */}
             <div className="bg-white rounded-2xl border border-primary/10 shadow-2xs overflow-hidden divide-y divide-primary/5">
               <Link
-                href={`/${lang}/support`}
+                href={`/${lang}/contact`}
                 onClick={() => triggerHaptic("light")}
                 className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
               >
@@ -540,6 +541,48 @@ export function NativeProfileView({
                     </h4>
                     <p className="text-[10px] text-charcoal/50">
                       {isArabic ? "الأسئلة الشائعة وتواصل مع فريقنا" : "FAQs and customer care"}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-primary/40 rtl:rotate-180" />
+              </Link>
+
+              <Link
+                href={`/${lang}/privacy`}
+                onClick={() => triggerHaptic("light")}
+                className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-primary">
+                      {isArabic ? "سياسة الخصوصية" : "Privacy Policy"}
+                    </h4>
+                    <p className="text-[10px] text-charcoal/50">
+                      {isArabic ? "كيف نحمي بياناتك ومعلوماتك" : "How we protect your data"}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-primary/40 rtl:rotate-180" />
+              </Link>
+
+              <Link
+                href={`/${lang}/terms`}
+                onClick={() => triggerHaptic("light")}
+                className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-primary">
+                      {isArabic ? "الشروط والأحكام" : "Terms & Conditions"}
+                    </h4>
+                    <p className="text-[10px] text-charcoal/50">
+                      {isArabic ? "حقوقك وضمانات الاستخدام والشراء" : "Marketplace guidelines & rights"}
                     </p>
                   </div>
                 </div>

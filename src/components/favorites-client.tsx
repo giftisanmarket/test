@@ -42,17 +42,6 @@ export default function FavoritesClient({
   const [activeTab, setActiveTab] = useState<"products" | "studios">("products");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
-  if (isNative) {
-    return (
-      <NativeFavoritesView
-        dict={dict}
-        lang={lang}
-        allArtisans={allArtisans}
-        suggestedProducts={suggestedProducts}
-      />
-    );
-  }
-
   const isArabic = dict?.common?.home === "الرئيسية";
 
   // Resolve fresh artisan data for favorited studios
@@ -72,6 +61,17 @@ export default function FavoritesClient({
     if (!Array.isArray(favorites) || favorites.length === 0) return [];
     return favorites.filter((p: any) => p && typeof p === "object" && p.name && (p.id || p.slug));
   }, [favorites]);
+
+  if (isNative) {
+    return (
+      <NativeFavoritesView
+        dict={dict}
+        lang={lang}
+        allArtisans={allArtisans}
+        suggestedProducts={suggestedProducts}
+      />
+    );
+  }
 
   return (
     <main className="min-h-screen bg-cream">

@@ -52,6 +52,7 @@ import { toast } from "react-hot-toast";
 import { GovernorateSelect } from "@/components/ui/governorate-select";
 import { EGYPT_GOVERNORATES } from "@/lib/egypt-governorates";
 import Link from "next/link";
+import { ARTISAN_AGREEMENT_VERSION } from "@/lib/artisan-agreement";
 
 interface BecomeArtisanClientProps {
   dict: any;
@@ -316,7 +317,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
         instagram: cleanInsta,
         brandColor: formData.brandColor,
         agreedToTerms: true,
-        termsVersion: "2026-v1",
+        agreementLanguage: isAr ? "ar" : "en",
       });
 
       if (res.success) {
@@ -827,7 +828,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           </h4>
                         </div>
                         <span className="text-[10px] font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20">
-                          {dict?.artisan_terms?.agreement_card_badge || (isAr ? "إلزامي لإطلاق المتجر" : "Required for Launch")}
+                          {(dict?.artisan_terms?.agreement_card_badge || (isAr ? "إلزامي لإطلاق المتجر" : "Required for Launch")) + ` · ${ARTISAN_AGREEMENT_VERSION}`}
                         </span>
                       </div>
 

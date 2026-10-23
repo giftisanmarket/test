@@ -35,6 +35,10 @@
 *.jks
 key.properties
 scratch/
+artifacts/
+.venv/
+venv/
+/*.docx
 
 # offline generated marketing & promo assets
 public/marketing/cards/

@@ -113,7 +113,7 @@ export function NativePullToRefresh({ children }: NativePullToRefreshProps) {
       <div
         style={{
           transform: pullY > 0 ? `translate3d(0, ${pullY * 0.4}px, 0)` : undefined,
-          transition: isPullingRef.current ? "none" : "transform 0.25s ease-out",
+          transition: pullY > 0 ? "none" : "transform 0.25s ease-out",
         }}
       >
         {children}

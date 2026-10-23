@@ -15,6 +15,10 @@ import { createPaymobIntention, PAYMOB_PUBLIC_KEY } from "@/lib/paymob";
 import { IS_CHAT_LOCKED, MIN_PAYOUT_AMOUNT } from "@/lib/constants";
 import { matchEgyptGovernorate } from "@/lib/egypt-governorates";
 import {
+  ARTISAN_AGREEMENT_VERSION,
+  isArtisanAgreementLanguage,
+} from "@/lib/artisan-agreement";
+import {
   signUp as _signUp,
   login as _login,
   resendVerificationEmailAction as _resendVerificationEmailAction,
@@ -2547,6 +2551,10 @@ export async function createProduct(artisanId: string, formData: FormData) {
       return { error: "You are not authorized to list creations in this shop" };
     }
 
+    if (artisan.termsVersion !== ARTISAN_AGREEMENT_VERSION || !artisan.termsAcceptedAt) {
+      return { error: "Please review and accept the current Artisan Partnership Agreement before listing products." };
+    }
+
     const data = {
       name: formData.get("name") as string,
       description: formData.get("description") as string,
@@ -3036,6 +3044,36 @@ export async function deleteSubscriber(id: string) {
 
 export async function updateProduct(productId: string, formData: FormData) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return { error: "You must be signed in to update a product" };
+    }
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        artisan: {
+          select: {
+            userId: true,
+            termsAcceptedAt: true,
+            termsVersion: true,
+          },
+        },
+      },
+    });
+
+    if (!existingProduct) return { error: "Product not found" };
+    const isAdmin = session.user.role === "ADMIN";
+    if (!isAdmin && existingProduct.artisan.userId !== session.user.id) {
+      return { error: "You are not authorized to update this product" };
+    }
+    if (!isAdmin && (
+      existingProduct.artisan.termsVersion !== ARTISAN_AGREEMENT_VERSION ||
+      !existingProduct.artisan.termsAcceptedAt
+    )) {
+      return { error: "Please review and accept the current Artisan Partnership Agreement before updating products." };
+    }
+
     const data = {
       name: formData.get("name") as string,
       description: formData.get("description") as string,
@@ -3187,11 +3225,6 @@ export async function promoteToArtisan(userId: string, studioData: any) {
       return { error: "You must review and agree to the Giftisan Artisan Partnership Agreement to launch your shop." };
     }
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { role: "ARTISAN" }
-    });
-
     const baseSlug = slugify(cleanStudioName);
     let artisanSlug = baseSlug ? baseSlug : `artisan-${userId.slice(-4)}`;
 
@@ -3218,6 +3251,7 @@ export async function promoteToArtisan(userId: string, studioData: any) {
     const derivedDistrict = cleanPickupDistrict || (locationParts.length > 1 ? locationParts[0] : null);
     const derivedGov = cleanPickupCity || studioData.governorate || (locationParts.length > 1 ? locationParts[1] : locationParts[0]) || null;
 
+    const acceptedAt = new Date();
     const profileData = {
       studioName: cleanStudioName,
       slug: artisanSlug,
@@ -3225,21 +3259,53 @@ export async function promoteToArtisan(userId: string, studioData: any) {
       location: cleanLocation,
       phoneNumber: cleanPhoneNumber,
       avatar: (session.user as any)?.image || `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(cleanStudioName || userId)}`,
-      termsAcceptedAt: new Date(),
-      termsVersion: studioData.termsVersion || "2026-v1",
+      termsAcceptedAt: acceptedAt,
+      termsVersion: ARTISAN_AGREEMENT_VERSION,
       ...(cleanInstagram ? { instagram: cleanInstagram } : {}),
       ...(cleanBrandColor ? { brandColor: cleanBrandColor } : {}),
       ...(derivedGov ? { pickupCity: derivedGov } : {}),
       ...(derivedDistrict ? { pickupDistrict: derivedDistrict } : {}),
     };
 
-    await prisma.artisanProfile.upsert({
-      where: { userId },
-      create: {
-        userId,
-        ...profileData
-      },
-      update: profileData
+    const requestHeaders = await headers();
+    const forwardedFor = requestHeaders.get("x-forwarded-for");
+    const ipAddress = forwardedFor?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip") || null;
+    const language = isArtisanAgreementLanguage(studioData.agreementLanguage)
+      ? studioData.agreementLanguage
+      : "en";
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { role: "ARTISAN" },
+      });
+
+      const artisan = await tx.artisanProfile.upsert({
+        where: { userId },
+        create: { userId, ...profileData },
+        update: profileData,
+      });
+
+      await tx.artisanAgreementAcceptance.upsert({
+        where: {
+          artisanId_agreementVersion: {
+            artisanId: artisan.id,
+            agreementVersion: ARTISAN_AGREEMENT_VERSION,
+          },
+        },
+        create: {
+          artisanId: artisan.id,
+          agreementVersion: ARTISAN_AGREEMENT_VERSION,
+          language,
+          acceptedAt,
+          signerUserId: userId,
+          signerName: session.user.name || null,
+          userAgent: requestHeaders.get("user-agent"),
+          ipAddress,
+        },
+        // Do not overwrite the original acceptance record for this version.
+        update: {},
+      });
     });
 
     revalidatePath("/studio");
@@ -3250,6 +3316,63 @@ export async function promoteToArtisan(userId: string, studioData: any) {
   } catch (error) {
     console.error("Promote to artisan error:", error);
     return { error: "Failed to become an artisan" };
+  }
+}
+
+export async function acceptCurrentArtisanAgreement(language: unknown) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.role !== "ARTISAN") {
+      return { error: "Only signed-in artisans can accept the partnership agreement." };
+    }
+    if (!isArtisanAgreementLanguage(language)) {
+      return { error: "Unsupported agreement language." };
+    }
+    const artisanUserId = session.user.id;
+
+    const artisan = await prisma.artisanProfile.findUnique({
+      where: { userId: artisanUserId },
+      select: { id: true },
+    });
+    if (!artisan) return { error: "Artisan profile not found." };
+
+    const requestHeaders = await headers();
+    const forwardedFor = requestHeaders.get("x-forwarded-for");
+    const ipAddress = forwardedFor?.split(",")[0]?.trim() || requestHeaders.get("x-real-ip") || null;
+    const acceptedAt = new Date();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.artisanProfile.update({
+        where: { id: artisan.id },
+        data: { termsAcceptedAt: acceptedAt, termsVersion: ARTISAN_AGREEMENT_VERSION },
+      });
+      await tx.artisanAgreementAcceptance.upsert({
+        where: {
+          artisanId_agreementVersion: {
+            artisanId: artisan.id,
+            agreementVersion: ARTISAN_AGREEMENT_VERSION,
+          },
+        },
+        create: {
+          artisanId: artisan.id,
+          agreementVersion: ARTISAN_AGREEMENT_VERSION,
+          language,
+          acceptedAt,
+          signerUserId: artisanUserId,
+          signerName: session.user.name || null,
+          userAgent: requestHeaders.get("user-agent"),
+          ipAddress,
+        },
+        update: {},
+      });
+    });
+
+    revalidatePath("/studio");
+    revalidatePath("/studio/settings");
+    return { success: true, version: ARTISAN_AGREEMENT_VERSION, acceptedAt };
+  } catch (error) {
+    console.error("Accept artisan agreement error:", error);
+    return { error: "Unable to record agreement acceptance. Please try again." };
   }
 }
 

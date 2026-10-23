@@ -155,7 +155,8 @@ model ArtisanProfile {
 
   // Terms & Partnership Agreement Legal Audit Trail
   termsAcceptedAt DateTime?
-  termsVersion    String?       // E.g., "2026-v1"
+  termsVersion    String?       // E.g., "2026-v2"
+  agreementAcceptances ArtisanAgreementAcceptance[]
 
   // Financial ledger relationships
   balances        ArtisanBalance[]
@@ -169,6 +170,23 @@ model ArtisanProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ArtisanAgreementAcceptance {
+  id               String         @id @default(cuid())
+  artisanId        String
+  artisan          ArtisanProfile @relation(fields: [artisanId], references: [id], onDelete: Cascade)
+  agreementVersion String
+  language         String
+  acceptedAt       DateTime       @default(now())
+  acceptanceMethod String         @default("CLICKWRAP")
+  signerUserId     String
+  signerName       String?
+  userAgent        String?        @db.Text
+  ipAddress        String?
+
+  @@unique([artisanId, agreementVersion])
+  @@index([artisanId, acceptedAt])
 }
 
 model ArtisanBioLink {

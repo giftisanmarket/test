@@ -19,6 +19,7 @@ import {
   RotateCcw, 
   ReceiptText, 
   UserRound,
+  MessageSquare,
   Menu,
   X,
   Search,
@@ -53,6 +54,7 @@ const getNavItems = (dict: any): NavItem[] => {
     
     // Community & Growth
     { label: dict.admin.artisans_users || (isAr ? "الحرفيين والأعضاء" : "Artisans & Users"), href: "/admin/users", icon: Users, category: "community" },
+    { label: isAr ? "محادثات المنصة" : "Conversations", href: "/admin/messages", icon: MessageSquare, category: "community" },
     { label: isAr ? "العملاء المحتملون" : "Abandoned Leads", href: "/admin/leads", icon: UserRound, category: "community" },
     { label: dict.admin.subscribers || (isAr ? "القائمة البريدية" : "Subscribers"), href: "/admin/subscribers", icon: Mail, category: "community" },
     { label: dict.admin.outreach || (isAr ? "مرسل البريد" : "Mail Sender"), href: "/admin/mail-sender", icon: Send, category: "community" },

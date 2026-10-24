@@ -602,6 +602,15 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                         <Printer className="w-4 h-4 text-accent" />
                                         {dict.admin.print_packing_slip}
                                       </button>
+                                      {order.userId && (
+                                        <Link
+                                          href={`/profile/messages?userId=${order.userId}`}
+                                          className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold text-primary hover:bg-cream rounded-xl transition-colors"
+                                        >
+                                          <Mail className="w-4 h-4 text-accent" />
+                                          {dict.admin?.contact_buyer || (lang === "ar" ? "مراسلة المشتري" : "Contact Buyer")}
+                                        </Link>
+                                      )}
                                     </motion.div>
                                   </>
                                 )}

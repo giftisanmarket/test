@@ -7,6 +7,7 @@ import { AuthModalProvider } from "@/context/auth-modal-context";
 import dynamic from "next/dynamic";
 const CartDrawer = dynamic(() => import("@/components/cart-drawer").then((mod) => mod.CartDrawer));
 const AuthDrawer = dynamic(() => import("@/components/auth-drawer").then((mod) => mod.AuthDrawer));
+const FloatingChatHub = dynamic(() => import("@/components/floating-chat-hub").then((mod) => mod.FloatingChatHub));
 import { NativeBottomNav } from "@/components/native-bottom-nav";
 import { NativePullToRefresh } from "@/components/native-pull-to-refresh";
 import { NativePageTransition } from "@/components/native/native-page-transition";
@@ -265,6 +266,7 @@ export default async function RootLayout({
                   <CartDrawer dict={dict} lang={lang} />
                   <AuthDrawer dict={dict} lang={lang} />
                   <NativeBottomNav dict={dict} lang={lang} />
+                  <FloatingChatHub dict={dict} lang={lang} />
                 </AuthModalProvider>
               </CartProvider>
             </FavoritesProvider>

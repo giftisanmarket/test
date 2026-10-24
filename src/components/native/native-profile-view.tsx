@@ -14,6 +14,7 @@ import {
   CreditCard,
   Truck,
   MessageCircle,
+  MessageSquare,
   X,
   Download,
   AlertCircle,
@@ -450,6 +451,27 @@ export function NativeProfileView({
                     </h4>
                     <p className="text-[10px] text-charcoal/50">
                       {isArabic ? "تعديل البيانات الشخصية والأمان" : "Personal info & security"}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-primary/40 rtl:rotate-180" />
+              </Link>
+
+              <Link
+                href={`/${lang}/profile/messages`}
+                onClick={() => triggerHaptic("light")}
+                className="p-3.5 flex items-center justify-between active:bg-cream/40 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center text-accent">
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-primary">
+                      {isArabic ? "الرسائل والمحادثات" : "Messages & Inquiries"}
+                    </h4>
+                    <p className="text-[10px] text-charcoal/50">
+                      {isArabic ? "محادثاتك المباشرة مع الحرفيين والمشترين" : "Direct dialogues with artisans & buyers"}
                     </p>
                   </div>
                 </div>

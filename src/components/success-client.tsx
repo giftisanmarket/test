@@ -2,7 +2,7 @@
 
 import { Navbar } from "@/components/navbar";
 import Link from "next/link";
-import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone } from "lucide-react";
+import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -287,8 +287,9 @@ export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
                 </form>
 
                 {accountError && (
-                  <p className="text-accent-light text-xs font-bold bg-black/20 p-3 rounded-xl border border-accent-light/20">
-                    ⚠️ {accountError}
+                  <p className="text-accent-light text-xs font-bold bg-black/20 p-3 rounded-xl border border-accent-light/20 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-accent-light shrink-0" />
+                    <span>{accountError}</span>
                   </p>
                 )}
               </div>
@@ -310,6 +311,15 @@ export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
             <div>
               <h3 className="font-bold text-primary text-lg">{dict.checkout.artisan_prep_title}</h3>
               <p className="text-xs md:text-sm text-charcoal/50 leading-relaxed mt-1">{dict.checkout.artisan_prep_desc}</p>
+            </div>
+          </div>
+          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-primary/5 shadow-xl shadow-primary/5 flex flex-col md:flex-row items-center md:items-start gap-4 text-center md:text-left">
+            <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0">
+              <MessageSquare className="w-7 h-7 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-bold text-primary text-lg">{dict.checkout.direct_dialogue_title || (isAr ? "حوار مباشر مع الحرفي" : "Direct Dialogue")}</h3>
+              <p className="text-xs md:text-sm text-charcoal/50 leading-relaxed mt-1">{dict.checkout.direct_dialogue_desc || (isAr ? "يمكنك التواصل مباشرة مع صانع القطعة عبر صفحة طلباتك في أي وقت." : "Direct messaging with your artisan is available anytime from your account orders.")}</p>
             </div>
           </div>
         </motion.div>

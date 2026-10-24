@@ -21,8 +21,10 @@ import {
   Clock, 
   LogOut, 
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  MessageSquare
 } from "lucide-react";
+import { useNotifications } from "@/components/notification-provider";
 import { FaWhatsapp } from "react-icons/fa6";
 import { WHATSAPP_COMMUNITY_URL } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,6 +56,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { unreadCount } = useNotifications();
 
   const profileRef = useRef<HTMLDivElement>(null);
   const isAr = lang === "ar";
@@ -133,12 +136,19 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
       isActive: pathname === `/${lang}/studio/new-product`,
     },
     {
+      label: dict?.common?.messages || (isAr ? "المحادثات" : "Messages"),
+      href: `/${lang}/profile/messages`,
+      icon: MessageSquare,
+      badge: unreadCount > 0 ? unreadCount : null,
+      isActive: pathname.includes("/profile/messages"),
+    },
+    {
       label: dict?.studio?.studio_settings || (isAr ? "الإعدادات" : "Settings"),
       href: `/${lang}/studio?tab=settings`,
       icon: Settings,
       isActive: pathname === `/${lang}/studio` && searchParams?.get("tab") === "settings",
     },
-  ], [lang, pathname, dict, isAr, searchParams]);
+  ], [lang, pathname, dict, isAr, searchParams, unreadCount]);
 
   const studioDisplayName = artisan?.studioName || user.name || (isAr ? "متجر الحرفي" : "Artisan Shop");
   const avatarImage = artisan?.avatar || user.image;
@@ -188,6 +198,21 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
               <span className="hidden sm:inline">{dict?.studio?.add_treasure || (isAr ? "إضافة قطعة" : "Add Product")}</span>
             </Link>
           )}
+
+          {/* Messages Link */}
+          <Link
+            href={`/${lang}/profile/messages`}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-bold text-primary hover:bg-primary/5 border border-primary/15 transition-all shadow-xs relative"
+            title={dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-accent" />
+            <span>{dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}</span>
+            {unreadCount > 0 && (
+              <span className="w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
 
           {/* View Live Shop (Artisan Storefront Preview - Desktop / Tablet) */}
           {publicShopUrl && (

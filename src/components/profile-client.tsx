@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Truck,
   MessageCircle,
+  MessageSquare,
   X,
   Download,
   AlertCircle,
@@ -296,6 +297,17 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                 
                 <div className="w-full grid grid-cols-1 gap-2">
                   <Link 
+                    href="/profile/messages" 
+                    className="flex items-center justify-between w-full p-3 md:p-4 bg-primary/5 rounded-2xl text-primary font-bold hover:bg-primary hover:text-white transition-all group text-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MessageSquare className="w-4 h-4 md:w-5 md:h-5 opacity-100" />
+                      <span>{dict.common?.messages || (isAr ? "الرسائل والمحادثات" : "Messages & Inquiries")}</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform" />
+                  </Link>
+
+                  <Link 
                     href="/profile/settings" 
                     className="flex items-center justify-between w-full p-3 md:p-4 bg-primary/5 rounded-2xl text-primary font-bold hover:bg-primary hover:text-white transition-all group text-sm"
                   >
@@ -308,25 +320,25 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                   {user.role === "ARTISAN" && (
                     <Link 
                       href="/studio"
-                      className="flex items-center justify-between w-full p-3 md:p-4 bg-accent/10 border border-accent/20 rounded-2xl text-accent font-black hover:bg-accent hover:text-white transition-all group text-sm shadow-xs"
+                      className="flex items-center justify-between w-full p-3 md:p-4 bg-primary/5 rounded-2xl text-primary font-bold hover:bg-primary hover:text-white transition-all group text-sm"
                     >
                       <div className="flex items-center gap-3">
-                        <Store className="w-4 h-4 md:w-5 md:h-5" />
+                        <Store className="w-4 h-4 md:w-5 md:h-5 opacity-100" />
                         <span>{dict.profile?.studio || dict.common?.pro_studio || "Shop Manager"}</span>
                       </div>
-                      <ChevronRight className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform" />
+                      <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform" />
                     </Link>
                   )}
                   {user.role === "ADMIN" && (
                     <Link 
                       href="/admin"
-                      className="flex items-center justify-between w-full p-3 md:p-4 bg-primary/10 border border-primary/20 rounded-2xl text-primary font-black hover:bg-primary hover:text-white transition-all group text-sm shadow-xs"
+                      className="flex items-center justify-between w-full p-3 md:p-4 bg-primary/5 rounded-2xl text-primary font-bold hover:bg-primary hover:text-white transition-all group text-sm"
                     >
                       <div className="flex items-center gap-3">
                         <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 opacity-100" />
-                        <span>{dict.profile.admin || "Admin Portal"}</span>
+                        <span>{dict.profile.admin || "Admin"}</span>
                       </div>
-                      <ChevronRight className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform" />
+                      <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform" />
                     </Link>
                   )}
                   <button 
@@ -568,6 +580,16 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                                         item.status === "REFUNDED" ? (isAr ? "تم الاسترجاع" : "Refunded") :
                                         dict.profile.delivered}
                                       </div>
+                                    )}
+
+                                    {item.product.artisan?.userId && (
+                                      <Link 
+                                        href={`/profile/messages?userId=${item.product.artisan.userId}`}
+                                        className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-primary/40 hover:text-accent transition-colors"
+                                      >
+                                        <MessageCircle className="w-3 h-3" />
+                                        <span>{dict.profile?.contact || (isAr ? "تواصل" : "Contact")}</span>
+                                      </Link>
                                     )}
                                   </div>
 

@@ -3971,6 +3971,111 @@ export async function getInbox(userId: string) {
   }
 }
 
+export async function getAdminConversations() {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { error: "Unauthorized", messages: [] };
+    }
+
+    const rawMessages = await prisma.message.findMany({
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+            artisanProfile: {
+              select: {
+                id: true,
+                studioName: true,
+                slug: true,
+              }
+            }
+          }
+        },
+        receiver: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+            role: true,
+            artisanProfile: {
+              select: {
+                id: true,
+                studioName: true,
+                slug: true,
+              }
+            }
+          }
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            images: true,
+            slug: true,
+          }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 500
+    });
+
+    const sanitizeFlightString = (str: string | null | undefined): string | null => {
+      if (!str) return null;
+      const maxLength = process.env.NODE_ENV === "production" ? 2000 : 150000;
+      if (str.length > maxLength) return null;
+      return str;
+    };
+
+    const messages = rawMessages.map(m => ({
+      id: m.id,
+      content: m.content || "",
+      senderId: m.senderId,
+      receiverId: m.receiverId,
+      productId: m.productId || null,
+      attachment: sanitizeFlightString(m.attachment),
+      read: m.read,
+      createdAt: m.createdAt.toISOString(),
+      sender: m.sender ? {
+        id: m.sender.id,
+        name: m.sender.name || "User",
+        email: m.sender.email || "",
+        image: sanitizeFlightString(m.sender.image) || "",
+        role: m.sender.role,
+        studioName: m.sender.artisanProfile?.studioName || null,
+        slug: m.sender.artisanProfile?.slug || null,
+      } : null,
+      receiver: m.receiver ? {
+        id: m.receiver.id,
+        name: m.receiver.name || "User",
+        email: m.receiver.email || "",
+        image: sanitizeFlightString(m.receiver.image) || "",
+        role: m.receiver.role,
+        studioName: m.receiver.artisanProfile?.studioName || null,
+        slug: m.receiver.artisanProfile?.slug || null,
+      } : null,
+      product: m.product ? {
+        id: m.product.id,
+        name: m.product.name || "",
+        slug: m.product.slug || null,
+        images: Array.isArray(m.product.images) && m.product.images.length > 0 && m.product.images[0]
+          ? [sanitizeFlightString(m.product.images[0]) || ""]
+          : []
+      } : null
+    }));
+
+    return { success: true, messages };
+  } catch (error: any) {
+    console.error("Get admin conversations error:", error);
+    return { error: error.message || "Failed to load conversations", messages: [] };
+  }
+}
+
 export async function updateUser(userId: string, formData: FormData) {
   try {
     // Auth guard: a user may only update their own profile unless they are an admin

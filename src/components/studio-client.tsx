@@ -36,6 +36,7 @@ import {
   Megaphone,
   Eye,
   MessageCircle,
+  MessageSquare,
   CreditCard,
   Banknote,
   Wallet,
@@ -719,6 +720,17 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                               <Lock className="w-3 h-3 text-accent shrink-0" />
                               <span>{lang === "ar" ? "بيانات العميل محمية الخصوصية" : "Customer Details Protected"}</span>
                             </div>
+                            {selectedItem.order.userId && (
+                              <div className="mt-2">
+                                <Link
+                                  href={`/profile/messages?userId=${selectedItem.order.userId}`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-accent/20 bg-accent/10 text-accent text-xs font-bold hover:bg-accent hover:text-white transition-all shadow-xs"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>{lang === "ar" ? "مراسلة العميل عبر المنصة" : "Message Customer on Platform"}</span>
+                                </Link>
+                              </div>
+                            )}
                           </div>
 
                           <div className="pt-2.5 border-t border-primary/10 space-y-2">

@@ -660,7 +660,12 @@ export function Navbar({ dict }: { dict?: any }) {
             <Link 
               href="/favorites" 
               title={d.common.favorites || "Favorites"} 
-              className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full text-charcoal/70 hover:text-primary hover:bg-primary/5 transition-all relative active:scale-95"
+              className={cn(
+                "flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full transition-all relative active:scale-95",
+                pathname.includes("/favorites")
+                  ? "text-primary bg-primary/10 ring-1 ring-primary/20"
+                  : "text-charcoal/70 hover:text-primary hover:bg-primary/5"
+              )}
             >
               <Heart className="w-4 h-4 md:w-5 md:h-5" />
               {allFavoritesCount > 0 && (
@@ -678,15 +683,36 @@ export function Navbar({ dict }: { dict?: any }) {
                 className={cn(
                   "hidden md:flex items-center justify-center w-10 h-10 rounded-full transition-all relative active:scale-95",
                   pathname.startsWith("/studio")
-                    ? "bg-primary text-white shadow-sm"
+                    ? "text-primary bg-primary/10 ring-1 ring-primary/20"
                     : "text-charcoal/70 hover:text-primary hover:bg-primary/5"
                 )}
               >
                 <Store className="w-5 h-5" />
                 <span className={cn(
                   "absolute top-1.5 end-1.5 w-2 h-2 rounded-full ring-2 ring-white",
-                  pathname.startsWith("/studio") ? "bg-accent-light" : "bg-accent animate-pulse"
+                  pathname.startsWith("/studio") ? "bg-accent" : "bg-accent animate-pulse"
                 )} />
+              </Link>
+            )}
+
+            {/* Messages Hub (Desktop) */}
+            {session && (
+              <Link
+                href="/profile/messages"
+                title={d.common.messages || "Messages"}
+                className={cn(
+                  "hidden md:flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full transition-all relative active:scale-95",
+                  pathname.includes("/profile/messages")
+                    ? "text-primary bg-primary/10 ring-1 ring-primary/20"
+                    : "text-charcoal/70 hover:text-primary hover:bg-primary/5"
+                )}
+              >
+                <MessageSquare className="w-4 h-4 md:w-5 md:h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 end-0.5 md:top-1 md:end-1 w-3.5 h-3.5 md:w-4 md:h-4 bg-accent text-white text-[8px] md:text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                    {unreadCount}
+                  </span>
+                )}
               </Link>
             )}
 
@@ -785,6 +811,22 @@ export function Navbar({ dict }: { dict?: any }) {
                         >
                           <Package className="w-4 h-4 text-primary/40" />
                           <span>{d.common.purchases_orders || "Purchases & Orders"}</span>
+                        </Link>
+
+                        <Link
+                          href="/profile/messages"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cream/60 transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4 text-primary/40" />
+                          <div className="flex-1 flex justify-between items-center">
+                            <span>{d.common.messages || "Messages"}</span>
+                            {unreadCount > 0 && (
+                              <span className="text-[10px] font-black bg-accent text-white px-2 py-0.5 rounded-full">
+                                {unreadCount}
+                              </span>
+                            )}
+                          </div>
                         </Link>
 
                         <Link
@@ -1097,6 +1139,22 @@ export function Navbar({ dict }: { dict?: any }) {
                   >
                     <User className="w-5 h-5 text-primary/40 mb-2" />
                     <span className="text-xs font-bold text-primary uppercase">{d.common.profile}</span>
+                  </Link>
+
+                  <Link
+                    href="/profile/messages"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform relative"
+                  >
+                    <div className="relative">
+                      <MessageSquare className="w-5 h-5 text-primary/40 mb-2" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -end-2 w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-primary uppercase">{d.common.messages || (pathname.startsWith('/ar') ? "الرسائل" : "Messages")}</span>
                   </Link>
                 </div>
               </div>

@@ -13,7 +13,8 @@ import {
   Heart, 
   Package, 
   Clock,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from "lucide-react";
 import { BespokeImage } from "./bespoke-image";
 import { ProductCard } from "@/components/home/product-card";
@@ -293,6 +294,19 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
                   </>
                 )}
               </button>
+
+              {/* Message Shop Button */}
+              {artisan.userId && (
+                <Link
+                  href={`/profile/messages?userId=${artisan.userId}`}
+                  className="h-10 sm:h-11 lg:h-12 px-3.5 sm:px-5 lg:px-6 rounded-full border bg-white text-primary hover:bg-primary/5 text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center justify-center gap-1.5 sm:gap-2 active:scale-95"
+                  style={{ borderColor: `${brandColor}35` }}
+                  title={isAr ? "مراسلة المتجر" : "Message Shop"}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-accent" />
+                  <span>{dict.common?.contact_artisan || (isAr ? "تواصل" : "Message")}</span>
+                </Link>
+              )}
 
               {/* Share Button */}
               <button

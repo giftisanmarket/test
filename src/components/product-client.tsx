@@ -14,6 +14,7 @@ import { addReview, trackProductView } from "@/lib/actions";
 import { useSession } from "next-auth/react";
 import { useIsNative, triggerHaptic, shareNativeContent } from "@/lib/native";
 import { BespokeImage } from "./bespoke-image";
+import { ContactArtisanButton } from "./contact-artisan-button";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 
@@ -613,8 +614,8 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
               {product.description}
             </p>
 
-            {/* Brand Link */}
-            <div className="mb-6">
+            {/* Brand Link & Contact Shop */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <Link
                 href={`/artisans/${encodeURI(product.artisan.slug || product.artisan.user.name.toLowerCase().replace(/\s+/g, "-"))}`}
                 className="inline-flex items-center gap-1.5 text-base font-semibold text-primary underline underline-offset-4 decoration-primary/30 hover:text-accent hover:decoration-accent transition-colors"
@@ -622,6 +623,22 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                 <span>{product.artisan.studioName || product.artisan.user.name}</span>
                 {product.artisan.isVerified && <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />}
               </Link>
+
+              {product.artisan?.user?.id && (
+                <ContactArtisanButton
+                  artisanId={product.artisan.id}
+                  artisanName={product.artisan.studioName || product.artisan.user.name}
+                  productId={product.id}
+                  productName={product.name}
+                  productImage={product.images[0]}
+                  artisanUserId={product.artisan.user.id}
+                  dict={dict}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary/15 bg-white text-primary text-xs font-bold hover:bg-primary/5 hover:border-accent hover:text-accent transition-all shadow-xs active:scale-95"
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-accent" />
+                  <span>{dict.contact_artisan?.message_artisan || (lang === "ar" ? "تواصل مع الحرفي" : "Message Shop")}</span>
+                </ContactArtisanButton>
+              )}
             </div>
 
             {product.canPersonalize && (
@@ -931,12 +948,29 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                       <MapPin className="w-4 h-4" />
                       <span>{dict.product.operating_out_of} {product.artisan.location}</span>
                     </div>
-                    <Link
-                      href={`/artisans/${product.artisan.slug || product.artisan.user.name.toLowerCase().replace(/ /g, "-")}`}
-                      className="inline-flex items-center gap-2 px-8 h-12 bg-primary text-white font-bold rounded-full hover:bg-primary-light transition-all"
-                    >
-                      {dict.product.visit_studio_gallery}
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Link
+                        href={`/artisans/${product.artisan.slug || product.artisan.user.name.toLowerCase().replace(/ /g, "-")}`}
+                        className="inline-flex items-center gap-2 px-8 h-12 bg-primary text-white font-bold rounded-full hover:bg-primary-light transition-all"
+                      >
+                        {dict.product.visit_studio_gallery}
+                      </Link>
+                      {product.artisan?.user?.id && (
+                        <ContactArtisanButton
+                          artisanId={product.artisan.id}
+                          artisanName={product.artisan.studioName || product.artisan.user.name}
+                          productId={product.id}
+                          productName={product.name}
+                          productImage={product.images[0]}
+                          artisanUserId={product.artisan.user.id}
+                          dict={dict}
+                          className="inline-flex items-center gap-2 px-8 h-12 bg-white border border-primary/20 text-primary font-bold rounded-full hover:bg-primary/5 hover:border-accent hover:text-accent transition-all shadow-xs"
+                        >
+                          <MessageSquare className="w-4 h-4 text-accent" />
+                          <span>{dict.contact_artisan?.message_artisan || (lang === "ar" ? "تواصل مع الحرفي" : "Message Shop")}</span>
+                        </ContactArtisanButton>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

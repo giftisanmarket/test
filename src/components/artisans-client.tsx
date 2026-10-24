@@ -131,8 +131,8 @@ export function ArtisansClient({ artisans, dict }: ArtisansClientProps) {
 
             <p className="text-sm md:text-base text-charcoal/60 leading-relaxed font-normal max-w-xl mx-auto">
               {dict.home?.artisans_desc || (isAr 
-                ? "اكتشف ورش ومتاجر المبدعين المستقلين وراء أكثر المنتجات اليدوية تميزاً في مصر." 
-                : "Discover independent studios and skilled artisans behind Egypt's most original handcrafted creations.")}
+                ? "اكتشف متاجر المبدعين المستقلين والحرفيين وراء أكثر المنتجات اليدوية تميزاً في مصر." 
+                : "Discover independent shops and skilled artisans behind Egypt's most original handcrafted creations.")}
             </p>
           </motion.div>
         </div>

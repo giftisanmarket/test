@@ -680,7 +680,7 @@ export function Navbar({ dict }: { dict?: any }) {
             {session?.user?.role === "ARTISAN" && (
               <Link
                 href="/studio"
-                title={d.common.pro_studio || "Shop Studio"}
+                title={d.common.pro_studio || "Shop"}
                 className={cn(
                   "flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full transition-all relative active:scale-95",
                   pathname.startsWith("/studio")
@@ -1137,7 +1137,7 @@ export function Navbar({ dict }: { dict?: any }) {
                         </div>
                         <div>
                           <h4 className="font-heading font-black text-xs text-primary leading-tight">
-                            {d.common.studio || (pathname.startsWith('/ar') ? "لوحة تحكم المتجر" : "Shop Studio")}
+                            {d.common.studio || (pathname.startsWith('/ar') ? "لوحة تحكم المتجر" : "Shop")}
                           </h4>
                           <p className="text-[10px] text-charcoal/50 mt-0.5">
                             {pathname.startsWith('/ar') ? "إدارة القطع والطلبات والمحادثات" : "Manage crafts, orders & messages"}

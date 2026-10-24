@@ -45,8 +45,13 @@ import {
   FileText,
   X,
   ExternalLink,
+  Calculator,
+  Send,
+  Zap,
+  Package,
+  Sliders,
 } from "lucide-react";
-import { FaInstagram } from "react-icons/fa6";
+import { FaInstagram, FaWhatsapp } from "react-icons/fa6";
 import { cn, slugify, stripEmojis } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { GovernorateSelect } from "@/components/ui/governorate-select";
@@ -471,13 +476,109 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
             </div>
           </div>
 
-          <button
-            onClick={scrollToWizard}
-            className="w-full sm:w-auto px-6 sm:px-8 h-13 sm:h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 inline-flex items-center justify-center gap-2.5 sm:gap-3 active:scale-95 text-sm sm:text-base group cursor-pointer"
-          >
-            <span>{isAr ? "افتح متجرك في 3 خطوات سهلة" : "Open Your Shop in 3 Simple Steps"}</span>
-            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 rtl:rotate-180 transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
-          </button>
+          {/* Action CTA */}
+          <div className="flex items-center justify-center max-w-lg mx-auto">
+            <button
+              onClick={scrollToWizard}
+              className="w-full sm:w-auto px-8 sm:px-10 h-13 sm:h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 inline-flex items-center justify-center gap-2.5 active:scale-95 text-sm sm:text-base group cursor-pointer"
+            >
+              <Store className="w-4 h-4 text-accent" />
+              <span>{isAr ? "افتح متجرك في 3 خطوات" : "Open Your Shop in 3 Steps"}</span>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 rtl:rotate-180 transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
+            </button>
+          </div>
+
+          {/* Reassurance Strip */}
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 pt-6 text-xs text-charcoal/60">
+            <div className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-accent" />
+              <span>{isAr ? "بدون اشتراك شهري" : "No monthly subscription"}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-accent" />
+              <span>{isAr ? "بدون رسوم إدراج للمنتجات" : "No listing fees"}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-accent" />
+              <span>{isAr ? "أرباحك كاملة 100% طوال 2026" : "Keep 100% of your prices in 2026"}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4-STEP VISUAL JOURNEY */}
+      <section className="py-10 sm:py-14 px-4 bg-white/40 border-y border-primary/5">
+        <div className="container mx-auto max-w-5xl">
+          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+            <span className="text-xs font-black uppercase tracking-widest text-accent mb-2 block">
+              {isAr ? "كيف تعمل المنصة للحرفيين" : "How It Works For Makers"}
+            </span>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-primary">
+              {isAr ? "من متجرك إلى أيادي المقتنين في 4 خطوات" : "From your shop to collectors in 4 steps"}
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {[
+              {
+                num: "01",
+                icon: Store,
+                titleEn: "1. Create Your Shop",
+                titleAr: "١. افتح متجرك",
+                descEn: "Set up your shop in 3 minutes and start showcasing your handmade pieces to gift hunters across Egypt.",
+                descAr: "أنشئ متجرك في 3 دقائق وابدأ بعرض أعمالك اليدوية للمقتنين والمهتمين بالهدايا في مصر.",
+              },
+              {
+                num: "02",
+                icon: ShoppingBag,
+                titleEn: "2. Receive Paid Orders",
+                titleAr: "٢. استقبل طلبات مدفوعة",
+                descEn: "Buyers pay upfront. Receive instant notifications with buyer customization requests and lead times.",
+                descAr: "المشتري يدفع مسبقاً بأمان. تستلم إشعاراً فورياً بتفاصيل الطلب والمقاسات أو الحفر المطلوب.",
+              },
+              {
+                num: "03",
+                icon: Truck,
+                titleEn: "3. Doorstep Pickup",
+                titleAr: "٣. استلام من بابك",
+                descEn: "Package your piece; our shipping partner arrives directly at your shop in any of the 27 governorates.",
+                descAr: "غلف قطعتك، وسيصل مندوب الشحن مباشرة إلى باب متجرك أو منزلك في أي محافظة دون عناء.",
+              },
+              {
+                num: "04",
+                icon: Wallet,
+                titleEn: "4. Direct InstaPay Payout",
+                titleAr: "٤. تحويل إنستاباي مباشر",
+                descEn: "Your 100% earnings are transferred straight to your InstaPay or bank account upon delivery.",
+                descAr: "تحصل على 100% من أرباحك مباشرة عبر إنستاباي أو حسابك البنكي بمجرد تسليم الطرد.",
+              },
+            ].map((step, idx) => {
+              const StepIcon = step.icon;
+              return (
+                <div
+                  key={idx}
+                  className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-primary/10 shadow-xs relative flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                        <StepIcon className="w-5 h-5" />
+                      </div>
+                      <span className="text-xl font-heading font-black text-primary/20">
+                        {step.num}
+                      </span>
+                    </div>
+                    <h3 className="text-sm sm:text-base font-bold text-primary">
+                      {isAr ? step.titleAr : step.titleEn}
+                    </h3>
+                    <p className="text-xs text-charcoal/65 leading-relaxed">
+                      {isAr ? step.descAr : step.descEn}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -545,7 +646,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                   {currentStep === 3 && (isAr ? "نبذة عن ورشتك وعلامتك" : "Your Story & Brand")}
                 </h2>
                 <p className="text-xs sm:text-sm text-charcoal/60 font-normal leading-relaxed">
-                  {currentStep === 1 && (isAr ? "اختر اسماً بسيطاً يعبر عن شغفك. يمكنك تعديله دائماً." : "Give your handmade studio a name. You can change this anytime.")}
+                  {currentStep === 1 && (isAr ? "اختر اسماً بسيطاً يعبر عن شغفك. يمكنك تعديله دائماً." : "Give your handmade shop a name. You can change this anytime.")}
                   {currentStep === 2 && (isAr ? "بيانات الموقع لاستلام شحنات الطلبات ورقم للتواصل السريع." : "Where courier pickups will happen, and your contact phone.")}
                   {currentStep === 3 && (isAr ? "سطور بسيطة لتعريف المقتنين بحرفتك وإطلاق متجرك." : "A brief introduction for collectors discovering your craft.")}
                 </p>
@@ -584,7 +685,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           }
                           setFormData({ ...formData, studioName: clean });
                         }}
-                        placeholder={isAr ? "مثال: متجر الفخار الأصيل" : "e.g., Cairo Clay Studio"}
+                        placeholder={isAr ? "مثال: متجر الفخار الأصيل" : "e.g., Cairo Clay Shop"}
                         className="w-full h-13 sm:h-14 px-4 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-base font-bold text-primary placeholder:text-primary/30 transition-all"
                       />
 
@@ -909,7 +1010,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                           </div>
                         ) : (
                           <>
-                            <span>{isAr ? "إطلاق متجري الآن" : "Launch Your Studio"}</span>
+                            <span>{isAr ? "إطلاق متجري الآن" : "Launch Your Shop"}</span>
                             <Rocket className="w-4 h-4 text-accent transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                           </>
                         )}
@@ -924,6 +1025,152 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                   </motion.div>
                 )}
               </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* COMPARISON MATRIX: GIFTISAN VS INSTAGRAM VS ETSY */}
+      <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4 bg-white/60 border-t border-primary/5">
+        <div className="container mx-auto max-w-4xl">
+          <div className="text-center max-w-xl mx-auto mb-8 sm:mb-12">
+            <span className="text-xs font-black uppercase tracking-widest text-accent mb-2 block">
+              {isAr ? "مقارنة شفافة وواضحة" : "Transparent Comparison"}
+            </span>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-heading font-bold text-primary">
+              {isAr ? "لماذا يفضل الحرفيون البيع عبر جيفتيزان؟" : "Why Makers Choose Giftisan"}
+            </h2>
+            <p className="text-xs sm:text-sm text-charcoal/60 mt-2">
+              {isAr
+                ? "مقارنة عملية بين البيع عبر جيفتيزان والبيع التقليدي عبر رسائل إنستجرام ومنصة إتسي"
+                : "A direct comparison between Giftisan, selling via Instagram DMs, and Etsy"}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-3xl border border-primary/10 shadow-lg shadow-primary/5 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-start border-collapse min-w-[620px]">
+                <thead>
+                  <tr className="border-b border-primary/10 bg-cream/30">
+                    <th className="p-4 sm:p-5 text-xs font-bold text-charcoal/50 text-start w-1/4">
+                      {isAr ? "الميزة / المعيار" : "Feature / Benefit"}
+                    </th>
+                    <th className="p-4 sm:p-5 text-xs font-black text-accent bg-accent/5 text-start w-1/3 border-x border-accent/20">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-accent" />
+                        <span>Giftisan (جيفتيزان)</span>
+                      </div>
+                      <span className="text-[10px] text-accent/80 font-normal block mt-0.5">
+                        {isAr ? "برنامج المؤسسين 2026" : "2026 Founding Partner"}
+                      </span>
+                    </th>
+                    <th className="p-4 sm:p-5 text-xs font-bold text-charcoal/70 text-start w-1/5">
+                      {isAr ? "رسائل إنستجرام (DMs)" : "Instagram DMs"}
+                    </th>
+                    <th className="p-4 sm:p-5 text-xs font-bold text-charcoal/70 text-start w-1/5">
+                      {isAr ? "منصة إتسي (Etsy)" : "Etsy Marketplace"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-primary/5 text-xs">
+                  {[
+                    {
+                      labelEn: "Platform Commission",
+                      labelAr: "نسبة عمولة المنصة",
+                      giftisanEn: "0% Commission (Keep 100%)",
+                      giftisanAr: "0% عمولة (أرباحك كاملة 100%)",
+                      instaEn: "0% (hidden time & friction cost)",
+                      instaAr: "0% (مع وقت ضائع ومجهود يدوي)",
+                      etsyEn: "6.5% + transaction + processing",
+                      etsyAr: "6.5% + رسوم تحويل ودفع إلكتروني",
+                    },
+                    {
+                      labelEn: "Listing & Renewal Fees",
+                      labelAr: "رسوم إضافة وتجديد المنتجات",
+                      giftisanEn: "0 EGP • Free & Unlimited",
+                      giftisanAr: "0 جنيه • مجاني وبلا حدود",
+                      instaEn: "Free on feed",
+                      instaAr: "مجاني على الحساب",
+                      etsyEn: "$0.20 per item per 4 months",
+                      etsyAr: "0.20 دولار لكل قطعة كل 4 أشهر",
+                    },
+                    {
+                      labelEn: "Doorstep Courier Pickup",
+                      labelAr: "استلام الشحنات من باب الورشة",
+                      giftisanEn: "Automated pickup across all 27 governorates",
+                      giftisanAr: "مندوب يصل لبابك في جميع المحافظات الـ 27",
+                      instaEn: "Manual booking, calling couriers yourself",
+                      instaAr: "تنسيق يدوي مع شركات الشحن والنزول بنفسك",
+                      etsyEn: "Complex international customs & shipping",
+                      etsyAr: "شحن دولي معقد وجمارك باهظة",
+                    },
+                    {
+                      labelEn: "Payment Security & Payout",
+                      labelAr: "ضمان الدفع والتحويلات",
+                      giftisanEn: "Escrow protection • Direct InstaPay",
+                      giftisanAr: "حماية كاملة • تحويل مباشر بإنستاباي",
+                      instaEn: "Risk of fake receipts, ghosting, unpaid COD",
+                      instaAr: "مخاطر إيصالات وهمية وتهرب المشترين",
+                      etsyEn: "Foreign currency hurdles & delayed wire",
+                      etsyAr: "عوائق التحويل البنكي بالعملة الأجنبية",
+                    },
+                    {
+                      labelEn: "Bespoke & Custom Lead Times",
+                      labelAr: "إدارة القطع المنفذة بالطلب",
+                      giftisanEn: "Built-in lead times & personalization notes",
+                      giftisanAr: "تحديد مدة التنفيذ وتلقي بيانات الحفر والمقاسات",
+                      instaEn: "Lost in buried chat messages",
+                      instaAr: "تفاصيل تضيع في زحمة الرسائل والصور",
+                      etsyEn: "Basic variation fields only",
+                      etsyAr: "خيارات محدودة للمنتجات المخصصة",
+                    },
+                    {
+                      labelEn: "Buyer Intent",
+                      labelAr: "طبيعة الزوار والمشترين",
+                      giftisanEn: "High-intent gift seekers who value craft",
+                      giftisanAr: "باحثون عن هدايا حقيقية يقدرون الجهد اليدوي",
+                      instaEn: "Casual scrollers asking 'price in DM?'",
+                      instaAr: "متصفحون عشوائيون يسألون 'بكام؟' ويختفون",
+                      etsyEn: "Saturated global catalog",
+                      etsyAr: "منافسة عالمية شرسة وبحث مشتت",
+                    },
+                  ].map((row, i) => (
+                    <tr key={i} className="hover:bg-cream/20 transition-colors">
+                      <td className="p-4 sm:p-5 font-bold text-primary">
+                        {isAr ? row.labelAr : row.labelEn}
+                      </td>
+                      <td className="p-4 sm:p-5 font-bold text-primary bg-accent/5 border-x border-accent/20">
+                        <div className="flex items-center gap-1.5 text-accent">
+                          <Check className="w-3.5 h-3.5 shrink-0 stroke-[3]" />
+                          <span>{isAr ? row.giftisanAr : row.giftisanEn}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 sm:p-5 text-charcoal/60">
+                        {isAr ? row.instaAr : row.instaEn}
+                      </td>
+                      <td className="p-4 sm:p-5 text-charcoal/60">
+                        {isAr ? row.etsyAr : row.etsyEn}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-4 sm:p-6 bg-cream/40 border-t border-primary/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-xs text-charcoal/70 text-center sm:text-start">
+                {isAr
+                  ? "احتفظ بمتجرك على إنستجرام واستخدم جيفتيزان كقناة بيع وشحن إضافية بدون أي تعارض."
+                  : "Keep your Instagram shop running and use Giftisan as an automated, frictionless sales channel with zero conflict."}
+              </p>
+              <button
+                type="button"
+                onClick={scrollToWizard}
+                className="shrink-0 h-11 px-5 bg-accent text-white font-bold rounded-xl hover:bg-accent-dark transition-all text-xs flex items-center gap-2 cursor-pointer shadow-md shadow-accent/20"
+              >
+                <span>{isAr ? "ابدأ الآن مجاناً" : "Join Free as Founder"}</span>
+                <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
+              </button>
             </div>
           </div>
         </div>
@@ -1015,6 +1262,24 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                 a: isAr
                   ? "نعم بالتأكيد! توفر جيفتيزان ميزة تحديد مدة التصنيع (مثلاً 3 إلى 7 أيام عمل)، بالإضافة إلى إمكانية استقبال تفاصيل الحفر، الصور، والأسماء المخصصة من المشتري مباشرة."
                   : "Yes! You can specify custom crafting lead times (e.g. 3–7 days) and collect custom engraving text, custom dimensions, or reference photos directly from buyers.",
+              },
+              {
+                q: isAr ? "هل يمكنني عرض قطع أبيعها بالفعل على إنستجرام أو إتسي؟" : "Can I cross-list items I already sell on Instagram or Etsy?",
+                a: isAr
+                  ? "نعم بنسبة 100%! لا نشترط أي حصرية. يمكنك عرض نفس منتجاتك في جيفتيزان والاستفادة من خدمات الشحن التلقائي واستلام الأموال كقناة بيع إضافية تعمل بسلاسة."
+                  : "Yes, 100%! We have zero exclusivity requirements. You can cross-list the same handmade items and use Giftisan as an automated sales and courier channel.",
+              },
+              {
+                q: isAr ? "من يتحمل تكاليف الشحن وتوصيل الطرود؟" : "Who covers the shipping cost?",
+                a: isAr
+                  ? "المشتري هو من يتحمل تكلفة الشحن بالكامل عند إتمام الطلب. المندوب يصل لباب متجرك أو ورشتك لاستلام الطرد وتوصيله للمشتري بدون أن تدفع أي مصاريف شحن من جيبك."
+                  : "The buyer pays the full shipping fee at checkout. The courier arrives directly at your shop door for pickup, meaning zero shipping expenses out of your pocket.",
+              },
+              {
+                q: isAr ? "هل يجب أن أكون في القاهرة أو الإسكندرية للانضمام؟" : "Do I need to be located in Cairo or Alexandria?",
+                a: isAr
+                  ? "لا! خدمة الشحن والاستلام في جيفتيزان تغطي جميع محافظات مصر الـ 27. أينما كان متجرك أو ورشة عملك، سنصل إليك لاستلام منتجاتك وتوصيلها للمشترين."
+                  : "No! Our courier network picks up and delivers across all 27 governorates in Egypt. Wherever your shop is located, we pick up directly from your doorstep.",
               },
             ].map((faq, index) => {
               const isOpen = openFaq === index;

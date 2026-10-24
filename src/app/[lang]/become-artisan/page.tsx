@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   
   const title = isAr 
     ? "افتح متجرك الحرفي المستقل | برنامج العضو المؤسس 2026 - جيفتيزان"
-    : "Open Your Artisan Studio | 2026 Founding Maker Program - Giftisan";
+    : "Open Your Artisan Shop | 2026 Founding Maker Program - Giftisan";
   const description = isAr
     ? "انضم إلى نخبة الحرفيين وصناع الإبداع في مصر. احتفظ بـ 100% من أرباحك، واستفد من الاستلام من باب ورشتك لجميع المحافظات مع عمولة 0%."
     : "Join Egypt's premier collective of master makers. Keep 100% of your earnings, enjoy doorstep courier pickups across Egypt, and 0% commission.";

@@ -1093,7 +1093,7 @@ export const sendPayoutApprovedEmail = async (email: string, name: string, amoun
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">لوحة تحكم الاستوديو</a>
+      <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">لوحة تحكم المتجر</a>
     </div>
   `;
 
@@ -1109,7 +1109,7 @@ export const sendPayoutApprovedEmail = async (email: string, name: string, amoun
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">Open Studio Dashboard</a>
+      <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">Open Shop Dashboard</a>
     </div>
   `;
 
@@ -1142,7 +1142,7 @@ export const sendPayoutDeclinedEmail = async (email: string, name: string, amoun
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">تحديث بيانات السحب في الاستوديو</a>
+      <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">تحديث بيانات السحب في المتجر</a>
     </div>
   `;
 

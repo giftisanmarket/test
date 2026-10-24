@@ -36,6 +36,7 @@ import {
 
 import {
   submitInquiry as _submitInquiry,
+  submitConciergeArtisanLead as _submitConciergeArtisanLead,
   sendOutreachAction as _sendOutreachAction,
   subscribeToNewsletter as _subscribeToNewsletter,
 } from "./actions/inquiry-actions";
@@ -82,6 +83,16 @@ export async function getBostaAWBAction(deliveryIdOrTracking: string) {
 
 export async function submitInquiry(data: { name: string; email: string; message: string }) {
   return _submitInquiry(data);
+}
+
+export async function submitConciergeArtisanLead(data: {
+  artisanName: string;
+  contactNumber: string;
+  instagramOrLink?: string;
+  craftCategory?: string;
+  notes?: string;
+}) {
+  return _submitConciergeArtisanLead(data);
 }
 
 export async function sendOutreachAction(data: { name: string; email: string; product: string; subject: string; lang: 'ar' | 'en' }) {

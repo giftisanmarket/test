@@ -36,6 +36,55 @@ export async function submitInquiry(data: { name: string; email: string; message
   }
 }
 
+export async function submitConciergeArtisanLead(data: {
+  artisanName: string;
+  contactNumber: string;
+  instagramOrLink?: string;
+  craftCategory?: string;
+  notes?: string;
+}) {
+  const ip = await getClientIp();
+  const rateCheck = checkRateLimit(`concierge:${ip}`, 5, 60 * 1000);
+  if (!rateCheck.success) {
+    return { success: false, error: "Too many requests. Please wait a moment." };
+  }
+
+  try {
+    const formattedMessage = `[Artisan Concierge Application]
+Craft Category: ${data.craftCategory || "Not specified"}
+Contact / WhatsApp: ${data.contactNumber}
+Instagram / Portfolio: ${data.instagramOrLink || "None provided"}
+Notes: ${data.notes || "None"}`;
+
+    const sanitizedPhone = data.contactNumber.replace(/[^0-9]/g, '') || 'artisan';
+
+    const inquiry = await prisma.contactInquiry.create({
+      data: {
+        name: data.artisanName,
+        email: `${sanitizedPhone}@phone.giftisan`,
+        message: formattedMessage,
+      }
+    });
+
+    sendDiscordInquiryNotification(
+      `Concierge: ${data.artisanName} (${data.craftCategory || "Maker"})`,
+      data.contactNumber,
+      formattedMessage
+    ).catch(err => console.error("Failed to send Discord concierge notification:", err));
+
+    sendInquiryNotification(
+      `Concierge: ${data.artisanName}`,
+      data.contactNumber,
+      formattedMessage
+    ).catch(err => console.error("Failed to send concierge email notification:", err));
+
+    return { success: true, id: inquiry.id };
+  } catch (error: any) {
+    console.error("Concierge lead error:", error);
+    return { success: false, error: "Failed to submit application. Please try again." };
+  }
+}
+
 export async function sendOutreachAction(data: { name: string; email: string; product: string; subject: string; lang: 'ar' | 'en' }) {
   try {
     const result = await sendArtisanOutreachEmail(data.email, data.name, data.product, data.subject, data.lang);

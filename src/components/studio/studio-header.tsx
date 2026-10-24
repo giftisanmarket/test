@@ -25,8 +25,6 @@ import {
   MessageSquare
 } from "lucide-react";
 import { useNotifications } from "@/components/notification-provider";
-import { FaWhatsapp } from "react-icons/fa6";
-import { WHATSAPP_COMMUNITY_URL } from "@/lib/constants";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -56,7 +54,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { unreadCount } = useNotifications();
+  const { unreadCount, openChat, isChatOpen } = useNotifications();
 
   const profileRef = useRef<HTMLDivElement>(null);
   const isAr = lang === "ar";
@@ -137,10 +135,13 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
     },
     {
       label: dict?.common?.messages || (isAr ? "المحادثات" : "Messages"),
-      href: `/${lang}/profile/messages`,
+      onClick: () => {
+        setIsMobileMenuOpen(false);
+        openChat();
+      },
       icon: MessageSquare,
       badge: unreadCount > 0 ? unreadCount : null,
-      isActive: pathname.includes("/profile/messages"),
+      isActive: isChatOpen,
     },
     {
       label: dict?.studio?.studio_settings || (isAr ? "الإعدادات" : "Settings"),
@@ -148,7 +149,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
       icon: Settings,
       isActive: pathname === `/${lang}/studio` && searchParams?.get("tab") === "settings",
     },
-  ], [lang, pathname, dict, isAr, searchParams, unreadCount]);
+  ], [lang, pathname, dict, isAr, searchParams, unreadCount, isChatOpen, openChat]);
 
   const studioDisplayName = artisan?.studioName || user.name || (isAr ? "متجر الحرفي" : "Artisan Shop");
   const avatarImage = artisan?.avatar || user.image;
@@ -175,9 +176,17 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-xl md:text-2xl font-heading font-black text-primary tracking-tighter leading-none">
-              Giftisan
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-lg sm:text-xl md:text-2xl font-heading font-black text-primary tracking-tighter leading-none">
+                Giftisan
+              </span>
+              {isVerified && (
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 inline-flex items-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse" />
+                  <span className="hidden xs:inline">{isAr ? "موثق" : "Verified"}</span>
+                </span>
+              )}
+            </div>
             <span className="text-[10px] md:text-[11px] text-accent font-black uppercase tracking-widest leading-none mt-1">
               {isAr ? "المتجر" : "Shop"}
             </span>
@@ -199,20 +208,26 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
             </Link>
           )}
 
-          {/* Messages Link */}
-          <Link
-            href={`/${lang}/profile/messages`}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs font-bold text-primary hover:bg-primary/5 border border-primary/15 transition-all shadow-xs relative"
+          {/* Messages Drawer Trigger (Accessible on both Mobile & Desktop) */}
+          <button
+            type="button"
+            onClick={() => openChat()}
+            className={cn(
+              "flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs font-bold transition-all shadow-xs relative cursor-pointer",
+              isChatOpen
+                ? "bg-primary text-white border-primary shadow-sm"
+                : "text-primary hover:bg-primary/5 border border-primary/15"
+            )}
             title={dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}
           >
-            <MessageSquare className="w-3.5 h-3.5 text-accent" />
-            <span>{dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}</span>
+            <MessageSquare className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5", isChatOpen ? "text-accent-light" : "text-accent")} />
+            <span className="hidden sm:inline ms-1.5">{dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}</span>
             {unreadCount > 0 && (
-              <span className="w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -end-1 sm:static sm:ms-1.5 w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
                 {unreadCount}
               </span>
             )}
-          </Link>
+          </button>
 
           {/* View Live Shop (Artisan Storefront Preview - Desktop / Tablet) */}
           {publicShopUrl && (
@@ -245,8 +260,10 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
               type="button"
               onClick={handleAvatarClick}
               className={cn(
-                "flex items-center gap-1.5 p-1 rounded-full transition-all focus:outline-none",
-                (isProfileOpen || isMobileMenuOpen) ? "ring-2 ring-accent bg-accent/5" : "hover:ring-2 hover:ring-primary/10"
+                "flex items-center gap-1.5 p-1 rounded-full transition-all focus:outline-none cursor-pointer",
+                (isProfileOpen || isMobileMenuOpen)
+                  ? "ring-2 ring-accent bg-accent/5"
+                  : "hover:ring-2 hover:ring-primary/10"
               )}
               aria-expanded={isProfileOpen || isMobileMenuOpen}
               aria-label={studioDisplayName}
@@ -327,6 +344,24 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
                   {/* Shop Quick Shortcuts */}
                   <div className="p-2 border-b border-primary/5 space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        openChat();
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-2xl hover:bg-accent/5 text-charcoal/80 font-bold text-xs transition-colors cursor-pointer text-start"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-accent" />
+                        <span>{dict?.common?.messages || (isAr ? "محادثات المتجر" : "Studio Messages")}</span>
+                      </div>
+                      {unreadCount > 0 && (
+                        <span className="w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </button>
                     <Link
                       href={`/${lang}/studio/new-product`}
                       onClick={() => setIsProfileOpen(false)}
@@ -357,19 +392,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                         </div>
                       </Link>
                     )}
-                    <a
-                      href={WHATSAPP_COMMUNITY_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center justify-between px-3 py-2 rounded-2xl hover:bg-emerald-50/70 text-charcoal/80 hover:text-emerald-800 font-bold text-xs transition-colors group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <FaWhatsapp className="w-3.5 h-3.5 text-[#25D366] transition-transform group-hover:scale-110" />
-                        <span>{dict?.studio?.whatsapp_community || (isAr ? "جروب واتساب الصنّاع" : "Artisan WhatsApp Group")}</span>
-                      </div>
-                      <ExternalLink className="w-3 h-3 text-charcoal/30 group-hover:text-emerald-700 rtl:rotate-180" />
-                    </a>
+
                     <Link
                       href={`/${lang}/contact`}
                       onClick={() => setIsProfileOpen(false)}
@@ -452,10 +475,35 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
               <div className="space-y-1">
                 {navItems.map((item) => {
                   const Icon = item.icon;
+                  if (item.onClick) {
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={item.onClick}
+                        className={cn(
+                          "w-full flex items-center justify-between px-4 py-3 rounded-2xl font-bold text-sm transition-all text-start cursor-pointer",
+                          item.isActive
+                            ? "bg-primary text-white shadow-md shadow-primary/20"
+                            : "text-charcoal/80 hover:bg-primary/5 hover:text-primary"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className={cn("w-4 h-4", item.isActive ? "text-accent-light" : "text-accent")} />
+                          <span>{item.label}</span>
+                        </div>
+                        {item.badge && (
+                          <span className="w-5 h-5 bg-accent text-white text-[10px] font-black rounded-full flex items-center justify-center">
+                            {item.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  }
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={item.href!}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={cn(
                         "flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all",
@@ -470,20 +518,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                   );
                 })}
 
-                {/* Artisan WhatsApp Group */}
-                <a
-                  href={WHATSAPP_COMMUNITY_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-4 py-3 rounded-2xl font-bold text-sm text-charcoal/80 hover:bg-emerald-50 hover:text-emerald-800 transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <FaWhatsapp className="w-4 h-4 text-[#25D366] transition-transform group-hover:scale-110" />
-                    <span>{dict?.studio?.whatsapp_community || (isAr ? "جروب واتساب الصنّاع" : "Artisan WhatsApp Group")}</span>
-                  </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-charcoal/30 group-hover:text-emerald-700 rtl:rotate-180" />
-                </a>
+
 
                 {/* Support */}
                 <Link

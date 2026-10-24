@@ -1,10 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { MessageSquare, Send, X, ArrowLeft, Paperclip, FileIcon, Eye, Loader2, Sparkles, ChevronDown, Download, Lock } from "lucide-react";
+import { 
+  MessageSquare, 
+  Send, 
+  X, 
+  ArrowLeft, 
+  Paperclip, 
+  FileIcon, 
+  Eye, 
+  Loader2, 
+  Download, 
+  Lock, 
+  User, 
+  Search,
+  Sparkles,
+  Inbox
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
-import { sendMessage, markMessagesAsRead, getInbox } from "@/lib/actions";
+import { sendMessage, markMessagesAsRead, getInbox, getUserInfo } from "@/lib/actions";
 import { IS_CHAT_LOCKED } from "@/lib/constants";
 import { useNotifications } from "./notification-provider";
 import Image from "next/image";
@@ -77,55 +92,47 @@ interface Thread {
 
 export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
   const { data: session } = useSession();
-  const { unreadCount, refreshUnreadCount } = useNotifications();
-  const [isOpen, setIsOpen] = useState(false);
+  const { 
+    unreadCount, 
+    refreshUnreadCount, 
+    isChatOpen, 
+    closeChat, 
+    toggleChat, 
+    activeChatPartnerId 
+  } = useNotifications();
+
   const [messages, setMessages] = useState<any[]>([]);
   const [activeThreadKey, setActiveThreadKey] = useState<string | null>(null);
+  const [targetCustomer, setTargetCustomer] = useState<{ id: string; name: string; image: string | null } | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [reply, setReply] = useState("");
   const [attachment, setAttachment] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-  
-  const handleDownload = async (url: string) => {
-    if (!url) return;
-    if (url.startsWith("data:")) {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "giftisan-attachment";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = "giftisan-attachment";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      window.open(url, "_blank");
-    }
-  };
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const isRtl = lang === "ar";
-
   const pathname = usePathname();
 
   // Security guard: only render this global hub for logged-in users with ARTISAN role on studio pages
   const isArtisan = session?.user?.role === "ARTISAN";
   const isStudioPage = pathname?.includes("/studio");
 
-  // Fetch conversations when the panel is opened
+  // Handle escape key to close drawer
   useEffect(() => {
-    if (!isOpen || !session?.user?.id || !isArtisan || !isStudioPage) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isChatOpen) {
+        closeChat();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isChatOpen, closeChat]);
+
+  // Fetch conversations when the drawer is open
+  useEffect(() => {
+    if (!isChatOpen || !session?.user?.id || !isArtisan || !isStudioPage) return;
 
     const fetchInbox = async () => {
       setIsLoading(messages.length === 0);
@@ -133,7 +140,7 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
         const inbox = await getInbox(session.user.id as string);
         setMessages(inbox);
       } catch (err) {
-        console.error("Failed to load chat hub inbox:", err);
+        console.error("Failed to load studio messages drawer inbox:", err);
       } finally {
         setIsLoading(false);
       }
@@ -141,7 +148,7 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
 
     fetchInbox();
 
-    // Fast polling (every 8s) when the floating chat is active to simulate modern real-time experience
+    // Fast polling (every 8s) when the drawer is open to provide real-time updates
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         fetchInbox();
@@ -149,7 +156,7 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [isOpen, session?.user?.id, isArtisan, isStudioPage]);
+  }, [isChatOpen, session?.user?.id, isArtisan, isStudioPage]);
 
   // Scroll to bottom on thread switches or incoming messages
   useEffect(() => {
@@ -188,6 +195,47 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
     );
   }, [messages, session?.user?.id]);
 
+  // Connect activeChatPartnerId if passed via openChat(userId)
+  useEffect(() => {
+    if (!activeChatPartnerId || !session?.user?.id) return;
+
+    const matchingThread = threads.find((t) => t.partner.id === activeChatPartnerId);
+    if (matchingThread) {
+      setActiveThreadKey(matchingThread.key);
+      setTargetCustomer(null);
+    } else {
+      // If thread not in inbox yet, fetch target user info to start new thread
+      const resolveTargetUser = async () => {
+        try {
+          const user = await getUserInfo(activeChatPartnerId);
+          if (user) {
+            setTargetCustomer({
+              id: user.id,
+              name: user.name || (isRtl ? "عميل جيفتيزان" : "Giftisan Customer"),
+              image: user.image || null,
+            });
+            setActiveThreadKey(null);
+          }
+        } catch (err) {
+          console.error("Failed to fetch target user for messaging:", err);
+        }
+      };
+      resolveTargetUser();
+    }
+  }, [activeChatPartnerId, threads, session?.user?.id, isRtl]);
+
+  // Filter threads by search query
+  const filteredThreads = useMemo(() => {
+    if (!searchQuery.trim()) return threads;
+    const q = searchQuery.toLowerCase();
+    return threads.filter((t) => {
+      const partnerMatch = t.partner.name?.toLowerCase().includes(q);
+      const productMatch = t.product?.name?.toLowerCase().includes(q);
+      const messageMatch = t.lastMessage?.content?.toLowerCase().includes(q);
+      return partnerMatch || productMatch || messageMatch;
+    });
+  }, [threads, searchQuery]);
+
   // Get active thread details
   const activeThread = useMemo(() => {
     return threads.find((t) => t.key === activeThreadKey);
@@ -216,6 +264,33 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
       }
     }
   }, [activeThread, session?.user?.id, refreshUnreadCount]);
+
+  const handleDownload = async (url: string) => {
+    if (!url) return;
+    if (url.startsWith("data:")) {
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "giftisan-attachment";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = "giftisan-attachment";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      window.open(url, "_blank");
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -257,15 +332,16 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
       return;
     }
 
-    if ((!reply.trim() && !attachment) || isSending || !activeThread || !session?.user?.id) return;
+    const partnerId = activeThread ? activeThread.partner.id : targetCustomer?.id;
+    if ((!reply.trim() && !attachment) || isSending || !partnerId || !session?.user?.id) return;
 
     setIsSending(true);
     try {
       const res = await sendMessage(
         session.user.id,
-        activeThread.partner.id,
+        partnerId,
         reply.trim(),
-        activeThread.product?.id,
+        activeThread?.product?.id,
         attachment || undefined
       );
 
@@ -274,12 +350,19 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
         setReply("");
         setAttachment(null);
         refreshUnreadCount();
-        toast.success(dict.home?.message_sent || (isRtl ? "تم إرسال الرسالة!" : "Message sent!"));
+        toast.success(dict?.home?.message_sent || (isRtl ? "تم إرسال الرسالة!" : "Message sent!"));
+        
+        // If it was a new target customer, connect to the newly created thread
+        if (targetCustomer && !activeThread) {
+          const newKey = `${[session.user.id, targetCustomer.id].sort().join("-")}-general`;
+          setActiveThreadKey(newKey);
+          setTargetCustomer(null);
+        }
       } else {
         toast.error(res.error || (isRtl ? "تعذر الإرسال" : "Failed to deliver message"));
       }
     } catch (err) {
-      toast.error(isRtl ? "خطأ في الشبكة" : "Network transmission issue");
+      toast.error(isRtl ? "خطأ في الاتصال بالشبكة" : "Network transmission issue");
     } finally {
       setIsSending(false);
     }
@@ -287,137 +370,221 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
 
   // Safe UI fallback dictionary parameters
   const ui = {
-    launcherTitle: isRtl ? "مركز محادثات المتجر" : "Shop Chat Hub",
-    activeTitle: isRtl ? "محادثاتك النشطة" : "Active Client Threads",
-    back: isRtl ? "عودة" : "Back",
-    noThreads: isRtl ? "لا توجد رسائل واردة بعد" : "No client inquiries yet",
-    noThreadsSub: isRtl ? "ستظهر رسائل عملائك حول منتجاتك هنا" : "Inquiries regarding your crafts will appear here",
-    replyPlaceholder: isRtl ? "اكتب ردك هنا..." : "Type your craft response...",
-    general: isRtl ? "محادثة عامة" : "General Inquiry",
-    productInquiry: isRtl ? "سؤال حول" : "Inquiry about",
+    launcherTitle: isRtl ? "محادثات ورشة العمل" : "Studio Messages",
+    activeTitle: isRtl ? "محادثات العملاء" : "Customer Inquiries",
+    back: isRtl ? "رجوع" : "Back",
+    close: isRtl ? "إغلاق" : "Close",
+    searchPlaceholder: isRtl ? "البحث بالاسم أو المنتج..." : "Search customers or products...",
+    noThreads: isRtl ? "لا توجد رسائل واردة بعد" : "No customer inquiries yet",
+    noThreadsSub: isRtl ? "ستظهر رسائل عملائك واستفساراتهم حول قطعك هنا" : "Inquiries from customers regarding your handcrafted pieces will appear here",
+    replyPlaceholder: isRtl ? "اكتب ردك للعميل..." : "Reply to customer...",
+    general: isRtl ? "استفسار عام" : "General Inquiry",
+    productInquiry: isRtl ? "استفسار عن" : "Inquiry about",
+    newConversation: isRtl ? "محادثة جديدة مع العميل" : "New customer conversation",
+    typeFirstMessage: isRtl ? "اكتب رسالتك الأولى للبدء بالتواصل..." : "Type your message to start this customer dialogue...",
   };
 
   if (!isArtisan || !isStudioPage) return null;
 
+  const currentPartner = activeThread?.partner || targetCustomer;
+
   return (
-    <div className="fixed z-[99] bottom-6 right-6 rtl:left-6 rtl:right-auto flex flex-col items-end max-w-[calc(100vw-3rem)]">
+    <>
+      {/* Frosted Backdrop for Slide-over Drawer */}
       <AnimatePresence>
-        {isOpen && (
+        {isChatOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85, y: 30 }}
-            transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="mb-4 w-[calc(100vw-3rem)] max-w-[360px] h-[520px] max-h-[75vh] bg-white rounded-[2.5rem] border border-primary/10 shadow-2xl overflow-hidden flex flex-col z-[100]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={closeChat}
+            className="fixed inset-0 bg-charcoal/40 backdrop-blur-xs z-[140]"
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Slide-Over Drawer Container */}
+      <AnimatePresence>
+        {isChatOpen && (
+          <motion.aside
+            initial={{ x: isRtl ? "-100%" : "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: isRtl ? "-100%" : "100%" }}
+            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+            className={cn(
+              "fixed top-0 bottom-0 z-[150] w-full sm:w-[480px] md:w-[500px] lg:w-[540px] bg-white shadow-2xl flex flex-col overflow-hidden",
+              isRtl ? "left-0 border-r border-primary/10" : "right-0 border-l border-primary/10"
+            )}
+            role="dialog"
+            aria-modal="true"
+            aria-label={ui.launcherTitle}
           >
-            {/* Header */}
-            <div className="p-5 bg-primary text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                {activeThreadKey ? (
+            {/* Drawer Header */}
+            <div className="p-4 sm:p-5 bg-primary text-white flex items-center justify-between shrink-0 shadow-md">
+              <div className="flex items-center gap-3 min-w-0">
+                {activeThreadKey || targetCustomer ? (
                   <button
-                    onClick={() => setActiveThreadKey(null)}
-                    className="p-1.5 -ms-1 hover:bg-white/10 rounded-full transition-all"
+                    type="button"
+                    onClick={() => {
+                      setActiveThreadKey(null);
+                      setTargetCustomer(null);
+                    }}
+                    className="p-2 -ms-1 hover:bg-white/10 rounded-full transition-all shrink-0 cursor-pointer"
+                    aria-label={ui.back}
                   >
                     <ArrowLeft className={cn("w-4 h-4", isRtl && "rotate-180")} />
                   </button>
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shadow-md animate-pulse">
-                    <Sparkles className="w-4 h-4 text-white" />
+                  <div className="w-9 h-9 rounded-2xl bg-accent/20 border border-accent/40 flex items-center justify-center shrink-0">
+                    <MessageSquare className="w-4 h-4 text-accent-light" />
                   </div>
                 )}
-                <div>
-                  <h3 className="font-heading font-black text-xs uppercase tracking-widest leading-none">
-                    {activeThreadKey ? activeThread?.partner.name : ui.launcherTitle}
+                <div className="min-w-0">
+                  <h3 className="font-heading font-black text-sm uppercase tracking-wider leading-none truncate">
+                    {currentPartner ? currentPartner.name : ui.launcherTitle}
                   </h3>
-                  <p className="text-[9px] text-white/50 font-bold leading-none mt-1 truncate max-w-[180px]">
-                    {activeThreadKey
+                  <p className="text-[10px] text-white/60 font-bold leading-none mt-1.5 truncate">
+                    {currentPartner
                       ? activeThread?.product
-                        ? `${ui.productInquiry} ${activeThread.product.name}`
+                        ? `${ui.productInquiry}: ${activeThread.product.name}`
                         : ui.general
-                      : ui.activeTitle}
+                      : `${threads.length} ${isRtl ? "محادثات نشطة" : "Active Inquiries"}`}
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-1.5 hover:bg-white/10 rounded-full transition-all"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && !activeThreadKey && (
+                  <span className="px-2.5 py-1 bg-accent text-white text-[10px] font-black rounded-full shadow-xs">
+                    {unreadCount} {isRtl ? "جديدة" : "new"}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={closeChat}
+                  className="p-2 hover:bg-white/10 rounded-full transition-all text-white/70 hover:text-white shrink-0 cursor-pointer"
+                  aria-label={ui.close}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            {/* Content Switcher */}
-            <div className="flex-1 overflow-y-auto flex flex-col bg-cream/10">
-              {activeThreadKey ? (
-                /* Thread Chat Screen */
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto flex flex-col bg-cream/15">
+              {activeThreadKey || targetCustomer ? (
+                /* Active Thread Chat Screen */
                 <>
+                  {/* Product Inquiry Header Banner if Inquiry is tied to a product */}
+                  {activeThread?.product && (
+                    <div className="p-3 bg-white border-b border-primary/5 flex items-center gap-3 shrink-0 shadow-2xs">
+                      {activeThread.product.images?.[0] ? (
+                        <div className="relative w-11 h-11 rounded-xl overflow-hidden border border-primary/10 shrink-0">
+                          <Image
+                            src={activeThread.product.images[0]}
+                            alt={activeThread.product.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-cream flex items-center justify-center border border-primary/10 shrink-0">
+                          <Inbox className="w-5 h-5 text-primary/30" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-accent">
+                          {ui.productInquiry}
+                        </span>
+                        <h4 className="text-xs font-bold text-primary truncate">
+                          {activeThread.product.name}
+                        </h4>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Messages Feed */}
                   <div
                     ref={scrollRef}
                     className="flex-1 p-4 space-y-3.5 overflow-y-auto flex flex-col bg-[radial-gradient(circle,rgba(var(--accent-rgb),0.02)_1px,transparent_1px)] bg-[size:16px_16px]"
                   >
-                    {activeMessages.map((m) => {
-                      const isMe = m.senderId === session.user.id;
-                      return (
-                        <div
-                          key={m.id}
-                          className={cn(
-                            "flex flex-col gap-0.5 max-w-[85%]",
-                            isMe ? "items-end ms-auto" : "items-start"
-                          )}
-                        >
+                    {activeMessages.length === 0 ? (
+                      <div className="py-16 text-center space-y-3">
+                        <div className="w-12 h-12 bg-white rounded-2xl border border-primary/5 shadow-xs flex items-center justify-center mx-auto text-accent">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-primary">{ui.newConversation}</p>
+                          <p className="text-[11px] text-charcoal/50 mt-1">{ui.typeFirstMessage}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      activeMessages.map((m) => {
+                        const isMe = m.senderId === session?.user?.id;
+                        return (
                           <div
+                            key={m.id}
                             className={cn(
-                              "p-3 rounded-[1.25rem] text-xs font-medium leading-relaxed shadow-sm",
-                              isMe
-                                ? "bg-primary text-white rounded-tr-none"
-                                : "bg-white text-primary border border-primary/5 rounded-tl-none"
+                              "flex flex-col gap-0.5 max-w-[85%]",
+                              isMe ? "items-end ms-auto" : "items-start"
                             )}
                           >
-                            {m.attachment && (
-                              <div className="mb-1.5 rounded-xl overflow-hidden border border-white/10 max-w-[200px]">
-                                {isImageAttachment(m.attachment) ? (
-                                  <div className="relative w-40 aspect-video">
-                                    <Image
-                                      src={m.attachment}
-                                      alt="Attachment"
-                                      fill
-                                      className="object-cover"
-                                      unoptimized
-                                    />
-                                    <div
-                                      onClick={() => setPreviewImageUrl(m.attachment)}
-                                      className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 cursor-pointer"
-                                    >
-                                      <Eye className="w-4 h-4 text-white" />
-                                      <span className="text-[9px] font-bold text-white uppercase tracking-widest">
-                                        {isRtl ? "عرض" : "View"}
-                                      </span>
+                            <div
+                              className={cn(
+                                "p-3.5 rounded-2xl text-xs font-medium leading-relaxed shadow-sm",
+                                isMe
+                                  ? "bg-primary text-white rounded-tr-none rtl:rounded-tr-2xl rtl:rounded-tl-none"
+                                  : "bg-white text-primary border border-primary/5 rounded-tl-none rtl:rounded-tl-2xl rtl:rounded-tr-none"
+                              )}
+                            >
+                              {m.attachment && (
+                                <div className="mb-2 rounded-xl overflow-hidden border border-white/10 max-w-[240px]">
+                                  {isImageAttachment(m.attachment) ? (
+                                    <div className="relative w-48 aspect-video">
+                                      <Image
+                                        src={m.attachment}
+                                        alt="Attachment"
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                      />
+                                      <div
+                                        onClick={() => setPreviewImageUrl(m.attachment)}
+                                        className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 cursor-pointer"
+                                      >
+                                        <Eye className="w-4 h-4 text-white" />
+                                        <span className="text-[9px] font-bold text-white uppercase tracking-widest">
+                                          {isRtl ? "عرض" : "View"}
+                                        </span>
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  <div className="p-2 flex items-center gap-1.5 bg-primary/5">
-                                    <FileIcon className="w-4 h-4 text-accent" />
-                                    <a
-                                      href={m.attachment}
-                                      download="doc"
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-[10px] font-bold underline truncate max-w-[120px]"
-                                    >
-                                      {isRtl ? "تحميل الملف" : "Document"}
-                                    </a>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            <p className="whitespace-pre-line">{m.content}</p>
+                                  ) : (
+                                    <div className="p-2.5 flex items-center gap-2 bg-primary/5">
+                                      <FileIcon className="w-4 h-4 text-accent shrink-0" />
+                                      <a
+                                        href={m.attachment}
+                                        download="document"
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[10px] font-bold underline truncate max-w-[140px]"
+                                      >
+                                        {isRtl ? "تحميل الملف" : "Document"}
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <p className="whitespace-pre-line">{m.content}</p>
+                            </div>
+                            <span className="text-[8px] font-black text-primary/30 uppercase tracking-widest px-1">
+                              {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
                           </div>
-                          <span className="text-[7px] font-black text-primary/20 uppercase tracking-widest px-1">
-                            {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
 
                   {/* Attachment Preview Box */}
@@ -439,8 +606,9 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
                             </div>
                           )}
                           <button
+                            type="button"
                             onClick={() => setAttachment(null)}
-                            className="absolute inset-0 bg-accent/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            className="absolute inset-0 bg-accent/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
                           >
                             <X className="w-4 h-4 text-white" />
                           </button>
@@ -449,7 +617,7 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
                     )}
                   </AnimatePresence>
 
-                  {/* Thread Compose Bar */}
+                  {/* Reply Input Bar */}
                   {IS_CHAT_LOCKED ? (
                     <div className="p-4 bg-amber-500/10 border-t border-amber-500/20 flex items-center justify-center gap-2 text-center">
                       <Lock className="w-4 h-4 text-amber-700 shrink-0" />
@@ -458,7 +626,7 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
                       </span>
                     </div>
                   ) : (
-                    <div className="p-4 bg-white border-t border-primary/5 flex items-center gap-2">
+                    <div className="p-4 bg-white border-t border-primary/5 flex items-center gap-2 shadow-xs">
                       <div className="flex-1 relative">
                         <input
                           type="text"
@@ -470,31 +638,34 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
                             }
                           }}
                           placeholder={ui.replyPlaceholder}
-                          className="w-full h-10 px-4 pe-10 bg-cream/30 border border-primary/10 rounded-full focus:outline-none focus:border-accent text-xs font-semibold text-primary"
+                          className="w-full h-11 px-4 pe-10 bg-cream/40 border border-primary/10 rounded-full focus:outline-none focus:border-accent text-xs font-semibold text-primary transition-colors"
                         />
                         <input
                           type="file"
-                          id="hub-attachment"
+                          id="studio-drawer-attachment"
                           className="hidden"
                           onChange={handleFileChange}
                           accept="image/*,.pdf,.doc,.docx"
                         />
                         <label
-                          htmlFor="hub-attachment"
-                          className="absolute end-3 top-1/2 -translate-y-1/2 text-primary/30 hover:text-accent transition-colors cursor-pointer"
+                          htmlFor="studio-drawer-attachment"
+                          className="absolute end-3.5 top-1/2 -translate-y-1/2 text-primary/40 hover:text-accent transition-colors cursor-pointer"
+                          title={isRtl ? "إرفاق ملف أو صورة" : "Attach file or photo"}
                         >
-                          <Paperclip className="w-3.5 h-3.5" />
+                          <Paperclip className="w-4 h-4" />
                         </label>
                       </div>
                       <button
+                        type="button"
                         onClick={handleSendMessage}
                         disabled={isSending || (!reply.trim() && !attachment)}
-                        className="h-10 w-10 bg-accent hover:bg-accent-light text-white rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 shrink-0 disabled:opacity-45 disabled:hover:bg-accent"
+                        className="h-11 w-11 bg-accent hover:bg-accent-light text-white rounded-full flex items-center justify-center transition-all shadow-md active:scale-95 shrink-0 disabled:opacity-45 disabled:hover:bg-accent cursor-pointer"
+                        aria-label={isRtl ? "إرسال" : "Send"}
                       >
                         {isSending ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Send className="w-3.5 h-3.5 rtl:rotate-180" />
+                          <Send className="w-4 h-4 rtl:rotate-180" />
                         )}
                       </button>
                     </div>
@@ -502,94 +673,141 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
                 </>
               ) : (
                 /* Thread List Grid */
-                <div className="p-4 space-y-2 max-h-full">
-                  {isLoading ? (
-                    <div className="py-24 text-center text-primary/30 text-xs font-bold animate-pulse uppercase tracking-[0.2em]">
-                      {isRtl ? "جاري مسح ورشة العمل..." : "Scanning workshop messages..."}
+                <div className="flex-1 flex flex-col min-h-0">
+                  {/* Search Bar */}
+                  <div className="p-4 bg-white border-b border-primary/5">
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-primary/30 absolute start-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder={ui.searchPlaceholder}
+                        className="w-full h-10 ps-10 pe-4 bg-cream/40 border border-primary/10 rounded-full text-xs font-semibold text-primary focus:outline-none focus:border-accent transition-colors"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery("")}
+                          className="absolute end-3 top-1/2 -translate-y-1/2 text-primary/30 hover:text-primary p-1"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                  ) : threads.length === 0 ? (
-                    <div className="py-20 text-center space-y-4">
-                      <div className="w-16 h-16 bg-cream rounded-full flex items-center justify-center mx-auto shadow-inner">
-                        <MessageSquare className="w-6 h-6 text-primary/15" />
-                      </div>
-                      <div>
-                        <h4 className="font-heading font-black text-xs text-primary uppercase tracking-wider">
-                          {ui.noThreads}
-                        </h4>
-                        <p className="text-[10px] text-charcoal/40 font-medium mt-1">
-                          {ui.noThreadsSub}
+                  </div>
+
+                  {/* Thread Items */}
+                  <div className="flex-1 p-4 space-y-2.5 overflow-y-auto">
+                    {isLoading ? (
+                      <div className="py-24 text-center space-y-3">
+                        <Loader2 className="w-6 h-6 animate-spin text-accent mx-auto" />
+                        <p className="text-primary/40 text-xs font-bold uppercase tracking-widest">
+                          {isRtl ? "جاري تحميل محادثات المتجر..." : "Loading studio messages..."}
                         </p>
                       </div>
-                    </div>
-                  ) : (
-                    threads.map((t) => {
-                      const hasUnread = t.messages.some((m) => m.receiverId === session.user.id && !m.read);
-                      return (
-                        <button
-                          key={t.key}
-                          onClick={() => setActiveThreadKey(t.key)}
-                          className={cn(
-                            "w-full p-3 bg-white hover:bg-cream/40 border rounded-2xl text-start transition-all flex gap-3 relative active:scale-[0.98]",
-                            hasUnread ? "border-accent/40 bg-accent/[0.01]" : "border-primary/5"
-                          )}
-                        >
-                          <div className="relative w-8 h-8 rounded-full overflow-hidden border border-primary/5 bg-cream shrink-0">
-                            <Image
-                              src={t.partner.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.partner.name}`}
-                              alt=""
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-baseline mb-0.5">
-                              <h4 className="text-xs font-bold text-primary truncate max-w-[120px]">
-                                {t.partner.name}
-                              </h4>
-                              <span className="text-[7px] font-black text-primary/20 uppercase tracking-wide">
-                                {new Date(t.lastMessage.createdAt).toLocaleDateString([], {
-                                  month: "short",
-                                  day: "numeric",
-                                })}
-                              </span>
-                            </div>
-                            {t.product && (
-                              <p className="text-[8px] font-black text-accent uppercase tracking-tight leading-none mb-1 truncate">
-                                {ui.productInquiry} {t.product.name}
-                              </p>
+                    ) : filteredThreads.length === 0 ? (
+                      <div className="py-20 text-center space-y-4">
+                        <div className="w-16 h-16 bg-white rounded-3xl border border-primary/5 flex items-center justify-center mx-auto shadow-xs text-primary/20">
+                          <Inbox className="w-8 h-8" />
+                        </div>
+                        <div className="max-w-xs mx-auto">
+                          <h4 className="font-heading font-black text-sm text-primary uppercase tracking-wider">
+                            {searchQuery ? (isRtl ? "لا توجد نتائج مطابقة" : "No matching threads") : ui.noThreads}
+                          </h4>
+                          <p className="text-[11px] text-charcoal/50 font-medium mt-1 leading-relaxed">
+                            {searchQuery
+                              ? (isRtl ? "جرب البحث باسم عميل آخر" : "Try searching for a different customer name")
+                              : ui.noThreadsSub}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      filteredThreads.map((t) => {
+                        const hasUnread = t.messages.some((m) => m.receiverId === session?.user?.id && !m.read);
+                        return (
+                          <button
+                            key={t.key}
+                            type="button"
+                            onClick={() => setActiveThreadKey(t.key)}
+                            className={cn(
+                              "w-full p-3.5 bg-white hover:bg-cream/50 border rounded-2xl text-start transition-all flex gap-3.5 relative active:scale-[0.99] cursor-pointer shadow-2xs",
+                              hasUnread ? "border-accent/40 bg-accent/[0.02]" : "border-primary/5 hover:border-primary/15"
                             )}
-                            <p className="text-[10px] text-charcoal/40 line-clamp-1">
-                              {t.lastMessage.content || (t.lastMessage.attachment ? (isRtl ? "أرسل ملفاً" : "Sent a file attachment") : "")}
-                            </p>
-                          </div>
-                          {hasUnread && (
-                            <span className="absolute top-3 end-3 w-2.5 h-2.5 bg-accent rounded-full border-2 border-white animate-bounce" />
-                          )}
-                        </button>
-                      );
-                    })
-                  )}
+                          >
+                            <div className="relative w-10 h-10 rounded-full overflow-hidden border border-primary/10 bg-cream shrink-0">
+                              {t.partner.image ? (
+                                <Image
+                                  src={t.partner.image}
+                                  alt={t.partner.name}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-primary/40">
+                                  <User className="w-5 h-5" />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-baseline mb-0.5">
+                                <h4 className="text-xs font-bold text-primary truncate max-w-[160px]">
+                                  {t.partner.name}
+                                </h4>
+                                <span className="text-[9px] font-bold text-primary/30 uppercase tracking-wide">
+                                  {new Date(t.lastMessage.createdAt).toLocaleDateString([], {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                              </div>
+
+                              {t.product && (
+                                <p className="text-[9px] font-black text-accent uppercase tracking-tight leading-none mb-1 truncate">
+                                  {ui.productInquiry}: {t.product.name}
+                                </p>
+                              )}
+
+                              <p className="text-[11px] text-charcoal/50 line-clamp-1">
+                                {t.lastMessage.content || (t.lastMessage.attachment ? (isRtl ? "أرسل مرفقاً" : "Sent an attachment") : "")}
+                              </p>
+                            </div>
+
+                            {hasUnread && (
+                              <span className="w-2.5 h-2.5 bg-accent rounded-full shrink-0 self-center animate-pulse" />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               )}
             </div>
-          </motion.div>
+          </motion.aside>
         )}
       </AnimatePresence>
 
-      {/* Floating launcher trigger */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(!isOpen)}
-        className="h-14 w-14 bg-primary hover:bg-primary-light text-white rounded-full flex items-center justify-center shadow-2xl relative active:scale-95 transition-all"
-      >
-        {isOpen ? <X className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
-        {unreadCount > 0 && !isOpen && (
-          <span className="absolute -top-1.5 -end-1.5 min-w-6 h-6 bg-red-500 text-white text-[10px] font-black px-1.5 rounded-full flex items-center justify-center border-4 border-white animate-in zoom-in-50 duration-300 shadow-md">
-            {unreadCount}
-          </span>
-        )}
-      </motion.button>
+      {/* Desktop Floating Launcher Bubble (Visible on Desktop only when Drawer is closed) */}
+      {!isChatOpen && (
+        <div className="hidden md:flex fixed z-[99] bottom-6 right-6 rtl:left-6 rtl:right-auto flex-col items-end">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleChat}
+            className="h-14 w-14 bg-primary hover:bg-primary-light text-white rounded-full flex items-center justify-center shadow-2xl relative active:scale-95 transition-all cursor-pointer"
+            aria-label={ui.launcherTitle}
+          >
+            <MessageSquare className="w-5 h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1.5 -end-1.5 min-w-6 h-6 bg-accent text-white text-[10px] font-black px-1.5 rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in-50 duration-300 shadow-md">
+                {unreadCount}
+              </span>
+            )}
+          </motion.button>
+        </div>
+      )}
 
       {/* Lightbox Image Preview Modal */}
       <AnimatePresence>
@@ -598,7 +816,7 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+            className="fixed inset-0 z-[160] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
             onClick={() => setPreviewImageUrl(null)}
           >
             <motion.div
@@ -608,15 +826,14 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
               className="relative max-w-4xl max-h-[85vh] w-full flex flex-col items-center justify-center bg-transparent"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Close Button */}
               <button
+                type="button"
                 onClick={() => setPreviewImageUrl(null)}
                 className="absolute -top-12 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all cursor-pointer shadow-lg active:scale-90"
               >
                 <X className="w-6 h-6" />
               </button>
 
-              {/* Image Container */}
               <div className="relative w-full aspect-video max-h-[70vh] rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/40">
                 <Image
                   src={previewImageUrl}
@@ -627,20 +844,20 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
                 />
               </div>
 
-              {/* Download Bar */}
               <div className="mt-4 flex items-center gap-3">
                 <button
+                  type="button"
                   onClick={() => handleDownload(previewImageUrl!)}
                   className="px-6 py-3 bg-accent hover:bg-accent-light text-white font-bold text-xs md:text-sm uppercase tracking-widest rounded-full flex items-center gap-2 shadow-xl shadow-accent/20 transition-all active:scale-95 cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
-                  {dict.home?.download || "Download"}
+                  {dict?.home?.download || (isRtl ? "تحميل" : "Download")}
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

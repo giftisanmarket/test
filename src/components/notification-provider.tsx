@@ -8,18 +8,48 @@ import { MessageSquare, Mail, Bell } from "lucide-react";
 interface NotificationContextType {
   unreadCount: number;
   refreshUnreadCount: () => Promise<void>;
+  isChatOpen: boolean;
+  setIsChatOpen: (open: boolean) => void;
+  activeChatPartnerId: string | null;
+  openChat: (partnerUserId?: string) => void;
+  closeChat: () => void;
+  toggleChat: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
   unreadCount: 0,
   refreshUnreadCount: async () => { },
+  isChatOpen: false,
+  setIsChatOpen: () => { },
+  activeChatPartnerId: null,
+  openChat: () => { },
+  closeChat: () => { },
+  toggleChat: () => { },
 });
 
 export function NotificationProvider({ children, lang = "en" }: { children: React.ReactNode; lang?: string }) {
   const { data: session } = useSession();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activeChatPartnerId, setActiveChatPartnerId] = useState<string | null>(null);
   const lastCountRef = useRef(0);
   const isFirstFetch = useRef(true);
+
+  const openChat = useCallback((partnerUserId?: string) => {
+    if (partnerUserId) {
+      setActiveChatPartnerId(partnerUserId);
+    }
+    setIsChatOpen(true);
+  }, []);
+
+  const closeChat = useCallback(() => {
+    setIsChatOpen(false);
+    setActiveChatPartnerId(null);
+  }, []);
+
+  const toggleChat = useCallback(() => {
+    setIsChatOpen((prev) => !prev);
+  }, []);
 
   const refreshUnreadCount = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -46,7 +76,7 @@ export function NotificationProvider({ children, lang = "en" }: { children: Reac
     setUnreadCount(count);
     lastCountRef.current = count;
     isFirstFetch.current = false;
-  }, [session?.user?.id]);
+  }, [session?.user?.id, lang]);
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -67,7 +97,18 @@ export function NotificationProvider({ children, lang = "en" }: { children: Reac
   }, [session, refreshUnreadCount]);
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount }}>
+    <NotificationContext.Provider
+      value={{
+        unreadCount,
+        refreshUnreadCount,
+        isChatOpen,
+        setIsChatOpen,
+        activeChatPartnerId,
+        openChat,
+        closeChat,
+        toggleChat,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );

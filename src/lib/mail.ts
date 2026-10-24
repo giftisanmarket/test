@@ -2,7 +2,7 @@ import "dotenv/config";
 import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 
-import { SITE_URL, WHATSAPP_COMMUNITY_URL } from './constants';
+import { SITE_URL } from './constants';
 
 // 1. Resend instance (Reserved EXCLUSIVELY for Auth & Security)
 const resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder");
@@ -817,12 +817,6 @@ export const sendArtisanApprovalEmail = async (email: string, name: string, lang
       </ul>
     </div>
 
-    <!-- WhatsApp Direct Artisan Support Invite -->
-    <div style="background-color: #f0fdf4; padding: 22px; border-radius: 18px; border: 1px solid #86efac; margin-bottom: 25px; text-align: center;">
-      <p style="margin: 0; color: #15803d; font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">🛠️ خط الدعم المباشر ومساعدة الصُنّاع على واتساب</p>
-      <p style="margin: 8px 0 16px 0; color: #166534; font-size: 14px; line-height: 1.8;">خصصنا هذا المجتمع ليكون خط اتصالك المباشر مع فريق إدارة ودعم جيفتيزان للإجابة على أي استفسار، مساعدتك في رفع وتنسيق منتجاتك، أو الإبلاغ عن أي مشكلة تقنية فوراً.</p>
-      <a href="${WHATSAPP_COMMUNITY_URL}" style="background-color: #25D366; color: white; padding: 14px 28px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">انضم لقناة الدعم على واتساب ➔</a>
-    </div>
 
     <div style="margin: 30px 0; text-align: center;">
       <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 15px; display: inline-block;">دخول لوحة تحكم المتجر</a>
@@ -849,12 +843,6 @@ export const sendArtisanApprovalEmail = async (email: string, name: string, lang
       </ul>
     </div>
 
-    <!-- WhatsApp Direct Artisan Support Invite -->
-    <div style="background-color: #f0fdf4; padding: 22px; border-radius: 18px; border: 1px solid #86efac; margin-bottom: 25px; text-align: center;">
-      <p style="margin: 0; color: #15803d; font-weight: 900; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em;">🛠️ Direct Artisan Support & Help on WhatsApp</p>
-      <p style="margin: 8px 0 16px 0; color: #166534; font-size: 14px; line-height: 1.6;">We created this community as your direct line to the Giftisan team. Ask questions, get help setting up your products, or report any bugs directly to our management.</p>
-      <a href="${WHATSAPP_COMMUNITY_URL}" style="background-color: #25D366; color: white; padding: 14px 28px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">Join Support Channel on WhatsApp ➔</a>
-    </div>
 
     <div style="margin: 30px 0; text-align: center;">
       <a href="${BASE_URL}/studio" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 15px; display: inline-block;">Enter Shop Dashboard</a>

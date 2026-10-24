@@ -67,6 +67,7 @@ import { PaymentTab } from "./studio/payment-tab";
 import { ReviewsTab } from "./studio/reviews-tab";
 import { SettingsTab } from "./studio/settings-tab";
 import { useIsNative } from "@/lib/native";
+import { useNotifications } from "./notification-provider";
 
 
 interface StudioClientProps {
@@ -83,6 +84,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
   const isNative = useIsNative();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { openChat } = useNotifications();
   const [showMask, setShowMask] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "inventory" | "sales" | "reviews" | "growth" | "logistics" | "settings">("overview");
   const contentRef = useRef<HTMLDivElement>(null);
@@ -722,13 +724,14 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                             </div>
                             {selectedItem.order.userId && (
                               <div className="mt-2">
-                                <Link
-                                  href={`/profile/messages?userId=${selectedItem.order.userId}`}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-accent/20 bg-accent/10 text-accent text-xs font-bold hover:bg-accent hover:text-white transition-all shadow-xs"
+                                <button
+                                  type="button"
+                                  onClick={() => openChat(selectedItem.order.userId)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-accent/20 bg-accent/10 text-accent text-xs font-bold hover:bg-accent hover:text-white transition-all shadow-xs cursor-pointer"
                                 >
                                   <MessageSquare className="w-3.5 h-3.5" />
                                   <span>{lang === "ar" ? "مراسلة العميل عبر المنصة" : "Message Customer on Platform"}</span>
-                                </Link>
+                                </button>
                               </div>
                             )}
                           </div>

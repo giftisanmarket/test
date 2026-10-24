@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package, Share2 } from "lucide-react";
+import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package, Share2, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useNotifications } from "./notification-provider";
@@ -657,6 +657,7 @@ export function Navbar({ dict }: { dict?: any }) {
           {/* Actions */}
           <div className="flex items-center gap-1 md:gap-1.5 xl:gap-2">
             {/* Favorites Icon (Visible on Mobile & Desktop) */}
+            {/* Favorites Icon (Visible on Mobile & Desktop) */}
             <Link 
               href="/favorites" 
               title={d.common.favorites || "Favorites"} 
@@ -675,23 +676,22 @@ export function Navbar({ dict }: { dict?: any }) {
               )}
             </Link>
 
-            {/* Shop Hub (Artisans only - Desktop) */}
+            {/* Shop Studio Hub (Artisans Only - Standard Clean Styling) */}
             {session?.user?.role === "ARTISAN" && (
               <Link
                 href="/studio"
-                title={d.common.pro_studio || "Shop Manager"}
+                title={d.common.pro_studio || "Shop Studio"}
                 className={cn(
-                  "hidden md:flex items-center justify-center w-10 h-10 rounded-full transition-all relative active:scale-95",
+                  "flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full transition-all relative active:scale-95",
                   pathname.startsWith("/studio")
                     ? "text-primary bg-primary/10 ring-1 ring-primary/20"
                     : "text-charcoal/70 hover:text-primary hover:bg-primary/5"
                 )}
               >
-                <Store className="w-5 h-5" />
-                <span className={cn(
-                  "absolute top-1.5 end-1.5 w-2 h-2 rounded-full ring-2 ring-white",
-                  pathname.startsWith("/studio") ? "bg-accent" : "bg-accent animate-pulse"
-                )} />
+                <Store className="w-4 h-4 md:w-5 md:h-5" />
+                {pathname.startsWith("/studio") && (
+                  <span className="absolute top-1.5 end-1.5 w-1.5 h-1.5 rounded-full bg-accent ring-2 ring-white" />
+                )}
               </Link>
             )}
 
@@ -955,8 +955,8 @@ export function Navbar({ dict }: { dict?: any }) {
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Language Switcher */}
-            <div className="flex items-center ps-1 border-s border-primary/10">
+            {/* Language Switcher (Desktop only in top row; on mobile it lives inside the menu drawer) */}
+            <div className="hidden md:flex items-center ps-1 border-s border-primary/10">
               <Link 
                 href={pathname.replace(/^\/(en|ar)/, pathname.startsWith('/en') ? '/ar' : '/en')}
                 onClick={() => {
@@ -1089,73 +1089,142 @@ export function Navbar({ dict }: { dict?: any }) {
 
             {/* User Specific Links */}
             {session ? (
-              <div className="space-y-4">
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                  {session.user?.role === "ARTISAN" 
-                    ? (d.common.your_studio_hub || "Your Shop") 
-                    : (d.common.your_account || "Your Account")}
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Link
-                    href="/profile"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform"
-                  >
-                    <Package className="w-5 h-5 text-primary/40 mb-2" />
-                    <span className="text-xs font-bold text-primary uppercase">{d.common.purchases_orders || (pathname.startsWith('/ar') ? "الطلبات" : "Orders")}</span>
-                  </Link>
+              <div className="space-y-6">
+                {/* 1. Artisan Shop Studio Banner (for approved artisans) */}
+                {session.user?.role === "ARTISAN" && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                        {pathname.startsWith('/ar') ? "ورشة عمل الحرفي" : "Your Workshop"}
+                      </p>
+                      <span className="text-[9px] font-black uppercase text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200 inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse" />
+                        {pathname.startsWith('/ar') ? "متجر معتمد" : "Approved Shop"}
+                      </span>
+                    </div>
 
-                  <Link
-                    href="/favorites"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform"
-                  >
-                    <Heart className="w-5 h-5 text-primary/40 mb-2" />
-                    <span className="text-xs font-bold text-primary uppercase">{d.common.favorites}</span>
-                  </Link>
-                  {session.user?.role === "ARTISAN" ? (
                     <Link
                       href="/studio"
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex flex-col items-center justify-center p-4 bg-accent/5 rounded-2xl border border-accent/15 text-center active:scale-95 transition-transform group"
+                      className="p-3.5 bg-white hover:bg-cream/50 rounded-2xl border border-primary/10 shadow-xs flex items-center justify-between transition-all group active:scale-[0.99]"
                     >
-                      <Store className="w-5 h-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-black text-accent uppercase">{d.common.studio}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-sm group-hover:bg-accent transition-colors">
+                          <Store className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-heading font-black text-xs text-primary leading-tight">
+                            {d.common.studio || (pathname.startsWith('/ar') ? "لوحة تحكم المتجر" : "Shop Studio")}
+                          </h4>
+                          <p className="text-[10px] text-charcoal/50 mt-0.5">
+                            {pathname.startsWith('/ar') ? "إدارة القطع والطلبات والمحادثات" : "Manage crafts, orders & messages"}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-charcoal/40 group-hover:text-accent group-hover:translate-x-0.5 rtl:rotate-180 transition-all shrink-0" />
                     </Link>
-                  ) : (
-                    <Link
-                      href="/become-artisan"
-                      onClick={() => setIsMenuOpen(false)}
-                      className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform group"
-                    >
-                      <Store className="w-5 h-5 text-accent mb-2 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-black text-primary uppercase tracking-widest">{d.common.sell}</span>
-                    </Link>
-                  )}
-                  <Link
-                    href="/profile"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform"
-                  >
-                    <User className="w-5 h-5 text-primary/40 mb-2" />
-                    <span className="text-xs font-bold text-primary uppercase">{d.common.profile}</span>
-                  </Link>
+                  </div>
+                )}
 
+                {/* 2. Admin Portal Banner (for admins) */}
+                {session.user?.role === "ADMIN" && (
                   <Link
-                    href="/profile/messages"
+                    href="/admin"
                     onClick={() => setIsMenuOpen(false)}
-                    className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform relative"
+                    className="p-3.5 bg-primary text-white rounded-2xl flex items-center justify-between shadow-sm active:scale-[0.99]"
                   >
-                    <div className="relative">
-                      <MessageSquare className="w-5 h-5 text-primary/40 mb-2" />
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-1 -end-2 w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
-                          {unreadCount}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-3">
+                      <ShieldCheck className="w-5 h-5 text-accent-light" />
+                      <div>
+                        <h4 className="font-heading font-black text-xs leading-tight">Admin Portal</h4>
+                        <p className="text-[10px] text-white/60">Platform control & approvals</p>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-primary uppercase">{d.common.messages || (pathname.startsWith('/ar') ? "الرسائل" : "Messages")}</span>
+                    <ChevronRight className="w-4 h-4 rtl:rotate-180" />
                   </Link>
+                )}
+
+                {/* 3. Sell on Giftisan (for general buyers) */}
+                {session.user?.role !== "ARTISAN" && session.user?.role !== "ADMIN" && (
+                  <Link
+                    href="/become-artisan"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="p-3.5 bg-white hover:bg-cream/50 rounded-2xl border border-primary/10 shadow-xs flex items-center justify-between transition-all group active:scale-[0.99]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                        <Store className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-heading font-black text-xs text-primary leading-tight">
+                          {d.common.sell || (pathname.startsWith('/ar') ? "انضم كحرفي" : "Sell on Giftisan")}
+                        </h4>
+                        <p className="text-[10px] text-charcoal/50 mt-0.5">
+                          {pathname.startsWith('/ar') ? "افتح متجرك واعرض قطعك" : "Open your handcrafted shop"}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-charcoal/40 group-hover:text-accent rtl:rotate-180 transition-all shrink-0" />
+                  </Link>
+                )}
+
+                {/* 4. Symmetrical 2x2 Activity Grid (4 tiles: Purchases, Favorites, Profile, Messages) */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                    {pathname.startsWith('/ar') ? "حسابك ونشاطك" : "Your Account & Activity"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 shadow-2xs"
+                    >
+                      <Package className="w-5 h-5 text-primary/50 mb-1.5" />
+                      <span className="text-xs font-bold text-primary">
+                        {d.common.purchases_orders || (pathname.startsWith('/ar') ? "الطلبات" : "Orders")}
+                      </span>
+                    </Link>
+
+                    <Link
+                      href="/favorites"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 shadow-2xs"
+                    >
+                      <Heart className="w-5 h-5 text-primary/50 mb-1.5" />
+                      <span className="text-xs font-bold text-primary">
+                        {d.common.favorites || (pathname.startsWith('/ar') ? "المفضلة" : "Favorites")}
+                      </span>
+                    </Link>
+
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 shadow-2xs"
+                    >
+                      <User className="w-5 h-5 text-primary/50 mb-1.5" />
+                      <span className="text-xs font-bold text-primary">
+                        {d.common.profile || (pathname.startsWith('/ar') ? "الملف الشخصي" : "Profile")}
+                      </span>
+                    </Link>
+
+                    <Link
+                      href="/profile/messages"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 relative shadow-2xs"
+                    >
+                      <div className="relative">
+                        <MessageSquare className="w-5 h-5 text-primary/50 mb-1.5" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -end-2 w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-bold text-primary">
+                        {d.common.messages || (pathname.startsWith('/ar') ? "الرسائل" : "Messages")}
+                      </span>
+                    </Link>
+                  </div>
                 </div>
               </div>
             ) : (

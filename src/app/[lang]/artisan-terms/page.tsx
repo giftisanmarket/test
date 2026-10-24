@@ -122,55 +122,58 @@ export default async function ArtisanTermsPage({
         <Navbar dict={dict} />
       </div>
 
-      <main className="max-w-4xl mx-auto px-5 sm:px-6 py-12 sm:py-20">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
         {/* Header Section */}
-        <div className="mb-10 sm:mb-14">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="inline-flex items-center gap-2 bg-primary/5 text-primary px-3.5 py-1.5 rounded-full border border-primary/10">
-              <Scale className="w-3.5 h-3.5 text-accent" />
-              <span className="text-[11px] sm:text-xs font-black uppercase tracking-widest">
-                {t.legal_framework}
+        <div className="mb-8 sm:mb-14">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 mb-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 bg-primary/5 text-primary px-3 py-1 sm:py-1.5 rounded-full border border-primary/10">
+                <Scale className="w-3.5 h-3.5 text-accent shrink-0" />
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                  {t.legal_framework}
+                </span>
+              </div>
+
+              <span className="text-[11px] sm:text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 sm:py-1.5 rounded-full border border-accent/20 whitespace-nowrap">
+                {t.effective_badge}
+              </span>
+              <span className="text-[11px] sm:text-xs font-bold text-primary/70 bg-primary/5 px-2.5 py-1 sm:py-1.5 rounded-full border border-primary/10 font-mono whitespace-nowrap">
+                {ARTISAN_AGREEMENT_VERSION}
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-full border border-accent/20">
-                {t.effective_badge}
-              </span>
-              <span className="text-xs font-bold text-primary/70 bg-primary/5 px-3 py-1 rounded-full border border-primary/10 font-mono">
-                {ARTISAN_AGREEMENT_VERSION}
-              </span>
+            <div className="self-start sm:self-auto">
               <PrintButton label={t.print_contract} />
             </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-black text-primary mb-5 tracking-tight leading-tight">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-heading font-black text-primary mb-3.5 sm:mb-5 tracking-tight leading-[1.15]">
             {t.title_base}{" "}
-            <span className="font-serif italic font-normal text-accent underline decoration-accent/20 underline-offset-8">
+            <span className="font-serif italic font-normal text-accent underline decoration-accent/20 underline-offset-4 sm:underline-offset-8">
               {t.title_accent}
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-primary/70 font-medium leading-relaxed max-w-3xl">
+          <p className="text-sm sm:text-lg text-primary/70 font-medium leading-relaxed max-w-3xl">
             {t.description}
           </p>
         </div>
 
         {/* 4 Core Pillars Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 mb-12 sm:mb-16 print:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-10 sm:mb-16 print:mb-8">
           {highlights.map((item, idx) => {
             const Icon = item.icon;
             return (
               <div
                 key={idx}
-                className="p-4 sm:p-5 rounded-2xl bg-white border border-primary/10 shadow-xs hover:border-primary/20 transition-all flex items-start gap-3.5"
+                className="p-3.5 sm:p-5 rounded-2xl bg-white border border-primary/10 shadow-xs hover:border-primary/20 transition-all flex items-start gap-3 sm:gap-3.5"
               >
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.accent}`}
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.accent}`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5 sm:space-y-1 min-w-0">
                   <h2 className="text-sm sm:text-base font-bold text-primary">
                     {item.title}
                   </h2>
@@ -184,20 +187,20 @@ export default async function ArtisanTermsPage({
         </div>
 
         {/* Legal Sections Accordion / Flow */}
-        <div className="space-y-6 sm:space-y-8">
+        <div className="space-y-4 sm:space-y-6">
           {sections.map((section, i) => {
             const SectionIcon = section.icon;
             return (
               <div
                 key={i}
-                className="p-5 sm:p-7 rounded-3xl bg-white/80 border border-primary/10 shadow-xs hover:border-primary/20 hover:bg-white transition-all group"
+                className="p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-white/80 border border-primary/10 shadow-xs hover:border-primary/20 hover:bg-white transition-all group"
               >
-                <div className="flex items-start gap-4 sm:gap-5">
-                  <div className="w-11 h-11 rounded-2xl bg-cream flex items-center justify-center text-primary shadow-2xs border border-primary/10 shrink-0 mt-0.5 group-hover:bg-primary group-hover:text-white transition-colors">
-                    <SectionIcon className="w-5 h-5" />
+                <div className="flex items-start gap-3.5 sm:gap-5">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-cream flex items-center justify-center text-primary shadow-2xs border border-primary/10 shrink-0 mt-0.5 group-hover:bg-primary group-hover:text-white transition-colors">
+                    <SectionIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <div className="space-y-3 flex-1">
-                    <h2 className="text-lg sm:text-xl font-black text-primary group-hover:text-accent transition-colors leading-snug">
+                  <div className="space-y-2 sm:space-y-3 flex-1 min-w-0">
+                    <h2 className="text-base sm:text-xl font-black text-primary group-hover:text-accent transition-colors leading-snug">
                       {section.title}
                     </h2>
                     <p className="text-xs sm:text-sm text-charcoal/80 leading-relaxed font-normal">
@@ -239,12 +242,12 @@ export default async function ArtisanTermsPage({
         </div>
 
         {/* Support & Inquiries CTA Card */}
-        <div className="mt-14 sm:mt-20 p-7 sm:p-10 bg-primary rounded-[2.5rem] text-cream relative overflow-hidden shadow-xl print:hidden">
-          <div className="relative z-10 text-center max-w-xl mx-auto space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 mx-auto flex items-center justify-center text-accent">
-              <FileText className="w-6 h-6" />
+        <div className="mt-10 sm:mt-20 p-6 sm:p-10 bg-primary rounded-3xl sm:rounded-[2.5rem] text-cream relative overflow-hidden shadow-xl print:hidden">
+          <div className="relative z-10 text-center max-w-xl mx-auto space-y-3 sm:space-y-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 mx-auto flex items-center justify-center text-accent">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <h3 className="text-2xl sm:text-3xl font-heading font-black">
+            <h3 className="text-xl sm:text-3xl font-heading font-black">
               {t.questions}
             </h3>
             <p className="text-xs sm:text-sm text-white/70 font-medium leading-relaxed">
@@ -253,7 +256,7 @@ export default async function ArtisanTermsPage({
             <div className="pt-2">
               <Link
                 href={`/${lang}/contact`}
-                className="inline-flex items-center gap-2 bg-accent text-white px-7 py-3.5 rounded-2xl font-bold text-sm hover:bg-accent-light active:scale-95 transition-all shadow-lg shadow-black/20"
+                className="inline-flex items-center justify-center gap-2 bg-accent text-white px-6 py-3 sm:px-7 sm:py-3.5 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm hover:bg-accent-light active:scale-95 transition-all shadow-lg shadow-black/20 w-full sm:w-auto"
               >
                 <span>{t.contact_support}</span>
                 <ChevronRight className="w-4 h-4 rtl:rotate-180" />

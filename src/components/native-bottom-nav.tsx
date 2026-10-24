@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Home, Search, Heart, ShoppingCart, User, Store } from "lucide-react";
+import { Home, Search, Heart, ShoppingCart, User, Store, ShieldCheck, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useFavorites } from "@/context/favorites-context";
@@ -25,6 +25,7 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
 
   const isArabic = lang === "ar" || pathname.startsWith("/ar");
   const isArtisan = session?.user?.role === "ARTISAN";
+  const isAdmin = session?.user?.role === "ADMIN";
   const allFavoritesCount = totalFavorites + (totalFavoriteArtisans || 0);
 
   // In Etsy style: hide the bottom tab bar on Product Detail and Checkout screens so the buy/checkout button takes full focus
@@ -52,7 +53,9 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
 
   const isYouActive =
     !isCartOpen &&
-    (isArtisan
+    (isAdmin
+      ? pathname.includes("/admin") || pathname.includes("/profile")
+      : isArtisan
       ? pathname.includes("/studio") || pathname.includes("/profile")
       : pathname.includes("/profile"));
 
@@ -61,7 +64,7 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
     action();
   };
 
-  // Exact 5-tab Etsy App order: Home -> Shop -> Favorites -> You -> Cart
+  // Exact 5-tab Etsy App order: Home -> Shop -> Favorites -> You/Admin/Shop -> Cart
   const navItems = [
     {
       id: "home",
@@ -99,7 +102,20 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
           router.push(`/${lang}/favorites`);
         }),
     },
-    isArtisan
+    isAdmin
+      ? {
+          id: "admin",
+          label: dict?.common?.admin || (isArabic ? "الإدارة" : "Admin"),
+          icon: ShieldCheck,
+          isActive: isYouActive,
+          badge: null,
+          onClick: () =>
+            handleTabClick(() => {
+              if (isCartOpen) setIsCartOpen(false);
+              router.push(`/${lang}/admin`);
+            }),
+        }
+      : isArtisan
       ? {
           id: "studio",
           label: dict?.common?.pro_studio || (isArabic ? "المتجر" : "Shop"),
@@ -114,8 +130,10 @@ export function NativeBottomNav({ dict, lang = "en" }: NativeBottomNavProps) {
         }
       : {
           id: "you",
-          label: dict?.common?.your_account || (isArabic ? "حسابك" : "You"),
-          icon: User,
+          label: session?.user
+            ? (dict?.common?.your_account || (isArabic ? "حسابك" : "You"))
+            : (dict?.common?.sign_in || (isArabic ? "دخول" : "Sign In")),
+          icon: session?.user ? User : LogIn,
           isActive: isYouActive,
           badge: null,
           onClick: () =>

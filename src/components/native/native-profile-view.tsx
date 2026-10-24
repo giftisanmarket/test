@@ -478,7 +478,7 @@ export function NativeProfileView({
                 <ChevronRight className="w-4 h-4 text-primary/40 rtl:rotate-180" />
               </Link>
 
-              {user.role === "ARTISAN" ? (
+              {user.role === "ARTISAN" && (
                 <Link
                   href={`/${lang}/studio`}
                   onClick={() => triggerHaptic("light")}
@@ -499,7 +499,8 @@ export function NativeProfileView({
                   </div>
                   <ChevronRight className="w-4 h-4 text-accent/60 rtl:rotate-180" />
                 </Link>
-              ) : (
+              )}
+              {user.role !== "ARTISAN" && user.role !== "ADMIN" && (
                 <Link
                   href={`/${lang}/become-artisan`}
                   onClick={() => triggerHaptic("light")}
@@ -534,10 +535,10 @@ export function NativeProfileView({
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-primary">
-                        {dict.profile?.admin || "Admin Control Panel"}
+                        {dict.profile?.admin || (isArabic ? "لوحة الإدارة والتحكم" : "Admin Control Suite")}
                       </h4>
                       <p className="text-[10px] text-charcoal/50">
-                        Platform metrics & approvals
+                        {isArabic ? "الطلبات، الحرفيين، المنتجات والمالية" : "Orders, artisans, products & finance"}
                       </p>
                     </div>
                   </div>

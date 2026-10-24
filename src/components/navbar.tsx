@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package, Share2, Globe } from "lucide-react";
+import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, LogIn, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package, Share2, Globe, Users, Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useNotifications } from "./notification-provider";
@@ -695,6 +695,25 @@ export function Navbar({ dict }: { dict?: any }) {
               </Link>
             )}
 
+            {/* Admin Portal Hub (Admins Only - Standard Clean Styling) */}
+            {session?.user?.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                title={pathname.startsWith('/ar') ? "لوحة الإدارة" : "Admin Portal"}
+                className={cn(
+                  "flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full transition-all relative active:scale-95",
+                  pathname.startsWith("/admin")
+                    ? "text-primary bg-primary/10 ring-1 ring-primary/20"
+                    : "text-charcoal/70 hover:text-primary hover:bg-primary/5"
+                )}
+              >
+                <ShieldCheck className="w-4 h-4 md:w-5 md:h-5" />
+                {pathname.startsWith("/admin") && (
+                  <span className="absolute top-1.5 end-1.5 w-1.5 h-1.5 rounded-full bg-accent ring-2 ring-white" />
+                )}
+              </Link>
+            )}
+
             {/* Messages Hub (Desktop) */}
             {session && (
               <Link
@@ -845,23 +864,14 @@ export function Navbar({ dict }: { dict?: any }) {
                           </div>
                         </Link>
 
-                        {session.user?.role === "ARTISAN" ? (
+                        {session.user?.role === "ARTISAN" && (
                           <Link
                             href="/studio"
                             onClick={() => setIsProfileMenuOpen(false)}
                             className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cream/60 transition-colors text-accent font-black"
                           >
                             <Store className="w-4 h-4 text-accent" />
-                            <span>{d.common.pro_studio || "Shop Manager"}</span>
-                          </Link>
-                        ) : (
-                          <Link
-                            href="/become-artisan"
-                            onClick={() => setIsProfileMenuOpen(false)}
-                            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cream/60 transition-colors text-accent font-black"
-                          >
-                            <Store className="w-4 h-4 text-accent" />
-                            <span>{d.common.sell || "Sell on Giftisan"}</span>
+                            <span>{d.common.pro_studio || (pathname.startsWith('/ar') ? "لوحة تحكم المتجر" : "Shop Manager")}</span>
                           </Link>
                         )}
 
@@ -872,7 +882,18 @@ export function Navbar({ dict }: { dict?: any }) {
                             className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cream/60 transition-colors text-primary font-bold"
                           >
                             <ShieldCheck className="w-4 h-4 text-primary" />
-                            <span>Admin Portal</span>
+                            <span>{pathname.startsWith('/ar') ? "لوحة الإدارة والتحكم" : "Admin Portal"}</span>
+                          </Link>
+                        )}
+
+                        {session.user?.role !== "ARTISAN" && session.user?.role !== "ADMIN" && (
+                          <Link
+                            href="/become-artisan"
+                            onClick={() => setIsProfileMenuOpen(false)}
+                            className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cream/60 transition-colors text-accent font-black"
+                          >
+                            <Store className="w-4 h-4 text-accent" />
+                            <span>{d.common.sell || (pathname.startsWith('/ar') ? "انضم كحرفي" : "Sell on Giftisan")}</span>
                           </Link>
                         )}
 
@@ -930,17 +951,18 @@ export function Navbar({ dict }: { dict?: any }) {
                   onClick={() => openAuthModal("login")}
                   className="hidden md:flex items-center gap-2 h-9 px-4 rounded-full text-xs font-bold text-primary hover:text-accent border border-primary/15 hover:border-primary/30 transition-all bg-white shadow-xs active:scale-95 cursor-pointer"
                 >
-                  <User className="w-4 h-4 text-primary/60" />
-                  <span>{d.common.sign_in}</span>
+                  <LogIn className="w-4 h-4 text-primary/60" />
+                  <span>{d.common.sign_in || "Sign In"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => openAuthModal("login")}
-                  className="md:hidden flex items-center justify-center w-8 h-8 rounded-full text-charcoal/70 hover:text-primary active:scale-95 cursor-pointer"
-                  title={d.common.sign_in}
-                  aria-label={d.common.sign_in}
+                  className="md:hidden flex items-center gap-1.5 h-8 px-2.5 rounded-full text-xs font-black text-primary hover:text-accent border border-primary/20 hover:border-primary/40 bg-white/95 shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0"
+                  title={d.common.sign_in || "Sign In"}
+                  aria-label={d.common.sign_in || "Sign In"}
                 >
-                  <User className="w-4 h-4" />
+                  <LogIn className="w-3.5 h-3.5 text-accent" />
+                  <span className="text-[11px] font-black">{pathname.startsWith("/ar") ? "دخول" : "Sign In"}</span>
                 </button>
               </>
             )}
@@ -1026,9 +1048,10 @@ export function Navbar({ dict }: { dict?: any }) {
             </div>
             <Link
               href="/categories"
-              className="text-[11px] lg:text-xs 2xl:text-sm font-black text-accent hover:text-primary transition-all uppercase tracking-widest border-s border-primary/10 ps-5 2xl:ps-6 whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 text-[11px] lg:text-xs 2xl:text-sm font-black text-accent hover:text-primary transition-all uppercase tracking-widest border-s border-primary/10 ps-5 2xl:ps-6 whitespace-nowrap shrink-0 group"
             >
-              {d.common.all_categories || "View All"} →
+              <span>{d.common.all_categories || "View All"}</span>
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 rtl:rotate-180 transition-transform" />
             </Link>
           </div>
         </div>
@@ -1126,22 +1149,83 @@ export function Navbar({ dict }: { dict?: any }) {
                   </div>
                 )}
 
-                {/* 2. Admin Portal Banner (for admins) */}
+                {/* 2. Admin Control Suite (for platform admins) */}
                 {session.user?.role === "ADMIN" && (
-                  <Link
-                    href="/admin"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="p-3.5 bg-primary text-white rounded-2xl flex items-center justify-between shadow-sm active:scale-[0.99]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <ShieldCheck className="w-5 h-5 text-accent-light" />
-                      <div>
-                        <h4 className="font-heading font-black text-xs leading-tight">Admin Portal</h4>
-                        <p className="text-[10px] text-white/60">Platform control & approvals</p>
-                      </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                        {pathname.startsWith('/ar') ? "إدارة المنصة" : "Platform Management"}
+                      </p>
+                      <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 inline-flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        {pathname.startsWith('/ar') ? "مدير المنصة" : "Platform Admin"}
+                      </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 rtl:rotate-180" />
-                  </Link>
+
+                    {/* Main Admin Portal Entry Card */}
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="p-3.5 bg-white hover:bg-cream/50 rounded-2xl border border-primary/10 shadow-xs flex items-center justify-between transition-all group active:scale-[0.99]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-sm group-hover:bg-accent transition-colors">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h4 className="font-heading font-black text-xs text-primary leading-tight">
+                            {pathname.startsWith('/ar') ? "لوحة الإدارة والتحكم" : "Admin Control Suite"}
+                          </h4>
+                          <p className="text-[10px] text-charcoal/50 mt-0.5">
+                            {pathname.startsWith('/ar') ? "الطلبات، الحرفيين، المنتجات والمالية" : "Orders, artisans, products & finance"}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-charcoal/40 group-hover:text-accent group-hover:translate-x-0.5 rtl:rotate-180 transition-all shrink-0" />
+                    </Link>
+
+                    {/* Admin Rapid Shortcuts (Orders, Products, Artisans) */}
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <Link
+                        href="/admin/orders"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="p-2.5 rounded-xl bg-white hover:bg-primary/5 border border-primary/10 text-center active:scale-95 transition-all group"
+                      >
+                        <span className="block text-[11px] font-black text-primary group-hover:text-accent">
+                          {pathname.startsWith('/ar') ? "الطلبات" : "Orders"}
+                        </span>
+                        <span className="block text-[9px] text-charcoal/50 mt-0.5">
+                          {pathname.startsWith('/ar') ? "المبيعات" : "Fulfillment"}
+                        </span>
+                      </Link>
+
+                      <Link
+                        href="/admin/products"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="p-2.5 rounded-xl bg-white hover:bg-primary/5 border border-primary/10 text-center active:scale-95 transition-all group"
+                      >
+                        <span className="block text-[11px] font-black text-primary group-hover:text-accent">
+                          {pathname.startsWith('/ar') ? "المنتجات" : "Products"}
+                        </span>
+                        <span className="block text-[9px] text-charcoal/50 mt-0.5">
+                          {pathname.startsWith('/ar') ? "الاعتمادات" : "Catalog"}
+                        </span>
+                      </Link>
+
+                      <Link
+                        href="/admin/users"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="p-2.5 rounded-xl bg-white hover:bg-primary/5 border border-primary/10 text-center active:scale-95 transition-all group"
+                      >
+                        <span className="block text-[11px] font-black text-primary group-hover:text-accent">
+                          {pathname.startsWith('/ar') ? "الحرفيين" : "Artisans"}
+                        </span>
+                        <span className="block text-[9px] text-charcoal/50 mt-0.5">
+                          {pathname.startsWith('/ar') ? "الأعضاء" : "Accounts"}
+                        </span>
+                      </Link>
+                    </div>
+                  </div>
                 )}
 
                 {/* 3. Sell on Giftisan (for general buyers) */}
@@ -1228,19 +1312,143 @@ export function Navbar({ dict }: { dict?: any }) {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">{d.common.join_the_circle}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    openAuthModal("login");
-                  }}
-                  className="w-full flex items-center justify-between p-4 bg-white rounded-2xl border border-primary/5 text-primary font-bold active:scale-95 transition-transform text-start cursor-pointer"
+              <div className="space-y-6">
+                {/* 1. Guest Onboarding & Dual Auth Card */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                      {pathname.startsWith('/ar') ? "مرحباً بك في جيفتيزان" : "Welcome to Giftisan"}
+                    </p>
+                    <span className="text-[9px] font-black uppercase text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20 inline-flex items-center gap-1">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      {pathname.startsWith('/ar') ? "استكشف كزائر" : "Guest Explorer"}
+                    </span>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl border border-primary/10 shadow-xs space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-heading font-black text-xs text-primary leading-tight">
+                          {pathname.startsWith('/ar') ? "انضم لمجتمع الحرفيين" : "Join the Giftisan Circle"}
+                        </h4>
+                        <p className="text-[10px] text-charcoal/60 mt-0.5 leading-normal">
+                          {pathname.startsWith('/ar') 
+                            ? "سجّل حسابك لحفظ المفضلة، محادثة الحرفيين، وتتبع طلباتك بكل سهولة." 
+                            : "Sign in to save favorite crafts, message artisans, and track orders seamlessly."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Dual Action Buttons: Sign In / Create Account */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          openAuthModal("login");
+                        }}
+                        className="h-10 px-3 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary border border-primary/10 text-xs font-black transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+                      >
+                        {d.common.sign_in || (pathname.startsWith('/ar') ? "تسجيل الدخول" : "Sign In")}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          openAuthModal("signup");
+                        }}
+                        className="h-10 px-3 rounded-xl bg-accent hover:bg-accent-hover text-white text-xs font-black transition-all active:scale-95 shadow-sm flex items-center justify-center cursor-pointer"
+                      >
+                        {d.common.signup || (pathname.startsWith('/ar') ? "إنشاء حساب" : "Register")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Sell on Giftisan Banner */}
+                <Link
+                  href="/become-artisan"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="p-3.5 bg-white hover:bg-cream/50 rounded-2xl border border-primary/10 shadow-xs flex items-center justify-between transition-all group active:scale-[0.99]"
                 >
-                  <span>{d.common.sign_in}</span>
-                  <span className="text-accent rtl:rotate-180">→</span>
-                </button>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                      <Store className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-heading font-black text-xs text-primary leading-tight">
+                        {d.common.sell || (pathname.startsWith('/ar') ? "انضم كحرفي وافتح متجرك" : "Sell on Giftisan")}
+                      </h4>
+                      <p className="text-[10px] text-charcoal/50 mt-0.5">
+                        {pathname.startsWith('/ar') ? "افتح متجرك واعرض قطعك المميزة" : "Open your workshop & share your crafts"}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-charcoal/40 group-hover:text-accent rtl:rotate-180 transition-all shrink-0" />
+                </Link>
+
+                {/* 3. Symmetrical 2x2 Discovery Grid for Guests */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                    {pathname.startsWith('/ar') ? "استكشف الهدايا والحرف" : "Explore & Discover"}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <Link
+                      href="/categories"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 shadow-2xs"
+                    >
+                      <Sparkles className="w-5 h-5 text-primary/50 mb-1.5" />
+                      <span className="text-xs font-bold text-primary">
+                        {d.common.all_categories || (pathname.startsWith('/ar') ? "كل الأقسام" : "Categories")}
+                      </span>
+                    </Link>
+
+                    <Link
+                      href="/artisans"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 shadow-2xs"
+                    >
+                      <Users className="w-5 h-5 text-primary/50 mb-1.5" />
+                      <span className="text-xs font-bold text-primary">
+                        {d.common.artisans || (pathname.startsWith('/ar') ? "الحرفيين" : "Artisans")}
+                      </span>
+                    </Link>
+
+                    <Link
+                      href="/favorites"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 shadow-2xs relative"
+                    >
+                      <div className="relative">
+                        <Heart className="w-5 h-5 text-primary/50 mb-1.5" />
+                        {allFavoritesCount > 0 && (
+                          <span className="absolute -top-1 -end-2 w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                            {allFavoritesCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-bold text-primary">
+                        {d.common.favorites || (pathname.startsWith('/ar') ? "المفضلة" : "Favorites")}
+                      </span>
+                    </Link>
+
+                    <Link
+                      href="/gifts"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex flex-col items-center justify-center p-3.5 bg-white rounded-2xl border border-primary/5 text-center active:scale-95 transition-transform hover:border-primary/15 shadow-2xs"
+                    >
+                      <Gift className="w-5 h-5 text-primary/50 mb-1.5" />
+                      <span className="text-xs font-bold text-primary">
+                        {pathname.startsWith('/ar') ? "أفكار الهدايا" : "Gift Ideas"}
+                      </span>
+                    </Link>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1256,14 +1464,14 @@ export function Navbar({ dict }: { dict?: any }) {
                       href={`/category/${cat.id}`}
                       onClick={() => setIsMenuOpen(false)}
                       className={cn(
-                        "flex justify-between items-center p-4 rounded-2xl border text-sm font-bold transition-all active:scale-[0.98]",
+                        "flex justify-between items-center p-4 rounded-2xl border text-sm font-bold transition-all active:scale-[0.98] group",
                         isActive
                           ? "bg-accent/10 border-accent/30 text-accent font-black"
                           : "bg-white border-primary/5 text-primary hover:bg-primary/5"
                       )}
                     >
                       <span>{cat.label}</span>
-                      <span className="text-accent">→</span>
+                      <ChevronRight className="w-4 h-4 text-charcoal/40 group-hover:text-accent group-hover:translate-x-0.5 rtl:rotate-180 transition-all shrink-0" />
                     </Link>
                   );
                 })}
@@ -1271,22 +1479,20 @@ export function Navbar({ dict }: { dict?: any }) {
             </div>
           </div>
 
-          <div className="p-6 border-t border-primary/10 bg-primary/5 space-y-4">
+          <div className="p-6 border-t border-primary/10 bg-primary/5 space-y-3">
             {!session ? (
-              <>
-                <Link
-                  href="/signup"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="w-full h-12 bg-primary text-white font-bold rounded-xl flex items-center justify-center shadow-lg"
-                >
-                  {d.common.join_the_circle}
-                </Link>
-                <p className="text-xs text-charcoal/40 text-center italic">{d.common.crafted_for_community}</p>
-              </>
+              <div className="text-center space-y-1">
+                <p className="text-xs font-bold text-primary">
+                  {pathname.startsWith('/ar') ? "منصة الحرف اليدوية المصرية الأصيلة" : "Authentic Egyptian Handmade Marketplace"}
+                </p>
+                <p className="text-[11px] text-charcoal/50">
+                  {d.common.crafted_for_community || (pathname.startsWith('/ar') ? "صُنع بكل فخر بأيدي حرفيين مصريين" : "Crafted with pride by independent Egyptian artisans")}
+                </p>
+              </div>
             ) : (
               <button
                 onClick={() => performSignOut(pathname.startsWith("/ar") ? "ar" : "en")}
-                className="w-full h-12 border border-red-100 bg-red-50/50 text-red-500 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-all"
+                className="w-full h-11 border border-red-100 bg-red-50/50 text-red-500 font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-red-50 transition-all active:scale-98"
               >
                 <LogOut className="w-4 h-4" />
                 {d.common.sign_out}

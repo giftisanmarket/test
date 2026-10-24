@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { useNotifications } from "@/components/notification-provider";
 
 interface NavItem {
   label: string;
@@ -81,6 +82,7 @@ export function AdminNavClient({
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState("");
+  const { unreadCount } = useNotifications();
 
   // Close drawer on navigation
   useEffect(() => {
@@ -202,8 +204,26 @@ export function AdminNavClient({
           </Link>
         </div>
 
-        {/* Right: Language Switcher & Exit */}
+        {/* Right: Messages, Language Switcher & Exit */}
         <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/admin/messages"
+            className={cn(
+              "relative flex items-center justify-center w-8 h-8 rounded-lg transition-all active:scale-95 border",
+              normalizedPath.startsWith("/admin/messages")
+                ? "bg-accent text-white border-accent"
+                : "bg-white/10 hover:bg-white/15 text-white/80 hover:text-white border-white/10"
+            )}
+            title={isAr ? "محادثات المنصة" : "Platform Conversations"}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -end-1 w-4 h-4 bg-accent text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-primary shadow-xs">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Link>
+
           <button
             type="button"
             onClick={toggleLanguage}
@@ -358,11 +378,18 @@ export function AdminNavClient({
                                   <item.icon className={cn("w-4 h-4 shrink-0", isActive ? "text-primary" : "text-white/50 group-hover:text-white")} />
                                   <span className="truncate">{item.label}</span>
                                 </div>
-                                {isActive ? (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-                                ) : (
-                                  <ChevronRight className={cn("w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity", isAr && "rotate-180")} />
-                                )}
+                                <div className="flex items-center gap-2">
+                                  {item.href === "/admin/messages" && unreadCount > 0 && (
+                                    <span className="text-[10px] font-black bg-accent text-white px-2 py-0.5 rounded-full shrink-0">
+                                      {unreadCount}
+                                    </span>
+                                  )}
+                                  {isActive ? (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                                  ) : (
+                                    <ChevronRight className={cn("w-3.5 h-3.5 opacity-0 group-hover:opacity-60 transition-opacity", isAr && "rotate-180")} />
+                                  )}
+                                </div>
                               </Link>
                             );
                           })}
@@ -455,7 +482,14 @@ export function AdminNavClient({
                           <item.icon className={cn("w-4 h-4 shrink-0 transition-transform", isActive ? "scale-110 opacity-100 text-primary" : "opacity-60 group-hover:opacity-100 group-hover:scale-110")} />
                           <span className="truncate">{item.label}</span>
                         </div>
-                        {isActive && <div className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />}
+                        <div className="flex items-center gap-2">
+                          {item.href === "/admin/messages" && unreadCount > 0 && (
+                            <span className="text-[10px] font-black bg-accent text-white px-2 py-0.5 rounded-full shrink-0">
+                              {unreadCount}
+                            </span>
+                          )}
+                          {isActive && <div className="w-1.5 h-1.5 rounded-full bg-accent shrink-0" />}
+                        </div>
                       </Link>
                     );
                   })}

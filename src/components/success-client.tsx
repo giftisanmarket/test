@@ -2,7 +2,7 @@
 
 import { Navbar } from "@/components/navbar";
 import Link from "next/link";
-import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone, AlertTriangle, XCircle, RefreshCcw } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -15,9 +15,11 @@ interface SuccessClientProps {
   dict: any;
   lang: string;
   order?: any;
+  isFailed?: boolean;
+  errorMessage?: string;
 }
 
-export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
+export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: SuccessClientProps) {
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [password, setPassword] = useState("");
   const [isSubmittingAccount, setIsSubmittingAccount] = useState(false);
@@ -52,8 +54,8 @@ export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
     <main className="min-h-screen bg-cream overflow-hidden">
       <Navbar dict={dict} />
       
-      {/* Celebration Confetti (Subtle) */}
-      {windowSize.width > 0 && (
+      {/* Celebration Confetti (Only when payment succeeded) */}
+      {!isFailed && windowSize.width > 0 && (
         <Confetti
           width={windowSize.width}
           height={windowSize.height}
@@ -64,29 +66,79 @@ export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
         />
       )}
 
-      <div className="container mx-auto px-6 pt-24 md:pt-40 pb-20 flex flex-col items-center relative z-10">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, type: "spring" }}
-          className="w-20 h-20 md:w-24 md:h-24 bg-primary rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-primary/20"
-        >
-          <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-white" />
-        </motion.div>
+      {isFailed ? (
+        <div className="container mx-auto px-6 pt-24 md:pt-40 pb-20 flex flex-col items-center relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, type: "spring" }}
+            className="w-20 h-20 md:w-24 md:h-24 bg-rose-600 rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-rose-600/20"
+          >
+            <XCircle className="w-10 h-10 md:w-12 md:h-12 text-white" />
+          </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-center max-w-2xl px-2 mb-12"
-        >
-          <h1 className="text-4xl md:text-7xl font-heading font-bold text-primary mb-6 tracking-tight leading-tight">
-            {dict.checkout.success_title}
-          </h1>
-          <p className="text-charcoal/60 text-base md:text-xl leading-relaxed max-w-xl mx-auto">
-            {dict.checkout.success_desc}
-          </p>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-center max-w-2xl px-2 mb-10"
+          >
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-heading font-bold text-primary mb-4 tracking-tight leading-tight">
+              {isAr ? "لم يكتمل الدفع الإلكتروني" : "Payment Was Not Completed"}
+            </h1>
+            <p className="text-charcoal/65 text-sm sm:text-base md:text-lg leading-relaxed max-w-xl mx-auto">
+              {errorMessage 
+                ? (isAr ? `تعذر إتمام العملية: ${errorMessage}` : `Transaction could not be completed: ${errorMessage}`)
+                : (isAr ? "لم يتم خصم أي مبالغ من بطاقتك أو محفظتك. يمكنك المحاولة مجدداً عبر صفحة الدفع." : "Your card or account was not charged. You can retry with the same card or choose another payment method.")}
+            </p>
+          </motion.div>
+
+          {/* Action buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md"
+          >
+            <Link
+              href={`/${lang}/checkout`}
+              className="w-full sm:flex-1 h-13 px-6 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-primary/10 text-sm"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              <span>{isAr ? "العودة لصفحة الدفع" : "Return to Checkout"}</span>
+            </Link>
+            <Link
+              href={`/${lang}/contact`}
+              className="w-full sm:flex-1 h-13 px-6 bg-white border border-primary/20 text-primary font-bold rounded-2xl hover:bg-cream transition-all flex items-center justify-center gap-2 active:scale-95 text-sm"
+            >
+              <span>{isAr ? "تواصل مع الدعم" : "Contact Support"}</span>
+            </Link>
+          </motion.div>
+        </div>
+      ) : (
+        <div className="container mx-auto px-6 pt-24 md:pt-40 pb-20 flex flex-col items-center relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, type: "spring" }}
+            className="w-20 h-20 md:w-24 md:h-24 bg-primary rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-primary/20"
+          >
+            <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-white" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-center max-w-2xl px-2 mb-12"
+          >
+            <h1 className="text-4xl md:text-7xl font-heading font-bold text-primary mb-6 tracking-tight leading-tight">
+              {dict.checkout.success_title}
+            </h1>
+            <p className="text-charcoal/60 text-base md:text-xl leading-relaxed max-w-xl mx-auto">
+              {dict.checkout.success_desc}
+            </p>
+          </motion.div>
 
         {/* Dynamic Digital Receipt */}
         {order && (
@@ -350,6 +402,7 @@ export function SuccessClient({ dict, lang, order }: SuccessClientProps) {
         <div className="absolute top-1/4 -left-20 w-80 h-80 bg-accent/10 rounded-full blur-[100px] -z-10" />
         <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-primary/10 rounded-full blur-[100px] -z-10" />
       </div>
+      )}
     </main>
   );
 }

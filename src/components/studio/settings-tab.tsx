@@ -885,6 +885,28 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         </p>
                       </div>
                     </div>
+
+                    {/* 2026 Season & 2027 Roadmap Notice */}
+                    <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 flex items-start gap-3 text-xs">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
+                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="space-y-1 flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-bold text-primary text-xs sm:text-sm">
+                            {lang === "ar" ? "موسم المؤسسين 2026 وخطة موسم 2027" : "2026 Founding Season & 2027 Fee Roadmap"}
+                          </p>
+                          <span className="text-[10px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full border border-accent/20">
+                            {lang === "ar" ? "شفافية وضمان كامل" : "Transparent Policy"}
+                          </span>
+                        </div>
+                        <p className="text-charcoal/70 leading-relaxed text-[11px] sm:text-xs">
+                          {lang === "ar"
+                            ? "مبيعات متجرك معفاة بنسبة 100% من عمولة المنصة طوال موسم 2026. وبداية من 1 يناير 2027، يتمتع الحرفيون المؤسسون بنسبة ولاء تفضيلية دائمة قدرها 7% (بدلاً من النسبة القياسية 10%)، شاملة التغطية الكاملة لرسوم بوابات الدفع الإلكتروني (باي موب والمحافظ الإلكترونية) ودون أي مصاريف أو اقتطاعات خفية."
+                            : "Your shop operates with 0% platform commission throughout 2026. Starting January 1, 2027, Founding Artisans enjoy a permanent 7% loyalty rate (standard rate: 10%), which all-inclusively covers Paymob payment processing, card gateways, and mobile wallet payouts with zero hidden fees."}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {!hasCurrentAgreement && (

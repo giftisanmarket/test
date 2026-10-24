@@ -1708,6 +1708,19 @@
     "section7_desc": "Artisans retain ownership of their original creations, designs, studio marks, and listing media. By publishing a listing, the artisan grants Giftisan a non-exclusive, royalty-free, revocable licence to host, display, translate, and promote that listing solely to operate and market the marketplace. The licence ends when the listing is removed, except for a reasonable period needed to complete outstanding orders, resolve claims, and retain legal records. Giftisan may not sell or license the artisan's work to third parties without separate written permission.",
     "section8_title": "8. Platform Integrity, Term & Termination",
     "section8_desc": "Artisans must not redirect buyers to complete off-platform payments for marketplace sales. Either party may end the relationship after outstanding orders, refunds, and payouts are handled. Except for urgent safety, fraud, or unlawful-content risks, Giftisan will provide a reason for suspension or removal, a reasonable opportunity to cure where appropriate, and a route to appeal. Ending or suspending a shop does not remove Giftisan's obligation to account for and pay undisputed balances under the published payout rules."
+  },
+  "contact_artisan": {
+    "dialogue_subtitle": "Direct shop dialogue",
+    "regarding_product": "Regarding Product",
+    "begin_dialogue": "Begin your dialogue",
+    "begin_dialogue_desc": "Inquire about bespoke sizing, specific materials, or request tailored alterations for this piece.",
+    "placeholder": "Ask about tailored engraving, specific materials...",
+    "loading": "Loading Thread...",
+    "view_image": "View Image",
+    "view_document": "View Document",
+    "message_artisan": "Message Shop",
+    "send_error": "Failed to send message. Please check your connection.",
+    "login_prompt": "Please log in to initiate a dialogue with the artisan."
   }
 }
 

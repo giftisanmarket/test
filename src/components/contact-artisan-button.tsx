@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { sendMessage, getInbox } from "@/lib/actions";
 import { IS_CHAT_LOCKED } from "@/lib/constants";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ interface ContactArtisanButtonProps {
   productImage?: string;
   artisanUserId: string;
   dict: any;
+  lang?: string;
   className?: string;
   children?: React.ReactNode;
 }
@@ -77,11 +78,13 @@ export function ContactArtisanButton({
   productImage,
   artisanUserId, 
   dict,
+  lang,
   className,
   children
 }: ContactArtisanButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
@@ -120,7 +123,7 @@ export function ContactArtisanButton({
   };
   
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isRtl = dict.common?.direction === "rtl" || dict.common?.lang === "ar";
+  const isRtl = lang === "ar" || pathname?.startsWith("/ar") || pathname?.includes("/ar/") || dict?.common?.direction === "rtl" || dict?.common?.lang === "ar";
 
   // Check login state and open drawer
   const handleOpenDrawer = () => {
@@ -319,7 +322,7 @@ export function ContactArtisanButton({
                         <CheckCircle2 className="w-4 h-4 text-accent fill-accent/10" />
                       </div>
                       <p className="text-[10px] text-charcoal/40 font-bold uppercase tracking-widest leading-none mt-1">
-                        {isRtl ? "محادثة مباشرة مع المتجر" : "Direct shop dialogue"}
+                        {dict?.contact_artisan?.dialogue_subtitle || (isRtl ? "محادثة مباشرة مع المتجر" : "Direct shop dialogue")}
                       </p>
                     </div>
                   </div>
@@ -341,7 +344,7 @@ export function ContactArtisanButton({
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-[8px] font-black text-accent uppercase tracking-widest leading-none mb-1">
-                        {isRtl ? "بخصوص المنتج" : "Regarding Product"}
+                        {dict?.contact_artisan?.regarding_product || (isRtl ? "بخصوص المنتج" : "Regarding Product")}
                       </p>
                       <p className="text-xs font-bold text-primary truncate uppercase">{productName}</p>
                     </div>
@@ -358,7 +361,7 @@ export function ContactArtisanButton({
                   <div className="flex-1 flex flex-col items-center justify-center gap-3">
                     <Loader2 className="w-8 h-8 text-accent animate-spin" />
                     <p className="text-[10px] font-black text-primary/30 uppercase tracking-widest">
-                      {isRtl ? "جاري تحميل الرسائل..." : "Loading Thread..."}
+                      {dict?.contact_artisan?.loading || (isRtl ? "جاري تحميل المحادثة..." : "Loading Thread...")}
                     </p>
                   </div>
                 ) : messages.length === 0 ? (
@@ -368,12 +371,12 @@ export function ContactArtisanButton({
                     </div>
                     <div>
                       <h4 className="font-heading font-bold text-primary text-base">
-                        {isRtl ? "ابدأ الحوار مع الحرفي" : "Begin your dialogue"}
+                        {dict?.contact_artisan?.begin_dialogue || (isRtl ? "ابدأ الحوار مع الحرفي" : "Begin your dialogue")}
                       </h4>
                       <p className="text-charcoal/40 text-xs max-w-xs mt-2 leading-relaxed">
-                        {isRtl 
-                          ? "استفسر عن التخصيص، المواد المستخدمة، أو اطلب تفاصيل مخصصة لهذا المنتج." 
-                          : "Inquire about bespoke sizing, specific materials, or request tailored alterations for this piece."}
+                        {dict?.contact_artisan?.begin_dialogue_desc || (isRtl 
+                          ? "استفسر عن التخصيص، المقاسات، المواد المستخدمة، أو اطلب تفاصيل مخصصة لهذه القطعة." 
+                          : "Inquire about bespoke sizing, specific materials, or request tailored alterations for this piece.")}
                       </p>
                     </div>
                   </div>
@@ -491,7 +494,7 @@ export function ContactArtisanButton({
                             handleSendMessage();
                           }
                         }}
-                        placeholder={isRtl ? "اسأل عن التفاصيل أو أضف تعديلات مخصصة..." : "Ask about tailored engraving, specific materials..."}
+                        placeholder={dict?.contact_artisan?.placeholder || (isRtl ? "اسأل عن المقاسات، النقش، أو أضف تعديلات مخصصة..." : "Ask about tailored engraving, specific materials...")}
                         className="w-full h-20 md:h-24 p-4 pe-12 bg-cream/30 border border-primary/10 rounded-2xl focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/10 transition-all font-medium text-primary resize-none text-xs md:text-sm placeholder:text-primary/30"
                       />
                       

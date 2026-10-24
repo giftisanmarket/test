@@ -633,6 +633,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                   productImage={product.images[0]}
                   artisanUserId={product.artisan.user.id}
                   dict={dict}
+                  lang={lang}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary/15 bg-white text-primary text-xs font-bold hover:bg-primary/5 hover:border-accent hover:text-accent transition-all shadow-xs active:scale-95"
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-accent" />
@@ -964,6 +965,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                           productImage={product.images[0]}
                           artisanUserId={product.artisan.user.id}
                           dict={dict}
+                          lang={lang}
                           className="inline-flex items-center gap-2 px-8 h-12 bg-white border border-primary/20 text-primary font-bold rounded-full hover:bg-primary/5 hover:border-accent hover:text-accent transition-all shadow-xs"
                         >
                           <MessageSquare className="w-4 h-4 text-accent" />

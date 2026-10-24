@@ -32,7 +32,7 @@ export async function generateMetadata({
     title: `${termsDict.title_base} ${termsDict.title_accent} | Giftisan`,
     description:
       termsDict.description ||
-      "Official Artisan Partnership & Seller Agreement for Giftisan creators in Egypt.",
+      "Official Artisan Terms & Conditions for Giftisan creators in Egypt.",
   };
 }
 

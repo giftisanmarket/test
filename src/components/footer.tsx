@@ -81,7 +81,7 @@ export function Footer({ dict }: FooterProps) {
               href="/artisan-terms"
               className="px-2.5 py-1 rounded-full bg-white/90 border border-primary/10 text-charcoal/80 hover:text-primary active:scale-95 transition-all shadow-2xs"
             >
-              {dict?.common?.artisan_terms || (isArabic ? "عقد الحرفيين" : "Artisan Terms")}
+              {dict?.common?.artisan_terms || (isArabic ? "شروط وأحكام الحرفيين" : "Artisan Terms & Conditions")}
             </Link>
           </div>
 
@@ -389,7 +389,7 @@ export function Footer({ dict }: FooterProps) {
               </Link>
               <span className="text-charcoal/30 select-none">•</span>
               <Link href="/artisan-terms" className="px-1 py-0.5 hover:text-primary hover:underline transition-colors">
-                {dict?.common?.artisan_terms || (isArabic ? "عقد الحرفيين" : "Artisan Terms")}
+                {dict?.common?.artisan_terms || (isArabic ? "شروط وأحكام الحرفيين" : "Artisan Terms & Conditions")}
               </Link>
             </div>
 

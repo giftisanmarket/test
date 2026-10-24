@@ -2552,7 +2552,7 @@ export async function createProduct(artisanId: string, formData: FormData) {
     }
 
     if (artisan.termsVersion !== ARTISAN_AGREEMENT_VERSION || !artisan.termsAcceptedAt) {
-      return { error: "Please review and accept the current Artisan Partnership Agreement before listing products." };
+      return { error: "Please review and accept the current Artisan Terms & Conditions before listing products." };
     }
 
     const data = {
@@ -3071,7 +3071,7 @@ export async function updateProduct(productId: string, formData: FormData) {
       existingProduct.artisan.termsVersion !== ARTISAN_AGREEMENT_VERSION ||
       !existingProduct.artisan.termsAcceptedAt
     )) {
-      return { error: "Please review and accept the current Artisan Partnership Agreement before updating products." };
+      return { error: "Please review and accept the current Artisan Terms & Conditions before updating products." };
     }
 
     const data = {
@@ -3223,7 +3223,7 @@ export async function promoteToArtisan(userId: string, studioData: any) {
 
     // Temporarily commented out agreement contract check
     // if (studioData.agreedToTerms !== true) {
-    //   return { error: "You must review and agree to the Giftisan Artisan Partnership Agreement to launch your shop." };
+    //   return { error: "You must review and agree to the Giftisan Artisan Terms & Conditions to launch your shop." };
     // }
 
 
@@ -3325,7 +3325,7 @@ export async function acceptCurrentArtisanAgreement(language: unknown) {
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== "ARTISAN") {
-      return { error: "Only signed-in artisans can accept the partnership agreement." };
+      return { error: "Only signed-in artisans can accept the terms & conditions." };
     }
     if (!isArtisanAgreementLanguage(language)) {
       return { error: "Unsupported agreement language." };

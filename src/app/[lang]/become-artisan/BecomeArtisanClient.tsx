@@ -805,14 +805,14 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                       </div>
                     </div>
 
-                    {/* Artisan Partnership Agreement Acceptance Card (Temporarily commented out) */}
+                    {/* Artisan Terms & Conditions Acceptance Card (Temporarily commented out) */}
                     {/*
                     <div className="p-4 sm:p-5 rounded-2xl bg-white border border-primary/15 shadow-xs space-y-3.5">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <Scale className="w-4 h-4 text-accent" />
                           <h4 className="text-xs sm:text-sm font-black text-primary">
-                            {dict?.artisan_terms?.agreement_card_title || (isAr ? "عقد وشروط انضمام الحرفيين" : "Artisan Partnership Agreement")}
+                            {dict?.artisan_terms?.agreement_card_title || (isAr ? "شروط وأحكام انضمام الحرفيين" : "Artisan Terms & Conditions")}
                           </h4>
                         </div>
                         <span className="text-[10px] font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20">
@@ -848,7 +848,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                             className="mt-0.5 w-4 h-4 rounded text-accent border-primary/30 focus:ring-accent/20 accent-[#DA7B5A] cursor-pointer shrink-0"
                           />
                           <span className="text-xs text-charcoal/90 font-medium leading-relaxed">
-                            {dict?.artisan_terms?.agreement_checkbox || (isAr ? "أقر بأنني قرأت وفهمت وأوافق على عقد وشروط انضمام الحرفيين في جيفتيزان." : "I have read, understood, and agree to the Giftisan Artisan Agreement & Seller Terms.")}
+                            {dict?.artisan_terms?.agreement_checkbox || (isAr ? "أقر بأنني قرأت وفهمت وأوافق على شروط وأحكام انضمام الحرفيين في جيفتيزان." : "I have read, understood, and agree to the Giftisan Artisan Terms & Conditions.")}
                           </span>
                         </label>
 
@@ -859,7 +859,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                             className="font-bold text-accent hover:underline flex items-center gap-1 cursor-pointer transition-colors"
                           >
                             <FileText className="w-3.5 h-3.5" />
-                            <span>{dict?.artisan_terms?.review_contract || (isAr ? "قراءة بنود العقد كاملة" : "Read Full Contract")}</span>
+                            <span>{dict?.artisan_terms?.review_contract || (isAr ? "قراءة الشروط والأحكام كاملة" : "Read Full Terms & Conditions")}</span>
                           </button>
                           <span className="text-charcoal/30">•</span>
                           <Link
@@ -1106,10 +1106,10 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                   </div>
                   <div>
                     <h3 className="text-base sm:text-lg font-black text-primary leading-tight">
-                      {dict?.artisan_terms?.modal_title || (isAr ? "عقد اتفاقية شراكة الحرفيين في جيفتيزان" : "Giftisan Artisan Partnership Agreement")}
+                      {dict?.artisan_terms?.modal_title || (isAr ? "شروط وأحكام انضمام الحرفيين في جيفتيزان" : "Giftisan Artisan Terms & Conditions")}
                     </h3>
                     <p className="text-[11px] text-charcoal/60">
-                      {dict?.artisan_terms?.effective_badge || (isAr ? "الشروط المعتمدة لموسم 2026" : "Official 2026 Vendor Terms")}
+                      {dict?.artisan_terms?.effective_badge || (isAr ? "الشروط المعتمدة لموسم 2026" : "Official 2026 Artisan Terms")}
                     </p>
                   </div>
                 </div>

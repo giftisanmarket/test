@@ -279,7 +279,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   const navItems = [
     { id: "profile", icon: User, label: dict.studio_profile.profile_tab },
     { id: "branding", icon: Palette, label: dict.studio_profile.brand_tab },
-    { id: "legal", icon: Scale, label: lang === "ar" ? "وثيقة الشراكة والعقد" : "Partnership Agreement" },
+    { id: "legal", icon: Scale, label: lang === "ar" ? "شروط وأحكام الحرفيين" : "Artisan Terms & Conditions" },
   ];
 
   return (
@@ -294,7 +294,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-[240px_1fr] gap-6 lg:gap-16">
+        <div className="grid lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-6 lg:gap-8 xl:gap-12">
           {/* Sub Navigation */}
           <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-3 lg:pb-0 scrollbar-hide -mx-1 px-1">
             {navItems.map((item) => (
@@ -302,14 +302,14 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                 key={item.id}
                 onClick={() => setActiveSettingsTab(item.id)}
                 className={cn(
-                  "flex items-center gap-2.5 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold transition-all shrink-0 active:scale-95 whitespace-nowrap",
+                  "flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-5 lg:px-4 py-2.5 sm:py-3.5 lg:py-3 rounded-xl sm:rounded-2xl font-bold transition-all shrink-0 active:scale-95 text-start whitespace-nowrap lg:whitespace-normal w-auto lg:w-full",
                   activeSettingsTab === item.id
                     ? "bg-primary text-white shadow-[0_15px_40px_-10px_rgba(6,78,59,0.2)]"
                     : "text-primary/40 hover:bg-primary/5 hover:text-primary"
                 )}
               >
                 <item.icon className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                <span className="text-xs sm:text-sm md:text-base">{item.label}</span>
+                <span className="text-xs sm:text-sm font-bold leading-tight">{item.label}</span>
               </button>
             ))}
           </div>
@@ -832,10 +832,10 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         </div>
                         <div className="space-y-0.5">
                           <h3 className="text-lg sm:text-xl font-heading font-black text-primary leading-snug">
-                            {lang === "ar" ? "وثيقة الشراكة والعقد المعتمد" : "Artisan Partnership Agreement"}
+                            {lang === "ar" ? "شروط وأحكام الحرفيين المعتمدة" : "Artisan Terms & Conditions"}
                           </h3>
                           <p className="text-xs text-charcoal/60 font-medium leading-relaxed">
-                            {lang === "ar" ? "السجل الرقمي الرسمي لعقد متجرك مع منصة جيفتيزان" : "Official digital audit record of your agreement with Giftisan"}
+                            {lang === "ar" ? "السجل الرقمي الرسمي لموافقتك على شروط وأحكام منصة جيفتيزان" : "Official digital audit record of your agreement to Giftisan terms"}
                           </p>
                         </div>
                       </div>
@@ -847,7 +847,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                           : "bg-amber-50 border border-amber-200 text-amber-800"
                       )}>
                         <ShieldCheck className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4", hasCurrentAgreement ? "text-emerald-600" : "text-amber-600")} />
-                        <span>{hasCurrentAgreement ? (lang === "ar" ? "ساري وموثق إلكترونياً" : "Active & Recorded") : (lang === "ar" ? "تتطلب مراجعة النسخة الحالية" : "Current review required")}</span>
+                        <span>{hasCurrentAgreement ? (lang === "ar" ? "سارية وموثقة إلكترونياً" : "Active & Recorded") : (lang === "ar" ? "تتطلب مراجعة النسخة الحالية" : "Current review required")}</span>
                       </div>
                     </div>
 
@@ -855,7 +855,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-1 sm:pt-2">
                       <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 space-y-1">
                         <p className="text-[10px] sm:text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
-                          {lang === "ar" ? "إصدار العقد المعتمد" : "Agreement Version"}
+                          {lang === "ar" ? "إصدار الشروط المعتمد" : "Terms Version"}
                         </p>
                         <p className="text-sm font-black text-primary font-mono">
                           {hasCurrentAgreement ? ARTISAN_AGREEMENT_VERSION : artisan.termsVersion || (lang === "ar" ? "غير موثق" : "Not recorded")}
@@ -891,8 +891,8 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                     <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <p className="text-xs text-amber-900/80 leading-relaxed max-w-xl text-center sm:text-start">
                         {lang === "ar"
-                          ? `راجِع النسخة ${ARTISAN_AGREEMENT_VERSION} من العقد ثم أكد موافقتك. ستُسجل المنصة النسخة والوقت وحسابك كسجل تدقيقي.`
-                          : `Review agreement ${ARTISAN_AGREEMENT_VERSION}, then confirm your acceptance. Giftisan will record the version, time, and your account as an audit record.`}
+                          ? `راجِع النسخة ${ARTISAN_AGREEMENT_VERSION} من شروط وأحكام الحرفيين ثم أكد موافقتك. ستُسجل المنصة النسخة والوقت وحسابك كسجل تدقيقي.`
+                          : `Review terms ${ARTISAN_AGREEMENT_VERSION}, then confirm your acceptance. Giftisan will record the version, time, and your account as an audit record.`}
                       </p>
                       <div className="flex flex-col sm:flex-row shrink-0 gap-2 w-full sm:w-auto">
                         <Link
@@ -900,7 +900,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                           target="_blank"
                           className="w-full sm:w-auto text-center px-4 py-2.5 rounded-xl bg-white border border-amber-300 text-amber-900 text-xs font-bold hover:bg-amber-100 transition-colors"
                         >
-                          {lang === "ar" ? "مراجعة العقد" : "Review agreement"}
+                          {lang === "ar" ? "مراجعة الشروط والأحكام" : "Review Terms"}
                         </Link>
                         <button
                           type="button"
@@ -918,7 +918,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                   {/* Guaranteed Maker Rights Recap */}
                   <div className="space-y-4">
                     <h4 className="text-sm sm:text-base font-bold text-primary">
-                      {lang === "ar" ? "حقوقك وضماناتك الأساسية كصانع في جيفتيزان:" : "Core Protections Guaranteed Under This Agreement:"}
+                      {lang === "ar" ? "حقوقك وضماناتك الأساسية كصانع في جيفتيزان:" : "Core Protections Guaranteed Under These Terms:"}
                     </h4>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
@@ -976,8 +976,8 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-primary/5 border border-primary/10">
                     <p className="text-xs text-charcoal/70 leading-relaxed text-center sm:text-start">
                       {lang === "ar"
-                        ? "يمكنك في أي وقت مراجعة بنود العقد كاملة أو طباعة نسخة رسمية مختومة لملف ورشتك."
-                        : "You can review the full terms or print an official stamped PDF copy anytime."}
+                        ? "يمكنك في أي وقت مراجعة الشروط والأحكام كاملة أو طباعة نسخة رسمية لملف ورشتك."
+                        : "You can review the full terms & conditions or print an official PDF copy anytime."}
                     </p>
 
                     <Link
@@ -986,7 +986,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                       className="w-full sm:w-auto shrink-0 px-5 py-3 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-light transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95"
                     >
                       <FileText className="w-4 h-4" />
-                      <span>{lang === "ar" ? "عرض وطباعة العقد كاملاً" : "View & Print Full Contract"}</span>
+                      <span>{lang === "ar" ? "عرض وطباعة الشروط والأحكام" : "View & Print Terms & Conditions"}</span>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </Link>
                   </div>

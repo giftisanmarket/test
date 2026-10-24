@@ -45,6 +45,7 @@ import {
   FileText,
   X,
   ExternalLink,
+  Upload,
   Calculator,
   Send,
   Zap,
@@ -129,6 +130,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
     bio: "",
     brandColor: "#DA7B5A",
     instagram: "",
+    avatar: "",
   });
 
   // Restore draft from localStorage
@@ -338,6 +340,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
         phoneNumber: cleanPhone,
         instagram: cleanInsta,
         brandColor: formData.brandColor,
+        avatar: formData.avatar || undefined,
         agreedToTerms: true,
         agreementLanguage: isAr ? "ar" : "en",
       });
@@ -666,6 +669,75 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                     transition={{ duration: 0.2 }}
                     className="space-y-6"
                   >
+                    {/* Shop Logo & Avatar Preview */}
+                    <div className="p-3.5 sm:p-4 rounded-2xl bg-cream/30 border border-primary/10 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden border border-primary/20 bg-white shrink-0 flex items-center justify-center shadow-xs">
+                          {formData.avatar ? (
+                            <img
+                              src={formData.avatar}
+                              alt="Shop logo preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : currentUser?.image ? (
+                            <img
+                              src={currentUser.image}
+                              alt={currentUser.name || "User avatar"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <Store className="w-5 h-5 text-primary/40" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold text-primary truncate">
+                              {isAr ? "شعار أو صورة المتجر" : "Shop Logo or Photo"}
+                            </p>
+                            {formData.avatar && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData((prev) => ({ ...prev, avatar: "" }))}
+                                className="text-[11px] text-rose-600 hover:text-rose-700 font-bold cursor-pointer"
+                              >
+                                {isAr ? "إلغاء" : "Reset"}
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-charcoal/50 truncate mt-0.5">
+                            {formData.avatar
+                              ? (isAr ? "تم اختيار شعار مخصص" : "Custom logo selected")
+                              : currentUser?.image
+                              ? (isAr ? "سيتم استخدام صورة حسابك تلقائياً" : "Your account photo will be used")
+                              : (isAr ? "اختياري — يمكنك إضافته لاحقاً" : "Optional — or add later in settings")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <label className="shrink-0 h-9 px-3 bg-white hover:bg-cream/60 border border-primary/20 text-primary rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs active:scale-95">
+                        <Upload className="w-3.5 h-3.5 text-accent" />
+                        <span>{formData.avatar || currentUser?.image ? (isAr ? "تغيير" : "Change") : (isAr ? "رفع شعار" : "Upload")}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast.error(isAr ? "حجم الصورة يجب أن لا يتجاوز 5 ميجابايت" : "Image must be under 5MB");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setFormData((prev) => ({ ...prev, avatar: reader.result as string }));
+                            };
+                            reader.readAsDataURL(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-primary flex items-center gap-1.5">
                         <Store className="w-3.5 h-3.5 text-accent" />

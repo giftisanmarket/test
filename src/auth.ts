@@ -173,6 +173,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.isOAuth !== undefined && session.user) {
         (session.user as any).isOAuth = token.isOAuth;
       }
+      if (token.picture && session.user) {
+        session.user.image = token.picture as string;
+      }
       
       // Safety: Never allow massive images in the session object to prevent RSC serialization crashes
       if (session.user.image && session.user.image.length > 300000) {
@@ -190,6 +193,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // If they use Google/OAuth/OIDC, they are verified by default
         token.emailVerified = (account && account.provider !== "credentials") ? new Date() : user.emailVerified;
         token.isOAuth = (account && account.provider !== "credentials") ? true : false;
+        if (user.image && !user.image.startsWith("data:") && user.image.length < 500) {
+          token.picture = user.image;
+        }
       }
 
       // Handle session updates (e.g. from update() on the client)
@@ -197,15 +203,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (session.name) token.name = session.name;
         if (session.email) token.email = session.email;
         if (session.role) token.role = session.role;
+        if (session.image && !session.image.startsWith("data:") && session.image.length < 500) {
+          token.picture = session.image;
+        }
         if (session.user?.name) token.name = session.user.name;
         if (session.user?.email) token.email = session.user.email;
         if (session.user?.role) token.role = session.user.role;
+        if (session.user?.image && !session.user.image.startsWith("data:") && session.user.image.length < 500) {
+          token.picture = session.user.image;
+        }
         token.lastChecked = 0;
       }
 
-      // ⚠️ CRITICAL: Scrub the image data out of the token to prevent 431 errors
-      // Profile pictures are loaded directly from the DB on the Profile page instead.
-      if (token.picture) delete token.picture;
+      // Safety: Only scrub base64 image data out of the token to prevent 431 errors.
+      // Remote URLs (Google, Cloudinary, etc. < 500 chars) are safe and lightweight in the JWT.
+      if (typeof token.picture === "string" && (token.picture.startsWith("data:") || token.picture.length > 500)) {
+        delete token.picture;
+      }
       
       if (!token.sub) return token;
       
@@ -215,7 +229,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Query database if email is unverified, role is missing, 30 seconds passed, or on session update
       if (!token.role || !token.emailVerified || now - lastCheck > 30000 || trigger === "update") {
         try {
-          // Fetch latest role and name, but avoid fetching the large image blob
+          // Fetch latest role, name, and image
           const dbUser = await prisma.user.findUnique({
             where: { id: token.sub },
             select: { 
@@ -223,6 +237,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               name: true, 
               email: true,
               emailVerified: true,
+              image: true,
               accounts: {
                 select: { provider: true }
               }
@@ -236,6 +251,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.emailVerified = dbUser.emailVerified;
             token.isOAuth = dbUser.accounts.length > 0;
             token.lastChecked = now;
+            if (dbUser.image && !dbUser.image.startsWith("data:") && dbUser.image.length < 500) {
+              token.picture = dbUser.image;
+            }
           }
         } catch (error) {
           console.error("JWT database sync error:", error);

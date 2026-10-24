@@ -2350,8 +2350,13 @@ export async function updateArtisanProfile(userId: string, data: any) {
         ? `${slugify(data.studioName)}-${userId.slice(-4)}`
         : null;
 
-    const avatarUrl = await processImage(data.avatar);
-    const bannerUrl = await processImage(data.bannerImage);
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { image: true }
+    });
+
+    const avatarUrl = data.avatar !== undefined ? await processImage(data.avatar) : undefined;
+    const bannerUrl = data.bannerImage !== undefined ? await processImage(data.bannerImage) : undefined;
 
     const updated = await prisma.artisanProfile.upsert({
       where: { userId },
@@ -2362,7 +2367,7 @@ export async function updateArtisanProfile(userId: string, data: any) {
         bio: data.bio || null,
         location: data.location || null,
         yearsOfExperience: typeof data.yearsOfExperience === 'number' ? data.yearsOfExperience : parseInt(data.yearsOfExperience) || 1,
-        avatar: avatarUrl || null,
+        avatar: (avatarUrl !== undefined ? avatarUrl : dbUser?.image) || null,
         instagram: data.instagram || null,
         website: data.website || null,
         pinterest: data.pinterest || null,
@@ -2385,14 +2390,14 @@ export async function updateArtisanProfile(userId: string, data: any) {
         bio: data.bio || null,
         location: data.location || null,
         yearsOfExperience: typeof data.yearsOfExperience === 'number' ? data.yearsOfExperience : parseInt(data.yearsOfExperience) || 1,
-        avatar: avatarUrl || null,
+        ...(avatarUrl !== undefined && { avatar: avatarUrl || dbUser?.image || null }),
         ...(data.instagram !== undefined && { instagram: data.instagram || null }),
         ...(data.website !== undefined && { website: data.website || null }),
         ...(data.pinterest !== undefined && { pinterest: data.pinterest || null }),
         ...(data.tiktok !== undefined && { tiktok: data.tiktok || null }),
         ...(data.facebook !== undefined && { facebook: data.facebook || null }),
         brandColor: data.brandColor || "#da7b5a",
-        bannerImage: bannerUrl || null,
+        ...(bannerUrl !== undefined && { bannerImage: bannerUrl || null }),
         phoneNumber: data.phoneNumber || null,
         ...(data.payoutAddress !== undefined && { payoutAddress: data.payoutAddress || null }),
         ...(data.payoutName !== undefined && { payoutName: data.payoutName || null }),
@@ -3265,13 +3270,44 @@ export async function promoteToArtisan(userId: string, studioData: any) {
     const derivedGov = cleanPickupCity || studioData.governorate || (locationParts.length > 1 ? locationParts[1] : locationParts[0]) || null;
 
     const acceptedAt = new Date();
+
+    // 1. Fetch current user and existing artisan profile to get actual avatar (Google or previous upload)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { image: true, name: true }
+    });
+
+    const existingArtisanProfile = await prisma.artisanProfile.findUnique({
+      where: { userId },
+      select: { avatar: true }
+    });
+
+    // 2. Resolve avatar in priority order:
+    // a. studioData.avatar (if user uploaded a custom logo/avatar during setup)
+    // b. existing artisan avatar (if not a generic dicebear placeholder)
+    // c. user's Google or uploaded image from DB
+    // d. session image
+    // e. DiceBear SVG fallback
+    let resolvedAvatar: string | null = null;
+    if (studioData.avatar) {
+      resolvedAvatar = await processImage(studioData.avatar);
+    } else if (existingArtisanProfile?.avatar && !existingArtisanProfile.avatar.includes("dicebear.com")) {
+      resolvedAvatar = existingArtisanProfile.avatar;
+    } else if (dbUser?.image) {
+      resolvedAvatar = dbUser.image;
+    } else if ((session.user as any)?.image) {
+      resolvedAvatar = (session.user as any).image;
+    } else {
+      resolvedAvatar = `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(cleanStudioName || userId)}`;
+    }
+
     const profileData = {
       studioName: cleanStudioName,
       slug: artisanSlug,
       bio: cleanBio,
       location: cleanLocation,
       phoneNumber: cleanPhoneNumber,
-      avatar: (session.user as any)?.image || `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(cleanStudioName || userId)}`,
+      avatar: resolvedAvatar,
       termsAcceptedAt: acceptedAt,
       termsVersion: ARTISAN_AGREEMENT_VERSION,
       ...(cleanInstagram ? { instagram: cleanInstagram } : {}),
@@ -3290,13 +3326,16 @@ export async function promoteToArtisan(userId: string, studioData: any) {
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: userId },
-        data: { role: "ARTISAN" },
+        data: { 
+          role: "ARTISAN",
+          ...(studioData.avatar && resolvedAvatar ? { image: resolvedAvatar } : {})
+        },
       });
 
       const artisan = await tx.artisanProfile.upsert({
         where: { userId },
-        create: { userId, ...profileData },
-        update: profileData,
+        create: { userId, ...profileData, avatar: resolvedAvatar },
+        update: { ...profileData, avatar: resolvedAvatar },
       });
 
       await tx.artisanAgreementAcceptance.upsert({

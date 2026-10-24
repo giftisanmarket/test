@@ -150,7 +150,10 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
           {secondaryStats.map((s, i) => (
             <div 
               key={i} 
-              className="bg-white/60 backdrop-blur-md px-3.5 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl border border-primary/5 shadow-sm hover:shadow-md hover:border-primary/10 transition-all flex flex-col justify-between group min-w-0"
+              className={cn(
+                "bg-white/60 backdrop-blur-md px-3.5 sm:px-5 py-3 sm:py-4 rounded-xl sm:rounded-2xl border border-primary/5 shadow-sm hover:shadow-md hover:border-primary/10 transition-all flex flex-col justify-between group min-w-0",
+                i === 2 && "col-span-2 sm:col-span-1"
+              )}
             >
               <p className="text-[9px] font-black uppercase tracking-widest text-primary/30 mb-1.5 sm:mb-2 flex items-center gap-1.5 truncate">
                 <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", s.indicator)} />

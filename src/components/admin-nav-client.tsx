@@ -26,6 +26,7 @@ import {
   Sparkles,
   Store,
   ChevronRight,
+  ChevronLeft,
   ExternalLink,
   Layers,
   Globe
@@ -82,7 +83,36 @@ export function AdminNavClient({
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerSearch, setDrawerSearch] = useState("");
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const { unreadCount } = useNotifications();
+
+  // Load saved sidebar collapsed state
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("admin_sidebar_collapsed");
+      if (saved === "true") {
+        setIsCollapsed(true);
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("admin_sidebar_collapsed", String(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
+  };
+
+  const CollapseIcon = isCollapsed
+    ? (isAr ? ChevronLeft : ChevronRight)
+    : (isAr ? ChevronRight : ChevronLeft);
 
   // Close drawer on navigation
   useEffect(() => {
@@ -436,23 +466,41 @@ export function AdminNavClient({
       {/* =========================================================================
           DESKTOP SIDEBAR (Permanent w-80 sidebar for screens >= lg)
          ========================================================================= */}
-      <aside className="fixed start-0 top-0 bottom-0 w-80 bg-primary text-white p-6 hidden lg:flex flex-col z-50 shadow-2xl overflow-y-auto no-print">
+      <aside className={cn(
+        "fixed start-0 top-0 bottom-0 bg-primary text-white hidden lg:flex flex-col z-50 shadow-2xl overflow-y-auto overflow-x-hidden no-print transition-all duration-300 ease-in-out",
+        isCollapsed 
+          ? "w-20 px-2 py-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden" 
+          : "w-80 p-6"
+      )}>
         {/* Brand header */}
-        <div className="flex items-center gap-3 mb-8 px-2">
-          <div className="relative w-10 h-10 overflow-hidden rounded-xl border border-white/20 shadow-xl shrink-0">
-            <Image
-              src="/icon.png"
-              alt="Giftisan Logo"
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div>
-            <span className="text-2xl font-heading font-black tracking-tight block leading-none">Giftisan</span>
-            <span className="text-[10px] text-accent font-black uppercase tracking-widest block mt-1">
-              {dict.common?.admin || "Admin Suite"}
-            </span>
-          </div>
+        <div className={cn("flex items-center mb-6 px-1 transition-all", isCollapsed ? "flex-col gap-3 justify-center" : "justify-between")}>
+          <Link href="/admin" className="flex items-center gap-3 group min-w-0" title="Giftisan Admin">
+            <div className="relative w-10 h-10 overflow-hidden rounded-xl border border-white/20 shadow-xl shrink-0">
+              <Image
+                src="/icon.png"
+                alt="Giftisan Logo"
+                fill
+                className="object-cover"
+              />
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0">
+                <span className="text-2xl font-heading font-black tracking-tight block leading-none">Giftisan</span>
+                <span className="text-[10px] text-accent font-black uppercase tracking-widest block mt-1">
+                  {dict.common?.admin || "Admin Suite"}
+                </span>
+              </div>
+            )}
+          </Link>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-label={isCollapsed ? (isAr ? "توسيع القائمة" : "Expand Sidebar") : (isAr ? "تصغير القائمة" : "Collapse Sidebar")}
+            title={isCollapsed ? (isAr ? "توسيع القائمة" : "Expand Sidebar") : (isAr ? "تصغير القائمة" : "Collapse Sidebar")}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
+          >
+            <CollapseIcon className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Categorized Desktop Navigation */}
@@ -461,13 +509,41 @@ export function AdminNavClient({
             const catItems = navItems.filter((i) => i.category === cat.key);
             return (
               <div key={cat.key} className="space-y-1">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 px-4 py-1">
-                  {cat.label}
-                </p>
+                {isCollapsed ? (
+                  <div className="w-8 h-px bg-white/10 mx-auto my-3" />
+                ) : (
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40 px-4 py-1">
+                    {cat.label}
+                  </p>
+                )}
                 <div className="space-y-1">
                   {catItems.map((item) => {
                     const isActive = normalizedPath === item.href || (item.href !== "/admin" && normalizedPath.startsWith(item.href));
-                    return (
+                    return isCollapsed ? (
+                      <Link 
+                        key={item.href}
+                        href={item.href}
+                        title={item.label}
+                        className={cn(
+                          "relative flex items-center justify-center w-12 h-11 mx-auto rounded-xl transition-all group active:scale-95",
+                          isActive 
+                            ? "bg-white text-primary shadow-lg shadow-white/10" 
+                            : "hover:bg-white/10 text-white/70 hover:text-white"
+                        )}
+                      >
+                        <item.icon className={cn("w-4 h-4 shrink-0 transition-transform", isActive ? "text-primary scale-110" : "opacity-75 group-hover:opacity-100 group-hover:scale-110")} />
+                        
+                        {item.href === "/admin/messages" && unreadCount > 0 && (
+                          <span className="absolute -top-1 -end-1 w-4 h-4 bg-accent text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-primary shadow-xs">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                          </span>
+                        )}
+                        
+                        {isActive && (
+                          <span className="absolute start-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-accent rounded-e-full" />
+                        )}
+                      </Link>
+                    ) : (
                       <Link 
                         key={item.href}
                         href={item.href}
@@ -501,28 +577,54 @@ export function AdminNavClient({
 
         {/* Sidebar Footer Controls */}
         <div className="pt-4 border-t border-white/10 space-y-2">
-          <button 
-            type="button"
-            onClick={toggleLanguage}
-            className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl hover:bg-white/10 transition-all font-bold text-white/70 hover:text-white active:scale-95 text-start cursor-pointer"
-            title="Switch Language (Alt+L)"
-          >
-            <div className="flex items-center gap-3">
-              <Globe className="w-4 h-4 text-accent" />
-              <span className="text-xs">{isAr ? "Switch to English" : "التحويل للعربية"}</span>
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-wider bg-white/15 px-2 py-0.5 rounded text-accent">
-              {isAr ? "EN" : "عربي"}
-            </span>
-          </button>
+          {isCollapsed ? (
+            <>
+              <button 
+                type="button"
+                onClick={toggleLanguage}
+                title={isAr ? "Switch to English (Alt+L)" : "التحويل للعربية (Alt+L)"}
+                className="relative flex items-center justify-center w-12 h-11 mx-auto rounded-xl hover:bg-white/10 transition-all text-white/70 hover:text-white active:scale-95 group cursor-pointer"
+              >
+                <Globe className="w-4 h-4 text-accent" />
+                <span className="absolute -top-1 -end-1 text-[8px] font-black uppercase bg-white/20 px-1 rounded text-accent">
+                  {isAr ? "EN" : "عربي"}
+                </span>
+              </button>
 
-          <Link 
-            href="/" 
-            className="flex items-center gap-3 py-2.5 px-4 rounded-xl hover:bg-white/10 transition-all font-bold group text-white/70 hover:text-white active:scale-95 text-start text-xs"
-          >
-            <ArrowLeft className={cn("w-4 h-4 group-hover:-translate-x-1 transition-transform", isAr && "rotate-180 group-hover:translate-x-1")} />
-            <span>{dict.admin?.marketplace || (isAr ? "المتجر الرئيسي" : "Main Marketplace")}</span>
-          </Link>
+              <Link 
+                href="/" 
+                title={dict.admin?.marketplace || (isAr ? "المتجر الرئيسي" : "Main Marketplace")}
+                className="relative flex items-center justify-center w-12 h-11 mx-auto rounded-xl hover:bg-white/10 transition-all text-white/70 hover:text-white active:scale-95 group"
+              >
+                <ArrowLeft className={cn("w-4 h-4 group-hover:-translate-x-1 transition-transform", isAr && "rotate-180 group-hover:translate-x-1")} />
+              </Link>
+            </>
+          ) : (
+            <>
+              <button 
+                type="button"
+                onClick={toggleLanguage}
+                className="w-full flex items-center justify-between py-2.5 px-4 rounded-xl hover:bg-white/10 transition-all font-bold text-white/70 hover:text-white active:scale-95 text-start cursor-pointer"
+                title="Switch Language (Alt+L)"
+              >
+                <div className="flex items-center gap-3">
+                  <Globe className="w-4 h-4 text-accent" />
+                  <span className="text-xs">{isAr ? "Switch to English" : "التحويل للعربية"}</span>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-white/15 px-2 py-0.5 rounded text-accent">
+                  {isAr ? "EN" : "عربي"}
+                </span>
+              </button>
+
+              <Link 
+                href="/" 
+                className="flex items-center gap-3 py-2.5 px-4 rounded-xl hover:bg-white/10 transition-all font-bold group text-white/70 hover:text-white active:scale-95 text-start text-xs"
+              >
+                <ArrowLeft className={cn("w-4 h-4 group-hover:-translate-x-1 transition-transform", isAr && "rotate-180 group-hover:translate-x-1")} />
+                <span>{dict.admin?.marketplace || (isAr ? "المتجر الرئيسي" : "Main Marketplace")}</span>
+              </Link>
+            </>
+          )}
         </div>
       </aside>
 
@@ -585,7 +687,10 @@ export function AdminNavClient({
       {/* =========================================================================
           MAIN CONTENT AREA (Responsive margins and padding for phones & desktops)
          ========================================================================= */}
-      <main className="flex-1 lg:ms-80 pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-0 min-w-0 pb-28 lg:pb-12 overflow-x-hidden">
+      <main className={cn(
+        "flex-1 pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-0 min-w-0 pb-28 lg:pb-12 overflow-x-hidden transition-all duration-300 ease-in-out",
+        isCollapsed ? "lg:ms-20" : "lg:ms-80"
+      )}>
         <div className="p-4 sm:p-6 md:p-8 lg:p-12 min-w-0 max-w-7xl mx-auto">
           {children}
         </div>

@@ -189,12 +189,13 @@ export function CartDrawer({ dict, lang = "en" }: CartDrawerProps) {
                     </div>
 
                     {/* Items belonging to this artisan */}
-                    <div className="space-y-4 divide-y divide-primary/5">
+                    <div className="flex flex-col">
                       {group.items.map((item, idx) => (
                         <div
                           key={`${item.id}-${item.variantId || "novar"}-${item.personalization || "nopers"}-${idx}`}
-                          className="pt-3 first:pt-0 flex gap-3.5 items-start"
                         >
+                          {idx > 0 && <div className="h-px bg-primary/10 my-4 w-full" />}
+                          <div className="flex gap-3.5 items-start">
                           {/* Item Thumbnail */}
                           <div className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-cream border border-primary/5 shrink-0 shadow-2xs">
                             <BespokeImage
@@ -336,6 +337,7 @@ export function CartDrawer({ dict, lang = "en" }: CartDrawerProps) {
                             </div>
                           </div>
                         </div>
+                      </div>
                       ))}
                     </div>
                   </div>

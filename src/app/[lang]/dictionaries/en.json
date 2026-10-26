@@ -42,7 +42,7 @@
     "refund": "Refund Policy",
     "founding_banner": {
       "title": "2026 Founding Artisan Program",
-      "desc": "Enjoy 0% platform fees throughout the 2026 season.",
+      "desc": "Enjoy 0% platform commission for your first 6 months.",
       "cta": "Apply Now"
     },
     "zero_fee_badge": "0% Fee",
@@ -727,8 +727,8 @@
       "founding_member_badge": "Founding Member Program",
       "onboarding_success": "Welcome to the circle! Redirecting to your shop...",
       "benefits": {
-        "commission_title": "0% Commission",
-        "commission_desc": "Keep 100% of your earnings. No listing fees or hidden charges. Enjoy 0% platform commission throughout the 2026 season.",
+        "commission_title": "0% Intro Commission",
+        "commission_desc": "Keep 100% of your earnings. No listing fees or hidden charges. Enjoy 0% platform commission for your first 6 months, scaling to 8% and 10%.",
         "photography_title": "Pro Photography",
         "photography_desc": "Get free professional product shoots to make your products shine (Available in Cairo/Giza).",
         "marketing_title": "Priority Spotlight",
@@ -1499,7 +1499,7 @@
     "section3_title": "3. Artisan Responsibilities & Handmade Character",
     "section3_desc": "Artisans must ensure all products are authentically handcrafted or bespoke. Because items are crafted by hand, natural variations in raw materials (such as wood grain, ceramic glaze bubbling, or textile dye tones) are celebrated hallmarks of authenticity and not manufacturing defects. Artisans are responsible for accurate descriptions, protective packaging, and fulfilling orders in a timely manner. Giftisan reserves the right to moderate listings that violate our quality standards.",
     "section4_title": "4. Payments, Escrow & Fees",
-    "section4_desc": "Giftisan processes transactions through certified payment gateways (including Paymob, credit cards, and mobile wallets). Customer payments are held securely and released to the artisan's withdrawable balance 7 days following confirmed delivery. For the 2026 season, Giftisan operates with 0% platform commission for all registered Founding Artisans.",
+    "section4_desc": "Giftisan processes transactions through certified payment gateways (including Paymob, credit cards, and mobile wallets). Customer payments are held securely and released to the artisan's withdrawable balance 7 business days following confirmed delivery. Platform commission follows a transparent graduated tier based on shop age: 0% during the first 6 months, 8% during the second 6 months, and 10% for the third 6 months and onward.",
     "section5_title": "5. Intellectual Property",
     "section5_desc": "Artisans retain full ownership of their original designs and craft. By listing products, artisans grant Giftisan a non-exclusive license to feature product photography for marketing, spotlights, and promotional campaigns."
   },
@@ -1519,9 +1519,9 @@
     "section2_title": "2. Shipping Zones & Cash on Delivery (COD)",
     "section2_desc": "We deliver across all Egyptian governorates (Cairo, Giza, Alexandria, Delta, Canal cities, and Upper Egypt). Delivery fees are calculated transparently during checkout based on the destination. For Cash on Delivery (COD) orders, couriers require payment upon handover. If an item arrives damaged or materially incorrect, you are fully protected under our 48-hour Buyer Protection guarantee by reporting it with photos in your account.",
     "section3_title": "3. Processing & Crafting Time",
-    "section3_desc": "Ready-to-ship items are typically handed over to couriers within 2-4 business days. For personalized or made-to-order pieces, the artisan requires dedicated crafting time as stated on the product page.",
-    "section4_title": "4. Packaging & Protection",
-    "section4_desc": "We require and support all artisans in using sturdy, eco-conscious packaging that ensures delicate ceramics, glass, woodwork, and jewelry arrive in pristine condition.",
+    "section3_desc": "Ready-to-ship handcrafted items are packaged and handed over to partner couriers within 2 to 4 business days. For customized, engraved, or made-to-order creations, the artisan requires dedicated crafting time as stated on the product page before courier handover.",
+    "section4_title": "4. Protective Packaging for Fragile Crafts",
+    "section4_desc": "Delicate handmade pieces (such as pottery, blown glass, carved woodwork, and jewelry) require multi-layer shockproof packaging (corrugated cardboard, bubble wrap, corner guards). If an item arrives broken due to inadequate packaging, you are protected under our 48-hour damage claim guarantee with free replacement or refund.",
     "section5_title": "5. Tracking & Delivery Updates",
     "section5_desc": "You can track the fulfillment status of your orders at any time through your Giftisan profile under the Orders tab, with live stage updates from packaging to delivery."
   },
@@ -1682,8 +1682,8 @@
     "modal_close": "Close",
     "modal_agree": "I Accept & Agree to Terms",
     "highlights": {
-      "commission_title": "0% Founding Commission",
-      "commission_desc": "Enjoy 0% platform commission throughout 2026, locking in an exclusive 7% permanent rate for 2027.",
+      "commission_title": "Graduated Commission (0% – 8% – 10%)",
+      "commission_desc": "0% platform commission for your first 6 months, 8% for the second 6 months, and 10% for the third 6 months and onward.",
       "handmade_title": "Handcrafted Authenticity",
       "handmade_desc": "Strictly reserved for authentic handmade, customized, or locally crafted artisanal pieces.",
       "escrow_title": "7-Day Escrow Payouts",
@@ -1699,8 +1699,8 @@
     "section3_desc": "Artisans must fulfill orders within their declared processing time. Ready-to-ship products must be packaged within 2 to 4 business days. For customized or made-to-order creations, the artisan must accurately specify realistic production timelines. When partner couriers arrive for collection, parcels must be securely packed with the Giftisan order code clearly marked. Repeatedly missing courier pickups damages buyer trust and may result in temporary listing deactivation.",
     "section4_title": "4. Protective Packaging & Transit Liability",
     "section4_desc": "Handcrafted goods (ceramics, woodwork, glass, leather, and jewelry) require protective, drop-resistant packaging (corrugated cardboard, bubble wrap, corner guards). If an item arrives broken due to inadequate workshop packaging, the artisan is responsible for replacement or cost resolution. If an item is damaged despite proper packaging due to courier mishandling, Giftisan will advocate and file a carrier compensation claim on the artisan's behalf.",
-    "section5_title": "5. Pricing, 0% Founding Commission & 2027 Transition Roadmap",
-    "section5_desc": "Artisans set their own retail prices. Founding Artisans receive the commission rate shown in their dashboard, which is 0% for the entire 2026 founding season. Starting January 1, 2027, a transparent standard platform commission of 10% takes effect, discounted to an exclusive 7% permanent loyalty rate for 2026 Founding Artisans. This fee all-inclusively covers payment gateway processing (Paymob cards, Meeza, and mobile wallets) and platform infrastructure with zero hidden deductions. Net earnings are released to the artisan's withdrawable balance 7 business days after confirmed delivery, subject to stated refund and dispute rules.",
+    "section5_title": "5. Pricing, Graduated Platform Commission & Payout Schedule",
+    "section5_desc": "Artisans set their own retail prices. Platform commission follows a transparent graduated tier based on the artisan shop account age: 0% platform commission during the first 6 months (months 1–6), 8% platform commission during the second 6 months (months 7–12), and 10% platform commission for the third 6 months and onward (month 13+) of each artisan's product sales. This fee all-inclusively covers payment gateway processing (Paymob cards, Meeza, and mobile wallets) and platform infrastructure with zero hidden deductions. Net earnings are released to the artisan's withdrawable balance 7 business days after confirmed delivery, subject to stated refund and dispute rules.",
     "section6_title": "6. Custom Orders, Returns & Dispute Mediation",
     "section6_desc": "Personalized or bespoke items may be excluded from a change-of-mind return only where permitted by applicable law and when they match the agreed specifications. Consumer rights for defective, unsafe, or misdescribed products are never reduced. Giftisan records claim evidence and gives the artisan 48 hours to respond where practicable. An artisan is charged only for a resolution reasonably attributable to the product, description, or packaging, with the reason and amount recorded in the balance ledger and a route to request review.",
     "section7_title": "7. Intellectual Property & Marketing Rights",

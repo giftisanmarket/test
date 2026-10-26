@@ -523,7 +523,7 @@ def build_artisan_agreement_en():
     add_para(doc, "This Artisan Partnership Agreement ('Agreement') sets forth the binding legal and operational framework between Giftisan ('Platform') and the independent artisan, maker, or workshop ('Artisan'). By registering a shop, accepting electronically on the Platform, or listing handcrafted products, the Artisan agrees to all terms herein.")
 
     add_table(doc, ["Core Protection", "Key Commitment", "Platform Guarantee"], [
-        ("0% Founding Commission", "No platform sales deduction throughout 2026.", "Artisans keep 100% of net retail earnings during the founding programme."),
+        ("Graduated Commission (0% – 8% – 10%)", "0% first 6 mos, 8% second 6 mos, 10% third 6 mos+.", "Platform commission scales predictably with transparent deductions and zero hidden fees."),
         ("Handcrafted Authenticity", "Strictly authentic Egyptian craft & bespoke goods.", "Mass factory imports and drop-shipping are prohibited to protect makers."),
         ("7-Day Escrow Payouts", "Reliable delivery-linked payout release cycle.", "Withdrawable to InstaPay or bank wallets 7 business days after verified delivery."),
         ("Doorstep Courier Pickup", "Partner couriers collect safely boxed parcels.", "Shipments collected directly from the artisan's workshop or home address."),
@@ -541,8 +541,8 @@ def build_artisan_agreement_en():
     add_heading(doc, "Section 4: Protective Packaging & Transit Liability")
     add_para(doc, "Handcrafted goods (ceramics, woodwork, glass, leather, and jewelry) require protective, drop-resistant packaging (corrugated cardboard, bubble wrap, corner guards). If an item arrives broken due to inadequate workshop packaging, the artisan is responsible for replacement or cost resolution. If an item is damaged despite proper packaging due to courier mishandling, Giftisan will advocate and file a carrier compensation claim on the artisan's behalf.")
 
-    add_heading(doc, "Section 5: Pricing, 0% Founding Commission & Escrow Payouts")
-    add_para(doc, "Artisans set their own retail prices. Founding Artisans receive the commission rate shown in their dashboard, currently 0% for the 2026 founding programme. Each sale, fee, refund, reserve, and payout appears in an itemized balance ledger. Net earnings are released to the artisan's withdrawable balance 7 business days after confirmed delivery, subject to the stated holding, refund, and fraud-review rules. Giftisan will give advance notice of material fee or payout-rule changes; they apply only from the stated effective date.")
+    add_heading(doc, "Section 5: Pricing, Graduated Platform Commission & Escrow Payouts")
+    add_para(doc, "Artisans set their own retail prices. Platform commission follows a transparent graduated tier based on shop account age: 0% platform commission during the first 6 months (months 1–6), 8% platform commission during the second 6 months (months 7–12), and 10% platform commission for the third 6 months and onward (month 13+) of each artisan's product sales. Each sale, fee, refund, reserve, and payout appears in an itemized balance ledger. Net earnings are released to the artisan's withdrawable balance 7 business days after confirmed delivery, subject to the stated holding, refund, and fraud-review rules. Giftisan will give advance notice of material fee or payout-rule changes; they apply only from the stated effective date.")
 
     add_heading(doc, "Section 6: Custom Orders, Returns & Dispute Mediation")
     add_para(doc, "Personalized or bespoke items may be excluded from a change-of-mind return only where permitted by applicable law and when they match the agreed specifications. Consumer rights for defective, unsafe, or misdescribed products are never reduced. Giftisan records claim evidence and gives the artisan 48 hours to respond where practicable. An artisan is charged only for a resolution reasonably attributable to the product, description, or packaging, with the reason and amount recorded in the balance ledger and a route to request review.")
@@ -567,7 +567,7 @@ def build_artisan_agreement_ar():
     add_para(doc, "تحدد هذه الاتفاقية الإطار القانوني والتشغيلي والمالي الملزم بين منصة جيفتيزان والحرفي أو صانع المشغولات اليدوية أو صاحب الورشة. يُعد تسجيل المتجر أو الموافقة الإلكترونية أو إدراج المنتجات في المنصة إقراراً بالموافقة على كافة الشروط الواردة في هذا العقد.", arabic=True)
 
     add_table(doc, ["الضمانة الأساسية", "الالتزام التجاري", "التزام المنصة"], [
-        ("0% عمولة للمؤسسين", "عدم اقتطاع أي عمولة بيع طوال عام 2026.", "يحتفظ الحرفي بكامل أرباحه الصافية دون أي عمولة منصة طوال برنامج المؤسسين."),
+        ("عمولة تصاعدية (0% – 8% – 10%)", "0% أول 6 أشهر، 8% ثاني 6 أشهر، 10% ثالث 6 أشهر وما بعدها.", "تطبق المنصة هيكل عمولة متدرج وشفاف بحسب عمر حساب المتجر مع شمولية رسوم الدفع وبدون مصاريف خفية."),
         ("أصالة الصناعة اليدوية", "حصرية للمشغولات اليدوية والمصنوعة محلياً.", "يُحظر بيع بضائع المصانع والدروب شيبينغ حمايةً للحرفيين الحقيقيين."),
         ("ضمان مالي لمدة 7 أيام", "تحويلات مالية دورية مرتبطة بتأكيد التسليم.", "تُحوّل الأرباح الصافية إلى إنستاباي أو المحفظة الإلكترونية بعد 7 أيام عمل من التسليم."),
         ("استلام من باب ورشتك", "تجهيز وتغليف آمن وسليم للطرود.", "مندوبو شركات الشحن الشريكة يستلمون الشحنات مباشرة من ورشتك أو منزلك."),
@@ -585,8 +585,8 @@ def build_artisan_agreement_ar():
     add_heading(doc, "البند الرابع: معايير التغليف الوقائي ومسؤولية سلامة الشحن", 1, arabic=True)
     add_para(doc, "نظراً لطبيعة المشغولات اليدوية الحساسة (كالخزف، والزجاج، والتحف الخشبية، والحلي)، يلتزم الحرفي بتغليف المنتجات تغليفاً وقائياً متيناً ومقاوماً للصدمات باستخدام الكرتون المقوى والفقاعات الهوائية وحاميات الزوايا. إذا تلفت الشحنة نتيجة سوء التغليف أو ضعفه من جهة الحرفي، يتحمل الحرفي تكلفة التعويض أو إعادة التصنيع. أما إذا حدث التلف نتيجة إهمال مثبت من شركة الشحن رغم جودة التغليف، تتولى جيفتيزان المطالبة بالتعويض من شركة الشحن نيابة عن الحرفي.", arabic=True)
 
-    add_heading(doc, "البند الخامس: التسعير، عمولة 0%، ودورة التحويل المالي", 1, arabic=True)
-    add_para(doc, "يحدد الحرفي أسعار بيع منتجاته بحرية. ويحصل الحرفيون المؤسسون على نسبة العمولة الظاهرة في لوحة التحكم، وهي حالياً 0% لبرنامج المؤسسين لعام 2026. يظهر في كشف رصيد تفصيلي كل بيع ورسوم واسترجاع واحتياطي وتحويل مالي. يصبح صافي الأرباح متاحاً للسحب بعد 7 أيام عمل من تأكيد التسليم، وفقاً لقواعد فترة الحجز والاسترجاع ومراجعة الاحتيال المعلنة. تلتزم جيفتيزان بإشعار مسبق عند أي تغيير جوهري في الرسوم أو قواعد التحويل، ويطبق التغيير من تاريخ سريانه المعلن فقط.", arabic=True)
+    add_heading(doc, "البند الخامس: التسعير، هيكل العمولة المتدرج، ودورة التحويل المالي", 1, arabic=True)
+    add_para(doc, "يحدد الحرفي أسعار بيع منتجاته بحرية. وتطبق المنصة هيكل عمولة متدرج وشفاف بناءً على عمر حساب متجر الحرفي: 0% عمولة للمنصة طوال أول 6 أشهر (الشهور 1–6)، و8% عمولة للمنصة خلال ثاني 6 أشهر (الشهور 7–12)، و10% عمولة للمنصة لثالث 6 أشهر وما بعدها (الشهر 13 وما يليه) من مبيعات كل منتج للحرفي. يظهر في كشف رصيد تفصيلي كل بيع ورسوم واسترجاع واحتياطي وتحويل مالي. يصبح صافي الأرباح متاحاً للسحب بعد 7 أيام عمل من تأكيد التسليم، وفقاً لقواعد فترة الحجز والاسترجاع ومراجعة الاحتيال المعلنة. تلتزم جيفتيزان بإشعار مسبق عند أي تغيير جوهري في الرسوم أو قواعد التحويل، ويطبق التغيير من تاريخ سريانه المعلن فقط.", arabic=True)
 
     add_heading(doc, "البند السادس: القطع المنفذة بالطلب، سياسة الاسترجاع، والوساطة", 1, arabic=True)
     add_para(doc, "يجوز استثناء القطع المنفذة خصيصاً أو المنقوش عليها من الإرجاع لتغيير رأي العميل فقط بالقدر الذي يسمح به القانون وبشرط مطابقتها للمواصفات المتفق عليها. ولا تنتقص هذه الاتفاقية من حقوق المستهلك في المنتج المعيب أو غير الآمن أو المخالف للوصف. تسجل جيفتيزان أدلة المطالبة وتمنح الحرفي 48 ساعة للرد متى كان ذلك عملياً. ولا يُحمّل الحرفي أي مبلغ إلا إذا كان الحل مرتبطاً بصورة معقولة بالمنتج أو وصفه أو تغليفه، مع بيان السبب والمبلغ في كشف الرصيد وإتاحة طلب المراجعة.", arabic=True)

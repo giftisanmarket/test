@@ -881,12 +881,12 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                           {lang === "ar" ? "نسبة العمولة المتفق عليها" : "Agreed Commission"}
                         </p>
                         <p className="text-sm font-black text-emerald-700">
-                          {lang === "ar" ? "0% (برنامج المؤسسين)" : "0% (Founding Program)"}
+                          {lang === "ar" ? "0% – 8% – 10% (نظام متدرج)" : "0% – 8% – 10% (Graduated)"}
                         </p>
                       </div>
                     </div>
 
-                    {/* 2026 Season & 2027 Roadmap Notice */}
+                    {/* Graduated Commission Structure Notice */}
                     <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 flex items-start gap-3 text-xs">
                       <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
                         <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -894,7 +894,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                       <div className="space-y-1 flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-bold text-primary text-xs sm:text-sm">
-                            {lang === "ar" ? "موسم المؤسسين 2026 وخطة موسم 2027" : "2026 Founding Season & 2027 Fee Roadmap"}
+                            {lang === "ar" ? "هيكل عمولة المنصة المتدرج" : "Graduated Platform Commission Policy"}
                           </p>
                           <span className="text-[10px] font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full border border-accent/20">
                             {lang === "ar" ? "شفافية وضمان كامل" : "Transparent Policy"}
@@ -902,8 +902,8 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         </div>
                         <p className="text-charcoal/70 leading-relaxed text-[11px] sm:text-xs">
                           {lang === "ar"
-                            ? "مبيعات متجرك معفاة بنسبة 100% من عمولة المنصة طوال موسم 2026. وبداية من 1 يناير 2027، يتمتع الحرفيون المؤسسون بنسبة ولاء تفضيلية دائمة قدرها 7% (بدلاً من النسبة القياسية 10%)، شاملة التغطية الكاملة لرسوم بوابات الدفع الإلكتروني (باي موب والمحافظ الإلكترونية) ودون أي مصاريف أو اقتطاعات خفية."
-                            : "Your shop operates with 0% platform commission throughout 2026. Starting January 1, 2027, Founding Artisans enjoy a permanent 7% loyalty rate (standard rate: 10%), which all-inclusively covers Paymob payment processing, card gateways, and mobile wallet payouts with zero hidden fees."}
+                            ? "تعتمد المنصة نظام عمولة متدرج بحسب عمر المتجر: أول 6 أشهر بعمولة 0% (احتفظ بكامل أرباحك بنسبة 100%)، وثاني 6 أشهر بعمولة 8%، وثالث 6 أشهر وما بعدها بعمولة 10% لكل منتج، شاملة التغطية الكاملة لرسوم بوابات الدفع الإلكتروني (باي موب وميزة والمحافظ) دون أي مصاريف أو اقتطاعات خفية."
+                            : "Your shop operates under a clear graduated commission schedule: 0% platform commission for the first 6 months, 8% commission for the second 6 months, and 10% commission for the third 6 months and onward on each artisan's product sales. This transparent rate all-inclusively covers payment gateway processing and payouts with zero hidden fees."}
                         </p>
                       </div>
                     </div>

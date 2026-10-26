@@ -17,7 +17,6 @@ import {
   FileText,
 } from "lucide-react";
 import { getDictionary } from "../dictionaries";
-import { PrintButton } from "./PrintButton";
 import { ARTISAN_AGREEMENT_VERSION } from "@/lib/artisan-agreement";
 
 export async function generateMetadata({
@@ -125,26 +124,20 @@ export default async function ArtisanTermsPage({
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-20">
         {/* Header Section */}
         <div className="mb-8 sm:mb-14">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 mb-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 bg-primary/5 text-primary px-3 py-1 sm:py-1.5 rounded-full border border-primary/10">
-                <Scale className="w-3.5 h-3.5 text-accent shrink-0" />
-                <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap">
-                  {t.legal_framework}
-                </span>
-              </div>
-
-              <span className="text-[11px] sm:text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 sm:py-1.5 rounded-full border border-accent/20 whitespace-nowrap">
-                {t.effective_badge}
-              </span>
-              <span className="text-[11px] sm:text-xs font-bold text-primary/70 bg-primary/5 px-2.5 py-1 sm:py-1.5 rounded-full border border-primary/10 font-mono whitespace-nowrap">
-                {ARTISAN_AGREEMENT_VERSION}
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <div className="inline-flex items-center gap-1.5 bg-primary/5 text-primary px-3 py-1 sm:py-1.5 rounded-full border border-primary/10">
+              <Scale className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap">
+                {t.legal_framework}
               </span>
             </div>
 
-            <div className="self-start sm:self-auto">
-              <PrintButton label={t.print_contract} />
-            </div>
+            <span className="text-[11px] sm:text-xs font-bold text-accent bg-accent/10 px-2.5 py-1 sm:py-1.5 rounded-full border border-accent/20 whitespace-nowrap">
+              {t.effective_badge}
+            </span>
+            <span className="text-[11px] sm:text-xs font-bold text-primary/70 bg-primary/5 px-2.5 py-1 sm:py-1.5 rounded-full border border-primary/10 font-mono whitespace-nowrap">
+              {ARTISAN_AGREEMENT_VERSION}
+            </span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-heading font-black text-primary mb-3.5 sm:mb-5 tracking-tight leading-[1.15]">

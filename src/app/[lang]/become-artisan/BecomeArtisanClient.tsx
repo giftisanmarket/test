@@ -996,7 +996,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                       <div className="grid grid-cols-2 gap-2 text-[11px] text-charcoal/70 bg-cream/40 p-2.5 rounded-xl border border-primary/5">
                         <div className="flex items-center gap-1.5 font-medium">
                           <Check className="w-3.5 h-3.5 text-accent shrink-0" />
-                          <span>{isAr ? "عمولة 0% لموسم 2026" : "0% Founding Commission"}</span>
+                          <span>{isAr ? "عمولة 0% لأول 6 أشهر" : "0% Commission (First 6 Mos)"}</span>
                         </div>
                         <div className="flex items-center gap-1.5 font-medium">
                           <Check className="w-3.5 h-3.5 text-accent shrink-0" />

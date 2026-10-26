@@ -12,11 +12,11 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const dict = await getDictionary(lang as any);
   
   const title = isAr 
-    ? "افتح متجرك الحرفي المستقل | برنامج العضو المؤسس 2026 - جيفتيزان"
-    : "Open Your Artisan Shop | 2026 Founding Maker Program - Giftisan";
+    ? "افتح متجرك الحرفي المستقل | عمولة 0% لأول 6 أشهر - جيفتيزان"
+    : "Open Your Artisan Shop | 0% Commission for First 6 Months - Giftisan";
   const description = isAr
-    ? "انضم إلى نخبة الحرفيين وصناع الإبداع في مصر. احتفظ بـ 100% من أرباحك، واستفد من الاستلام من باب ورشتك لجميع المحافظات مع عمولة 0%."
-    : "Join Egypt's premier collective of master makers. Keep 100% of your earnings, enjoy doorstep courier pickups across Egypt, and 0% commission.";
+    ? "انضم إلى نخبة الحرفيين وصناع الإبداع في مصر. احتفظ بـ 100% من أرباحك لأول 6 أشهر، واستفد من الاستلام من باب ورشتك لجميع المحافظات."
+    : "Join Egypt's premier collective of master makers. Keep 100% of your earnings for your first 6 months, and enjoy doorstep courier pickups across Egypt.";
 
   return {
     title,

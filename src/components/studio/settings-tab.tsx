@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import { acceptCurrentArtisanAgreement, updateArtisanProfile, updateProfileAvatar, checkSlugAvailability, uploadImage } from "@/lib/actions";
 import { ARTISAN_AGREEMENT_VERSION } from "@/lib/artisan-agreement";
+import { calculateTierCommission } from "@/lib/commission";
 import { uploadMediaToCloudinary } from "@/lib/client-upload";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -876,14 +877,34 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         </p>
                       </div>
 
-                      <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 space-y-1">
-                        <p className="text-[10px] sm:text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
-                          {lang === "ar" ? "نسبة العمولة المتفق عليها" : "Agreed Commission"}
-                        </p>
-                        <p className="text-sm font-black text-emerald-700">
-                          {lang === "ar" ? "0% – 8% – 10% (نظام متدرج)" : "0% – 8% – 10% (Graduated)"}
-                        </p>
-                      </div>
+                      {(() => {
+                        const tierInfo = calculateTierCommission({
+                          createdAt: artisan.createdAt,
+                          termsAcceptedAt: artisan.termsAcceptedAt,
+                        });
+                        return (
+                          <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <p className="text-[10px] sm:text-[11px] font-bold text-charcoal/50 uppercase tracking-wider">
+                                {lang === "ar" ? "نسبة العمولة الحالية" : "Current Active Rate"}
+                              </p>
+                              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                                {tierInfo.percentage}%
+                              </span>
+                            </div>
+                            <p className="text-xs sm:text-sm font-black text-emerald-700">
+                              {lang === "ar" ? tierInfo.tierLabelAr : tierInfo.tierLabelEn}
+                            </p>
+                            {tierInfo.nextTierDate && (
+                              <p className="text-[10px] text-charcoal/50 pt-0.5">
+                                {lang === "ar"
+                                  ? `تنتقل إلى ${(tierInfo.nextTierRate! * 100)}% في: ${tierInfo.nextTierDate.toLocaleDateString("ar-EG", { month: "short", day: "numeric", year: "numeric" })}`
+                                  : `Transitions to ${(tierInfo.nextTierRate! * 100)}% on: ${tierInfo.nextTierDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Graduated Commission Structure Notice */}

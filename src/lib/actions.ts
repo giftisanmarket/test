@@ -18,6 +18,7 @@ import {
   ARTISAN_AGREEMENT_VERSION,
   isArtisanAgreementLanguage,
 } from "@/lib/artisan-agreement";
+import { getEffectiveArtisanCommissionRate } from "@/lib/commission";
 import {
   signUp as _signUp,
   login as _login,
@@ -952,6 +953,8 @@ export async function recordArtisanOrderLedgerInTx(
         select: {
           id: true,
           commissionRate: true,
+          createdAt: true,
+          termsAcceptedAt: true,
           studioName: true,
           user: { select: { name: true, email: true } }
         }
@@ -993,7 +996,7 @@ export async function recordArtisanOrderLedgerInTx(
       discountNote = ` (Platform promo "${coupon.code}" absorbed by Giftisan)`;
     }
 
-    const commissionRate = artisan.commissionRate ?? 0.0;
+    const commissionRate = getEffectiveArtisanCommissionRate(artisan);
     const adminShare = netItemTotal * commissionRate;
     const artisanShare = netItemTotal - adminShare;
 
@@ -2875,7 +2878,7 @@ export async function processOrderUncancellationInTx(tx: any, order: any) {
       });
       if (product?.artisan) {
         const itemTotal = item.price * item.quantity;
-        const commission = product.artisan.commissionRate ?? 0.0;
+        const commission = getEffectiveArtisanCommissionRate(product.artisan);
         const adminShare = itemTotal * commission;
         const artisanShare = itemTotal - adminShare;
 
@@ -5489,7 +5492,7 @@ export async function resolveRefundRequestAction({
           if (targetItem?.product?.artisan) {
             const artisan = targetItem.product.artisan;
             const itemTotal = targetItem.price * targetItem.quantity;
-            const commission = artisan.commissionRate ?? 0.0;
+            const commission = getEffectiveArtisanCommissionRate(artisan);
             const artisanShare = itemTotal * (1 - commission);
 
             // Check if there are sale transactions for this order
@@ -5580,7 +5583,7 @@ export async function resolveRefundRequestAction({
             if (!artisan) continue;
 
             const itemTotal = item.price * item.quantity;
-            const commission = artisan.commissionRate ?? 0.0;
+            const commission = getEffectiveArtisanCommissionRate(artisan);
             const artisanShare = itemTotal * (1 - commission);
 
             const existing = artisanMap.get(artisan.id) || { artisan, totalShare: 0, productNames: [] };

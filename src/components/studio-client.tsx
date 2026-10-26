@@ -68,6 +68,7 @@ import { ReviewsTab } from "./studio/reviews-tab";
 import { SettingsTab } from "./studio/settings-tab";
 import { useIsNative } from "@/lib/native";
 import { useNotifications } from "./notification-provider";
+import { getEffectiveArtisanCommissionRate } from "@/lib/commission";
 
 
 interface StudioClientProps {
@@ -577,7 +578,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     setShippingItem={setShippingItem}
                     setSelectedItem={setSelectedItem}
                     router={router}
-                    commissionRate={artisan.commissionRate || 0}
+                    commissionRate={getEffectiveArtisanCommissionRate(artisan)}
                   />
                 )}
 

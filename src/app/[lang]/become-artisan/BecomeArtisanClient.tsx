@@ -422,7 +422,7 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
           {/* Friendly Greeting Tag */}
           <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 bg-accent/10 border border-accent/20 text-accent rounded-full text-[11px] sm:text-xs font-bold mb-4 sm:mb-6">
             <Sparkles className="w-3.5 h-3.5 text-accent" />
-            <span>{isAr ? "برنامج الحرفيين لعام 2026 • انضمام مجاني وعمولة 0%" : "2026 Artisan Program • Free to join & 0% commission"}</span>
+            <span>{isAr ? "برنامج الحرفيين • انضمام مجاني وعمولة 0% لأول 6 أشهر" : "Artisan Program • Free to join & 0% commission for first 6 months"}</span>
           </div>
 
           {/* Emotional, Welcoming Headline */}
@@ -453,8 +453,8 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                 <Percent className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
               </div>
               <div>
-                <p className="text-xs font-bold text-primary">{isAr ? "0% عمولة للمؤسسين" : "0% Platform Commission"}</p>
-                <p className="text-[11px] text-charcoal/50">{isAr ? "أرباحك كاملة لك طوال 2026" : "Keep 100% of your earnings"}</p>
+                <p className="text-xs font-bold text-primary">{isAr ? "0% عمولة لأول 6 أشهر" : "0% Commission (First 6 Mos)"}</p>
+                <p className="text-[11px] text-charcoal/50">{isAr ? "أرباحك كاملة 100% لك في البداية" : "Keep 100% of your initial earnings"}</p>
               </div>
             </div>
 
@@ -1091,8 +1091,8 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
 
                     <p className="text-center text-xs text-charcoal/50">
                       {isAr
-                        ? "0% عمولة للمؤسسين طوال عام 2026 • لا توجد رسوم إدراج • تحكم كامل بمتجرك"
-                        : "0% commission for 2026 founders • No listing fees • Full store control"}
+                        ? "0% عمولة للمنصة طوال أول 6 أشهر لمتجرك • لا توجد رسوم إدراج • تحكم كامل بمتجرك"
+                        : "0% commission for your first 6 months • No listing fees • Full store control"}
                     </p>
                   </motion.div>
                 )}
@@ -1149,8 +1149,8 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                     {
                       labelEn: "Platform Commission",
                       labelAr: "نسبة عمولة المنصة",
-                      giftisanEn: "0% Commission (Keep 100%)",
-                      giftisanAr: "0% عمولة (أرباحك كاملة 100%)",
+                      giftisanEn: "0% for 6 mos, then 8% – 10%",
+                      giftisanAr: "0% لأول 6 أشهر، ثم 8% – 10%",
                       instaEn: "0% (hidden time & friction cost)",
                       instaAr: "0% (مع وقت ضائع ومجهود يدوي)",
                       etsyEn: "6.5% + transaction + processing",
@@ -1324,10 +1324,10 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                   : "Your earnings are sent directly to your InstaPay handle or mobile wallet within 24–48 hours of confirmed order delivery.",
               },
               {
-                q: isAr ? "ماذا تعني عمولة 0% لبرنامج العضو المؤسس؟" : "What does 0% platform commission mean?",
+                q: isAr ? "ماذا تعني عمولة 0% لأول 6 أشهر وكيف تتدرج؟" : "How does the graduated platform commission work?",
                 a: isAr
-                  ? "الحرفيون الذين ينضمون في دفعة 2026 التأسيسية يتمتعون بعمولة 0% على مبيعاتهم، ولا توجد أي رسوم تسجيل أو اشتراك شهري أو رسوم إدراج، مما يعني أن كامل عائد بيع منتجك يصل لجيبك."
-                  : "Artisans joining our 2026 Founding Cohort enjoy a full 0% platform commission on their sales, with no monthly subscription or listing fees. You keep 100% of your earnings.",
+                  ? "تعتمد جيفتيزان نظام عمولة متدرج وشفاف لدعم ورشتك في البداية: 0% عمولة للمنصة طوال أول 6 أشهر (أرباحك كاملة 100% لك)، ثم 8% خلال ثاني 6 أشهر، و10% بدءاً من الشهر 13 وما بعده. ولا توجد أي رسوم تسجيل أو اشتراكات شهرية أو رسوم إدراج."
+                  : "Giftisan supports your launch with a graduated tier: 0% platform commission during your first 6 months (keep 100% of your earnings), 8% during the second 6 months, and 10% from month 13 onward, with zero monthly subscriptions or listing fees.",
               },
               {
                 q: isAr ? "هل يمكنني بيع منتجات مخصصة بالطلب؟" : "Can I sell custom or personalized items?",

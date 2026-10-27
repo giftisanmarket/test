@@ -45,6 +45,7 @@ interface ProfileClientProps {
   user: any;
   orders: any[];
   dict: any;
+  isAdminPreview?: boolean;
 }
 
 const getTrackingUrl = (carrier?: string, trackingNumber?: string) => {
@@ -59,7 +60,7 @@ const getTrackingUrl = (carrier?: string, trackingNumber?: string) => {
   return `https://www.google.com/search?q=${encodeURIComponent(carrier + " " + trackingNumber + " tracking")}`;
 };
 
-export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
+export function ProfileClient({ user, orders, dict, isAdminPreview = false }: ProfileClientProps) {
   const isNative = useIsNative();
   const params = useParams();
   const lang = (params?.lang as string) || "en";
@@ -178,6 +179,14 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
   };
 
   const openRefundModal = (order: any, item?: any) => {
+    const isDelivered = order.status === "DELIVERED";
+    const deliveryRefTime = new Date(order.updatedAt || order.createdAt).getTime();
+    const isExpired = isDelivered && (Date.now() - deliveryRefTime > 14 * 24 * 60 * 60 * 1000);
+    if (isExpired) {
+      toast.error(dict.profile?.refund_window_expired || (isAr ? "انتهت مهلة الاسترجاع (14 يوماً من الاستلام)" : "Return window closed (14 days past delivery)"));
+      return;
+    }
+
     setSelectedRefundOrder(order);
     setSelectedRefundItem(item || (order.items && order.items.length === 1 ? order.items[0] : null));
     setRefundReason('DAMAGED_IN_TRANSIT');
@@ -268,10 +277,60 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
           onOpenRefundModal={openRefundModal}
           retryingOrderId={retryingOrderId}
           cancellingOrderId={cancellingOrderId}
+          isAdminPreview={isAdminPreview}
         />
       ) : (
         <>
           <Navbar dict={dict} />
+
+          {/* Admin Client Perspective Banner */}
+          {isAdminPreview && (
+            <div className="bg-gradient-to-r from-primary to-primary-light text-white py-3.5 px-4 shadow-xl relative z-40 border-b border-white/10">
+              <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5 text-center sm:text-start">
+                  <div className="w-7 h-7 rounded-lg bg-accent text-white flex items-center justify-center shrink-0 font-bold shadow-xs">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                      <span className="font-heading font-black tracking-wider uppercase text-[10px] bg-accent/20 border border-accent/40 text-accent-light px-2 py-0.5 rounded-full">
+                        {isAr ? "معاينة حساب العميل كمسؤول" : "Admin Client Perspective Mode"}
+                      </span>
+                      <span className="font-bold text-white">
+                        {user.name} ({user.email})
+                      </span>
+                    </div>
+                    <p className="text-white/70 text-[11px] mt-0.5">
+                      {isAr
+                        ? "أنت تشاهد مسار الطلبات والتفاصيل من منظور العميل مباشرة."
+                        : "Viewing orders and delivery timeline directly from this customer's perspective."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href={`/${lang}/admin/users`}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] transition-all border border-white/20 active:scale-95"
+                  >
+                    {isAr ? "قائمة المستخدمين" : "Users Table"}
+                  </Link>
+                  <Link
+                    href={`/${lang}/admin/orders`}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-[11px] transition-all border border-white/20 active:scale-95"
+                  >
+                    {isAr ? "إدارة الطلبات" : "Orders Table"}
+                  </Link>
+                  <Link
+                    href={`/${lang}/profile`}
+                    className="px-3.5 py-1.5 rounded-xl bg-white text-primary hover:bg-cream font-black text-[11px] transition-all shadow-sm active:scale-95"
+                  >
+                    {isAr ? "الرجوع لحسابي" : "Exit Preview"}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="container mx-auto px-4 pt-24 md:pt-32 pb-20">
             <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-8 md:gap-12">
@@ -453,8 +512,9 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                           )}
                         </div>
 
-                        {(order.status === "PENDING" || order.status === "FAILED") && (
-                          <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-2 flex-wrap shrink-0">
+                          {(order.status === "PENDING" || order.status === "FAILED") && (
+                            <div className="flex items-center gap-2 shrink-0">
                             <button
                               onClick={() => setOrderToCancel(order.id)}
                               disabled={cancellingOrderId !== null || retryingOrderId !== null}
@@ -477,8 +537,9 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                               <CreditCard className="w-4 h-4" />
                               <span>{retryingOrderId === order.id ? dict.checkout.processing : dict.checkout.pay_now || "Pay Now"}</span>
                             </button>
-                          </div>
-                        )}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="p-4 md:p-8 space-y-6">
@@ -543,6 +604,9 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                           const awaitingPaymentText = isAr ? "بانتظار الدفع" : "Awaiting Payment";
                           const cancelledText = isAr ? "ملغي" : "Cancelled";
                           const itemClaim = item.refundRequests?.[0] || order.refundRequests?.find((r: any) => r.orderItemId === item.id || (!r.orderItemId && order.items.length === 1));
+                          const isDelivered = order.status === "DELIVERED";
+                          const deliveryRefTime = new Date(order.updatedAt || order.createdAt).getTime();
+                          const isRefundWindowExpired = isDelivered && (Date.now() - deliveryRefTime > 14 * 24 * 60 * 60 * 1000);
 
                           return (
                             <div key={item.id} className="border-b last:border-0 border-primary/5 pb-6 last:pb-0">
@@ -654,6 +718,11 @@ export function ProfileClient({ user, orders, dict }: ProfileClientProps) {
                                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
                                           <CheckCircle2 className="w-3 h-3 text-rose-600" />
                                           <span>{isAr ? "تم استرجاع هذا المنتج" : "Item Refund Completed"}</span>
+                                        </div>
+                                      ) : isRefundWindowExpired ? (
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-semibold text-charcoal/40 bg-charcoal/5 border border-primary/5">
+                                          <Clock className="w-3.5 h-3.5 text-charcoal/30" />
+                                          <span>{dict.profile?.refund_window_expired || (isAr ? "انتهت مهلة الاسترجاع (14 يوماً من الاستلام)" : "Return window closed (14 days past delivery)")}</span>
                                         </div>
                                       ) : (
                                         <button

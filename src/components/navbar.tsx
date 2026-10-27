@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, LogIn, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package, Share2, Globe, Users, Gift } from "lucide-react";
+import { Search, ShoppingCart, User, Heart, Menu, X, LogOut, LogIn, MessageSquare, HelpCircle, CheckCircle2, MapPin, Sparkles, Store, ChevronDown, ChevronLeft, ChevronRight, ShieldCheck, Package, Share2, Globe, Users, Gift, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useNotifications } from "./notification-provider";
@@ -833,6 +833,15 @@ export function Navbar({ dict }: { dict?: any }) {
                         </Link>
 
                         <Link
+                          href="/track"
+                          onClick={() => setIsProfileMenuOpen(false)}
+                          className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cream/60 transition-colors"
+                        >
+                          <Truck className="w-4 h-4 text-accent" />
+                          <span>{d?.track?.btn_track || (pathname.startsWith('/ar') ? "تتبع مسار طلبك" : "Track Order")}</span>
+                        </Link>
+
+                        <Link
                           href="/profile/messages"
                           onClick={() => setIsProfileMenuOpen(false)}
                           className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-cream/60 transition-colors"
@@ -1451,6 +1460,28 @@ export function Navbar({ dict }: { dict?: any }) {
                 </div>
               </div>
             )}
+
+            {/* Quick Track Order Banner for Mobile */}
+            <Link
+              href="/track"
+              onClick={() => setIsMenuOpen(false)}
+              className="p-3.5 bg-white hover:bg-cream/50 rounded-2xl border border-primary/10 shadow-xs flex items-center justify-between transition-all group active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                  <Truck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-heading font-black text-xs text-primary leading-tight">
+                    {d?.track?.btn_track || (pathname.startsWith('/ar') ? "تتبع مسار طلبك" : "Track Your Order")}
+                  </h4>
+                  <p className="text-[10px] text-charcoal/50 mt-0.5">
+                    {pathname.startsWith('/ar') ? "متابعة الشحن والتوصيل لحظة بلحظة" : "Live courier & crafting status"}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-charcoal/40 group-hover:text-accent rtl:rotate-180 transition-all shrink-0" />
+            </Link>
 
             {/* Mobile Categories */}
             <div className="space-y-4">

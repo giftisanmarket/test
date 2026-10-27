@@ -9,7 +9,8 @@ import {
   Store, 
   Calendar, 
   ShoppingBag, 
-  Users, 
+  Users,
+  User, 
   UserCheck, 
   Clock, 
   ArrowUpDown,
@@ -437,7 +438,17 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
                   </div>
                 </div>
 
-                <DeleteUserButton userId={user.id} userName={user.name} dict={dict} />
+                <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+                  <Link
+                    href={`/${lang}/profile?userId=${user.id}`}
+                    className="h-8 px-2.5 sm:px-3 rounded-xl bg-primary/5 hover:bg-primary hover:text-white text-primary text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 active:scale-95 border border-primary/10 shadow-2xs whitespace-nowrap shrink-0"
+                    title={isAr ? "معاينة الملف الشخصي ومسار الطلبات" : "View Client Profile & Orders"}
+                  >
+                    <User className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <span className="whitespace-nowrap">{isAr ? "معاينة العميل" : "Client View"}</span>
+                  </Link>
+                  <DeleteUserButton userId={user.id} userName={user.name} dict={dict} />
+                </div>
               </div>
             </div>
           ))
@@ -447,25 +458,25 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
       {/* Main Users Table (Desktop >= lg) */}
       <div className="hidden lg:block bg-white rounded-[1.5rem] md:rounded-[3rem] border border-primary/5 shadow-2xl shadow-primary/5 overflow-hidden">
         <div className="overflow-x-auto min-h-[280px]">
-          <table className="w-full text-start min-w-[800px] lg:min-w-full">
+          <table className="w-full text-start min-w-[960px]">
             <thead>
               <tr className="bg-primary/5 border-b border-primary/5">
-                <th className="px-6 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start">
+                <th className="px-5 md:px-7 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start min-w-[220px]">
                   {dict.admin?.user_profile || (isAr ? "المستخدم" : "User Profile")}
                 </th>
-                <th className="px-6 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start">
+                <th className="px-4 md:px-6 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start min-w-[120px]">
                   {dict.admin?.role || (isAr ? "الرتبة" : "Role")}
                 </th>
-                <th className="px-6 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start">
+                <th className="px-4 md:px-6 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start min-w-[220px]">
                   {dict.admin?.studio_status || (isAr ? "حالة الاستوديو" : "Studio Status")}
                 </th>
-                <th className="px-6 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start">
+                <th className="px-4 md:px-6 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start min-w-[100px]">
                   {isAr ? "العمولة" : "Commission"}
                 </th>
-                <th className="px-6 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start">
+                <th className="px-4 md:px-6 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start min-w-[120px]">
                   {dict.admin?.activity || (isAr ? "النشاط" : "Activity")}
                 </th>
-                <th className="px-6 md:px-8 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-end">
+                <th className="px-5 md:px-7 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-end min-w-[160px] whitespace-nowrap">
                   {dict.admin?.actions || (isAr ? "الإجراءات" : "Actions")}
                 </th>
               </tr>
@@ -587,8 +598,18 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
                       </div>
                     </td>
 
-                    <td className="px-6 md:px-8 py-4 md:py-6 text-end">
-                      <DeleteUserButton userId={user.id} userName={user.name} dict={dict} />
+                    <td className="px-5 md:px-7 py-4 md:py-6 text-end whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2 shrink-0 flex-nowrap">
+                        <Link
+                          href={`/${lang}/profile?userId=${user.id}`}
+                          className="h-8 md:h-9 px-3 bg-primary/5 hover:bg-primary hover:text-white text-primary rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all active:scale-95 border border-primary/10 shadow-2xs group/btn whitespace-nowrap shrink-0"
+                          title={isAr ? "معاينة حساب العميل ومسار طلباته" : "View Client Perspective & Orders"}
+                        >
+                          <User className="w-3.5 h-3.5 text-accent group-hover/btn:text-white transition-colors shrink-0" />
+                          <span className="whitespace-nowrap">{isAr ? "معاينة العميل" : "Client View"}</span>
+                        </Link>
+                        <DeleteUserButton userId={user.id} userName={user.name} dict={dict} />
+                      </div>
                     </td>
                   </tr>
                 ))

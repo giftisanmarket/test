@@ -286,7 +286,17 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                           <User className="w-4 h-4 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-bold text-primary truncate">{order.user?.name || "Anonymous"}</p>
+                          {order.userId ? (
+                            <Link
+                              href={`/${lang}/profile?userId=${order.userId}`}
+                              className="font-bold text-primary hover:text-accent hover:underline transition-colors truncate block"
+                              title={isAr ? "معاينة الملف الشخصي للعميل ومسار طلباته" : "View client profile & order timeline"}
+                            >
+                              {order.user?.name || "Customer"}
+                            </Link>
+                          ) : (
+                            <p className="font-bold text-primary truncate">{order.user?.name || "Guest Customer"}</p>
+                          )}
                           <p className="text-[10px] text-charcoal/40 truncate">{order.user?.email || order.clientEmail || "N/A"}</p>
                         </div>
                       </div>
@@ -932,7 +942,19 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                       <div className="bg-primary/5 p-4 sm:p-6 rounded-2xl space-y-3.5 sm:space-y-4">
                         <div>
                           <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest mb-1">{dict.admin.customer}</p>
-                          <p className="font-bold text-primary text-sm break-words">{selectedOrderDetails.user?.name || "Anonymous"}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-bold text-primary text-sm break-words">{selectedOrderDetails.user?.name || "Anonymous"}</p>
+                            {selectedOrderDetails.userId && (
+                              <Link
+                                href={`/${lang}/profile?userId=${selectedOrderDetails.userId}`}
+                                className="text-[10px] font-black uppercase text-accent hover:underline flex items-center gap-1"
+                                target="_blank"
+                              >
+                                <span>{isAr ? "معاينة الحساب" : "View Profile"}</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </Link>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <p className="text-[8px] font-black text-primary/40 uppercase tracking-widest mb-1">{dict.studio?.community || "Contact"}</p>
@@ -989,6 +1011,30 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                             </div>
                           );
                         })()}
+
+                        {/* Customer Perspective & Live Tracking Actions */}
+                        <div className="pt-3 border-t border-primary/10 flex flex-col gap-2">
+                          <Link
+                            href={`/${lang}/track/${selectedOrderDetails.id}`}
+                            className="w-full py-2.5 px-4 rounded-xl bg-primary/10 hover:bg-primary hover:text-white text-primary text-xs font-bold transition-all flex items-center justify-center gap-2"
+                            target="_blank"
+                          >
+                            <Truck className="w-3.5 h-3.5 text-accent" />
+                            <span>{isAr ? "تتبع مسار الطلب لحظة بلحظة" : "View Live Order Timeline"}</span>
+                            <ExternalLink className="w-3 h-3 opacity-60" />
+                          </Link>
+                          {selectedOrderDetails.userId && (
+                            <Link
+                              href={`/${lang}/profile?userId=${selectedOrderDetails.userId}`}
+                              className="w-full py-2.5 px-4 rounded-xl bg-accent/10 hover:bg-accent hover:text-white text-accent text-xs font-bold transition-all flex items-center justify-center gap-2"
+                              target="_blank"
+                            >
+                              <User className="w-3.5 h-3.5" />
+                              <span>{isAr ? "معاينة حساب العميل كاملاً" : "View Full Client Perspective"}</span>
+                              <ExternalLink className="w-3 h-3 opacity-60" />
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
 

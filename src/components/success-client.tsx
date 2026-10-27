@@ -2,7 +2,7 @@
 
 import { Navbar } from "@/components/navbar";
 import Link from "next/link";
-import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone, AlertTriangle, XCircle, RefreshCcw } from "lucide-react";
+import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone, AlertTriangle, XCircle, RefreshCcw, Truck } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
@@ -146,20 +146,20 @@ export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: Suc
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="w-full max-w-3xl bg-white rounded-[2.5rem] border border-primary/5 shadow-2xl shadow-primary/5 overflow-hidden mb-12"
+            className="w-full max-w-3xl bg-white rounded-[2rem] sm:rounded-[2.5rem] border border-primary/5 shadow-2xl shadow-primary/5 overflow-hidden mb-8 sm:mb-12"
           >
             {/* Header of Receipt */}
-            <div className="bg-cream/30 px-6 md:px-10 py-6 border-b border-primary/5 flex flex-wrap justify-between items-center gap-4">
+            <div className="bg-cream/30 px-4 sm:px-6 md:px-10 py-4 sm:py-6 border-b border-primary/5 flex flex-wrap justify-between items-center gap-3 sm:gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-1">{dict.profile.reference}</p>
-                <h2 className="text-base md:text-xl font-mono font-bold text-primary tracking-tight break-all">#{order.id}</h2>
+                <h2 className="text-sm sm:text-base md:text-xl font-mono font-bold text-primary tracking-tight break-all">#{order.id}</h2>
               </div>
-              <div className="flex items-center gap-4 text-right">
+              <div className="flex items-center gap-3 sm:gap-4 text-start sm:text-end">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-1">{dict.profile.placed_on}</p>
-                  <p className="text-sm md:text-base font-bold text-primary">{new Date(order.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs sm:text-sm md:text-base font-bold text-primary">{new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
-                <div className="pl-4 border-l border-primary/10">
+                <div className="ps-3 sm:ps-4 border-s border-primary/10">
                   <p className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-1">{dict.admin.status || "Status"}</p>
                   <span className={cn(
                     "px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border block text-center",
@@ -175,7 +175,7 @@ export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: Suc
               </div>
             </div>
 
-            <div className="p-6 md:p-10 space-y-8">
+            <div className="p-4 sm:p-6 md:p-10 space-y-6 sm:space-y-8">
               {/* Items List */}
               <div className="space-y-4">
                 <h3 className="text-xs font-black uppercase tracking-widest text-primary/40">{dict.admin.global_products || "Items"}</h3>
@@ -354,24 +354,24 @@ export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: Suc
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="grid md:grid-cols-2 gap-4 md:gap-6 mb-12 text-left w-full max-w-3xl"
+          className="grid sm:grid-cols-2 gap-4 md:gap-6 mb-8 sm:mb-12 w-full max-w-3xl"
         >
-          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-primary/5 shadow-xl shadow-primary/5 flex flex-col md:flex-row items-center md:items-start gap-4 text-center md:text-left">
-            <div className="w-14 h-14 bg-brand/10 rounded-2xl flex items-center justify-center shrink-0">
-              <Package className="w-7 h-7 text-brand" />
+          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-[1.75rem] sm:rounded-[2.25rem] border border-primary/5 shadow-xl shadow-primary/5 flex flex-col sm:flex-row items-center sm:items-start gap-3.5 sm:gap-4 text-center sm:text-start">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-brand/10 rounded-2xl flex items-center justify-center shrink-0">
+              <Package className="w-6 h-6 sm:w-7 sm:h-7 text-brand" />
             </div>
             <div>
-              <h3 className="font-bold text-primary text-lg">{dict.checkout.artisan_prep_title}</h3>
-              <p className="text-xs md:text-sm text-charcoal/50 leading-relaxed mt-1">{dict.checkout.artisan_prep_desc}</p>
+              <h3 className="font-bold text-primary text-base sm:text-lg">{dict.checkout.artisan_prep_title}</h3>
+              <p className="text-xs sm:text-sm text-charcoal/60 leading-relaxed mt-1">{dict.checkout.artisan_prep_desc}</p>
             </div>
           </div>
-          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-primary/5 shadow-xl shadow-primary/5 flex flex-col md:flex-row items-center md:items-start gap-4 text-center md:text-left">
-            <div className="w-14 h-14 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0">
-              <MessageSquare className="w-7 h-7 text-primary" />
+          <div className="bg-white p-5 sm:p-6 md:p-8 rounded-[1.75rem] sm:rounded-[2.25rem] border border-primary/5 shadow-xl shadow-primary/5 flex flex-col sm:flex-row items-center sm:items-start gap-3.5 sm:gap-4 text-center sm:text-start">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0">
+              <MessageSquare className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
             </div>
             <div>
-              <h3 className="font-bold text-primary text-lg">{dict.checkout.direct_dialogue_title || (isAr ? "حوار مباشر مع الحرفي" : "Direct Dialogue")}</h3>
-              <p className="text-xs md:text-sm text-charcoal/50 leading-relaxed mt-1">{dict.checkout.direct_dialogue_desc || (isAr ? "يمكنك التواصل مباشرة مع صانع القطعة عبر صفحة طلباتك في أي وقت." : "Direct messaging with your artisan is available anytime from your account orders.")}</p>
+              <h3 className="font-bold text-primary text-base sm:text-lg">{dict.checkout.direct_dialogue_title || (isAr ? "حوار مباشر مع الحرفي" : "Direct Dialogue")}</h3>
+              <p className="text-xs sm:text-sm text-charcoal/60 leading-relaxed mt-1">{dict.checkout.direct_dialogue_desc || (isAr ? "يمكنك التواصل مباشرة مع صانع القطعة عبر صفحة طلباتك في أي وقت." : "Direct messaging with your artisan is available anytime from your account orders.")}</p>
             </div>
           </div>
         </motion.div>
@@ -381,20 +381,30 @@ export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: Suc
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md"
+          className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-3 sm:gap-4 w-full max-w-3xl"
         >
+          {order?.id && (
+            <Link 
+              href={`/${lang}/track/${order.id}`} 
+              className="h-12 sm:h-13 md:h-14 px-6 sm:px-7 md:px-8 bg-accent hover:bg-accent-light text-white font-bold rounded-2xl transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-2 group active:scale-95 text-xs sm:text-sm md:text-base whitespace-nowrap text-center shrink-0"
+            >
+              <Truck className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+              <span>{isAr ? "تتبع مسار الطلب" : "Track Order Live"}</span>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform rtl:rotate-180 shrink-0" />
+            </Link>
+          )}
           <Link 
             href={`/${lang}`} 
-            className="h-16 px-12 bg-primary text-white font-bold rounded-full hover:bg-brand transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 group w-full sm:w-auto active:scale-95 text-sm md:text-base text-center"
+            className="h-12 sm:h-13 md:h-14 px-6 sm:px-7 md:px-8 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-lg shadow-primary/10 flex items-center justify-center gap-2 group active:scale-95 text-xs sm:text-sm md:text-base whitespace-nowrap text-center shrink-0"
           >
-            {dict.checkout.continue_discovery}
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform rtl:rotate-180" />
+            <span>{dict.checkout.continue_discovery}</span>
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform rtl:rotate-180 shrink-0" />
           </Link>
           <Link 
             href={`/${lang}/favorites`} 
-            className="h-16 px-12 bg-white border border-primary/10 text-primary font-bold rounded-full hover:bg-primary/5 transition-all w-full sm:w-auto flex items-center justify-center active:scale-95 text-sm md:text-base text-center"
+            className="h-12 sm:h-13 md:h-14 px-5 sm:px-6 md:px-7 bg-white border border-primary/15 text-primary font-bold rounded-2xl hover:bg-cream transition-all shadow-2xs flex items-center justify-center active:scale-95 text-xs sm:text-sm md:text-base whitespace-nowrap text-center shrink-0"
           >
-            {dict.checkout.view_favorites}
+            <span>{dict.checkout.view_favorites}</span>
           </Link>
         </motion.div>
 

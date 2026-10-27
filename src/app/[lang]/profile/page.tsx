@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 import { getUserOrders } from "@/lib/actions";
 import { ProfileClient } from "@/components/profile-client";
 
-export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+interface ProfilePageProps {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export async function generateMetadata({ params }: ProfilePageProps): Promise<Metadata> {
   const { lang } = await params;
   if (!hasLocale(lang)) return {};
   const dict = await getDictionary(lang as any);
@@ -21,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   };
 }
 
-export default async function ProfilePage({ params }: { params: Promise<{ lang: string }> }) {
+export default async function ProfilePage({ params, searchParams }: ProfilePageProps) {
   const { lang } = await params;
   if (!hasLocale(lang)) notFound();
   const dict = await getDictionary(lang as any);
@@ -32,16 +37,34 @@ export default async function ProfilePage({ params }: { params: Promise<{ lang: 
     redirect(`/${lang}/login?callbackUrl=/${lang}/profile`);
   }
 
+  const search = await searchParams;
+  const requestedUserId = (search?.userId || search?.user) as string | undefined;
+  const isAdmin = session.user.role === "ADMIN";
+
+  let targetUserId = session.user.id as string;
+  let isAdminPreview = false;
+
+  if (requestedUserId && isAdmin) {
+    const targetUser = await prisma.user.findUnique({
+      where: { id: requestedUserId }
+    });
+    if (targetUser) {
+      targetUserId = requestedUserId;
+      isAdminPreview = true;
+    }
+  }
+
   // Fetch fresh user data from database to ensure updates are reflected
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id as string }
+    where: { id: targetUserId }
   });
 
   if (!user) {
     redirect(`/${lang}/login`);
   }
 
-  const orders = await getUserOrders(session.user.id as string);
+  const orders = await getUserOrders(targetUserId);
 
-  return <ProfileClient user={user} orders={orders} dict={dict} />;
+  return <ProfileClient user={user} orders={orders} dict={dict} isAdminPreview={isAdminPreview} />;
 }
+

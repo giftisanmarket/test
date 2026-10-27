@@ -618,8 +618,8 @@ export const sendOrderStatusUpdateEmail = async (
   };
 
   const ctaLink = isDelivered && productSlug
-    ? `${BASE_URL}/products/${productSlug}#reviews`
-    : `${BASE_URL}/profile`;
+    ? `${BASE_URL}/${lang}/products/${productSlug}#reviews`
+    : `${BASE_URL}/${lang}/track/${orderId}`;
 
   const subject = isAr
     ? isDelivered ? `وصلت قطعتك الفنية! شاركنا رأيك | جيفتيزان` : `تحديث لطلبك #${orderId}: ${statusTextAr[status] || status}`
@@ -1227,7 +1227,7 @@ export const sendBuyerOrderReceiptEmail = async (
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="${BASE_URL}/profile" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">متابعة حالة الطلب</a>
+      <a href="${BASE_URL}/${lang}/track/${orderId}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">تتبع مسار الطلب لحظة بلحظة</a>
     </div>
   `;
 
@@ -1257,7 +1257,7 @@ export const sendBuyerOrderReceiptEmail = async (
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="${BASE_URL}/profile" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">View Order Journey</a>
+      <a href="${BASE_URL}/${lang}/track/${orderId}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">Track Order Live</a>
     </div>
   `;
 

@@ -6202,3 +6202,151 @@ export async function updateAbandonedCheckoutLead(
   }
 }
 
+// ─── PUBLIC: Order Tracking Service ──────────────────────────────────────────
+export async function getPublicTrackedOrder(
+  query: string,
+  verificationInput?: string
+) {
+  "use server";
+  try {
+    const cleanQuery = query.trim().replace(/^#/, "");
+    if (!cleanQuery) {
+      return { success: false, error: "Please enter a valid order number or tracking code." };
+    }
+
+    // Try finding by order ID, or tracking number
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { id: cleanQuery },
+          { id: { equals: cleanQuery, mode: "insensitive" } },
+          { trackingNumber: cleanQuery },
+          { trackingNumber: { equals: cleanQuery, mode: "insensitive" } },
+          { items: { some: { trackingNumber: cleanQuery } } }
+        ]
+      },
+      include: {
+        shippingMethod: true,
+        items: {
+          include: {
+            variant: true,
+            product: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                images: true,
+                price: true,
+                artisan: {
+                  select: {
+                    id: true,
+                    studioName: true,
+                    slug: true,
+                    avatar: true,
+                    isVerified: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return { success: false, error: "Order not found. Please verify your order number or tracking code." };
+    }
+
+    // Check user authentication
+    const session = await auth();
+    const isOwner = Boolean(session?.user?.id && order.userId === session.user.id);
+    const isAdmin = session?.user?.role === "ADMIN";
+
+    // Check verification input (phone or email)
+    let isVerified = isOwner || isAdmin;
+    if (!isVerified && verificationInput) {
+      const vClean = verificationInput.trim().toLowerCase();
+      const clientEmail = (order.clientEmail || "").trim().toLowerCase();
+      const clientPhoneDigits = (order.clientPhone || "").replace(/\D/g, "");
+      const vDigits = vClean.replace(/\D/g, "");
+
+      if (vClean && clientEmail && vClean === clientEmail) {
+        isVerified = true;
+      } else if (vDigits.length >= 4 && (clientPhoneDigits.endsWith(vDigits) || clientPhoneDigits === vDigits || vDigits.endsWith(clientPhoneDigits))) {
+        isVerified = true;
+      }
+    }
+
+    const maskPhone = (phone: string | null | undefined) => {
+      if (!phone) return "";
+      const clean = phone.trim();
+      if (clean.length < 6) return "••••";
+      return clean.slice(0, 4) + "••••" + clean.slice(-3);
+    };
+
+    const maskEmail = (email: string | null | undefined) => {
+      if (!email) return "";
+      const [user, domain] = email.split("@");
+      if (!domain) return "••••";
+      return (user.length > 2 ? user.slice(0, 2) : user.slice(0, 1)) + "••••@" + domain;
+    };
+
+    const statusUpper = (order.status || "PENDING").toUpperCase();
+
+    // Estimate delivery dates based on shipping method and createdAt
+    const createdAtDate = new Date(order.createdAt);
+    const estimatedDaysMin = order.shippingMethod?.estimatedDays?.includes("2") ? 2 : 3;
+    const estimatedDeliveryMin = new Date(createdAtDate.getTime() + estimatedDaysMin * 24 * 60 * 60 * 1000);
+    const estimatedDeliveryMax = new Date(createdAtDate.getTime() + (estimatedDaysMin + 2) * 24 * 60 * 60 * 1000);
+
+    return {
+      success: true,
+      order: {
+        id: order.id,
+        createdAt: order.createdAt.toISOString(),
+        updatedAt: order.updatedAt.toISOString(),
+        status: statusUpper,
+        isGift: order.isGift,
+        giftMessage: order.giftMessage,
+        carrier: order.carrier || (order.trackingNumber ? "Bosta" : null),
+        trackingNumber: order.trackingNumber,
+        shippingMethodName: order.shippingMethod?.name || "Doorstep Courier Delivery",
+        shippingCost: order.shippingCost,
+        totalAmount: order.totalAmount,
+        discountApplied: order.discountApplied || 0,
+        estimatedDeliveryMin: estimatedDeliveryMin.toISOString(),
+        estimatedDeliveryMax: estimatedDeliveryMax.toISOString(),
+        shippingCity: order.shippingCity || "Cairo",
+        shippingAddress: isVerified ? order.shippingAddress : (order.shippingCity ? `${order.shippingCity}, Egypt` : "Egypt"),
+        clientPhone: isVerified ? order.clientPhone : maskPhone(order.clientPhone),
+        clientEmail: isVerified ? order.clientEmail : maskEmail(order.clientEmail),
+        isVerified,
+        items: order.items.map(item => ({
+          id: item.id,
+          name: item.product?.name || "Handcrafted Creation",
+          slug: item.product?.slug || item.product?.id,
+          image: item.product?.images?.[0] || null,
+          price: item.price,
+          quantity: item.quantity,
+          personalization: item.personalization,
+          customImage: isVerified ? item.customImage : (item.customImage ? "uploaded" : null),
+          variantName: item.variant?.name || null,
+          status: item.status,
+          trackingNumber: item.trackingNumber,
+          carrier: item.carrier,
+          artisan: item.product?.artisan ? {
+            studioName: item.product.artisan.studioName,
+            slug: item.product.artisan.slug,
+            avatar: item.product.artisan.avatar,
+            isVerified: item.product.artisan.isVerified
+          } : null
+        }))
+      }
+    };
+  } catch (error: any) {
+    console.error("Public track order error:", error);
+    return { success: false, error: "Something went wrong while retrieving your order. Please try again." };
+  }
+}
+
+

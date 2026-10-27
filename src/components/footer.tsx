@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Globe, Mail } from "lucide-react";
+import { Globe, Mail, Truck } from "lucide-react";
 import { useIsNative } from "@/lib/native";
 
 interface FooterProps {
@@ -64,6 +64,12 @@ export function Footer({ dict }: FooterProps) {
               className="px-2.5 py-1 rounded-full bg-white/90 border border-primary/10 text-charcoal/80 hover:text-primary active:scale-95 transition-all shadow-2xs"
             >
               {dict?.common?.privacy || (isArabic ? "الخصوصية" : "Privacy")}
+            </Link>
+            <Link
+              href="/track"
+              className="px-2.5 py-1 rounded-full bg-white/90 border border-primary/10 text-charcoal/80 hover:text-primary active:scale-95 transition-all shadow-2xs font-bold text-accent"
+            >
+              {dict?.track?.btn_track || (isArabic ? "تتبع طلبك" : "Track Order")}
             </Link>
             <Link
               href="/shipping"
@@ -252,8 +258,22 @@ export function Footer({ dict }: FooterProps) {
                 </h3>
                 <ul className="space-y-1 sm:space-y-2 text-[13px] text-charcoal/80">
                   <li>
+                    <Link 
+                      href="/track" 
+                      className="inline-flex items-center gap-1.5 py-0.5 text-accent font-bold hover:underline transition-all"
+                    >
+                      <Truck className="w-3.5 h-3.5 shrink-0" />
+                      <span>{dict?.track?.btn_track || (isArabic ? "تتبع طلبك" : "Track Your Order")}</span>
+                    </Link>
+                  </li>
+                  <li>
                     <Link href="/contact" className="inline-block py-0.5 hover:text-primary hover:underline transition-all">
                       {isArabic ? "مركز الدعم والتواصل" : "Help & Support"}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/shipping" className="inline-block py-0.5 hover:text-primary hover:underline transition-all">
+                      {dict?.common?.shipping || (isArabic ? "سياسة الشحن والتوصيل" : "Shipping Policy")}
                     </Link>
                   </li>
                   <li>
@@ -382,6 +402,10 @@ export function Footer({ dict }: FooterProps) {
               <span className="text-charcoal/30 select-none">•</span>
               <Link href="/shipping" className="px-1 py-0.5 hover:text-primary hover:underline transition-colors">
                 {dict?.common?.shipping || (isArabic ? "الشحن" : "Shipping")}
+              </Link>
+              <span className="text-charcoal/30 select-none">•</span>
+              <Link href="/track" className="px-1 py-0.5 hover:text-primary hover:underline transition-colors font-medium text-accent">
+                {dict?.track?.btn_track || (isArabic ? "تتبع طلبك" : "Track Order")}
               </Link>
               <span className="text-charcoal/30 select-none">•</span>
               <Link href="/refund" className="px-1 py-0.5 hover:text-primary hover:underline transition-colors">

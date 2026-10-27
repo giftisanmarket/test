@@ -6,6 +6,8 @@ import { Footer } from "@/components/footer";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { promoteToArtisan, resendVerificationEmailAction } from "@/lib/actions";
+import { firebaseAuth } from "@/lib/firebase";
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -117,6 +119,16 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+
+  // Phone Verification State (Firebase)
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [recaptchaKey, setRecaptchaKey] = useState(0);
 
   const wizardRef = useRef<HTMLDivElement>(null);
   const shopNameInputRef = useRef<HTMLInputElement>(null);
@@ -251,12 +263,168 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
     }
   };
 
+  // Cooldown timer for OTP resend
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setOtpCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [otpCooldown]);
+
+  // Phone number formatter for Egypt (+20) E.164 required by Firebase
+  const formatEgyptPhone = (raw: string): string => {
+    // 1. Convert Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) to standard ASCII
+    let cleaned = raw
+      .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d).toString())
+      .replace(/[^\d+]/g, "")
+      .trim();
+
+    // 2. Handle international prefix variations
+    if (cleaned.startsWith("0020")) {
+      cleaned = "+20" + cleaned.slice(4);
+    } else if (cleaned.startsWith("002")) {
+      cleaned = "+" + cleaned.slice(2);
+    }
+
+    // 3. If user typed +2001... or 2001... (common typo with extra zero)
+    if (cleaned.startsWith("+2001")) {
+      cleaned = "+20" + cleaned.slice(4);
+    } else if (cleaned.startsWith("2001")) {
+      cleaned = "+20" + cleaned.slice(3);
+    } else if (cleaned.startsWith("201")) {
+      cleaned = "+" + cleaned;
+    } else if (cleaned.startsWith("01")) {
+      cleaned = "+20" + cleaned.slice(1);
+    } else if (cleaned.startsWith("1") && cleaned.length === 10) {
+      cleaned = "+20" + cleaned;
+    } else if (!cleaned.startsWith("+")) {
+      cleaned = "+20" + cleaned;
+    }
+    return cleaned;
+  };
+
+  const handleSendPhoneOtp = async () => {
+    const formatted = formatEgyptPhone(formData.phoneNumber);
+    if (formatted.length < 12) {
+      toast.error(
+        isAr
+          ? "يرجى كتابة رقم هاتف مصري صحيح (مثال: 01012345678)"
+          : "Please enter a valid Egyptian phone number (e.g. 01012345678)"
+      );
+      return;
+    }
+
+    const containerId = `recaptcha-container-${recaptchaKey}`;
+    const container = document.getElementById(containerId);
+    if (!container) {
+      toast.error(
+        isAr
+          ? "حدث خطأ في تحميل أداة التحقق. يرجى تحديث الصفحة."
+          : "Verification element not ready. Please refresh the page."
+      );
+      return;
+    }
+
+    setIsSendingOtp(true);
+    let verifier: RecaptchaVerifier | null = null;
+    try {
+      verifier = new RecaptchaVerifier(firebaseAuth, containerId, {
+        size: "invisible",
+        callback: () => {
+          // reCAPTCHA solved
+        },
+        "expired-callback": () => {
+          setRecaptchaKey((k) => k + 1);
+          toast.error(
+            isAr
+              ? "انتهت صلاحية التحقق الأمني. يرجى المحاولة مرة أخرى."
+              : "Security verification expired. Please try again."
+          );
+        },
+      });
+
+      const confirmation = await signInWithPhoneNumber(firebaseAuth, formatted, verifier);
+      setConfirmationResult(confirmation);
+      setShowOtpInput(true);
+      setOtpCooldown(60);
+
+      toast.success(
+        isAr
+          ? "تم إرسال رمز التحقق إلى هاتفك عبر رسالة SMS"
+          : "Verification code sent to your phone via SMS"
+      );
+    } catch (err: any) {
+      console.error("Firebase SMS send error:", err);
+
+      // Clean up verifier & increment key to mount a completely fresh DOM container next time
+      if (verifier) {
+        try {
+          verifier.clear();
+        } catch {
+          // ignore
+        }
+      }
+      setRecaptchaKey((k) => k + 1);
+
+      if (err?.code === "auth/invalid-phone-number") {
+        toast.error(isAr ? "صيغة رقم الهاتف غير صحيحة" : "Invalid phone number format");
+      } else if (err?.code === "auth/too-many-requests") {
+        toast.error(
+          isAr
+            ? "تم تجاوز عدد المحاولات المسموح بها مؤقتاً. يرجى المحاولة بعد قليل."
+            : "Too many attempts. Please try again in a few moments."
+        );
+      } else if (err?.code === "auth/operation-not-allowed") {
+        toast.error(
+          isAr
+            ? "يرجى تفعيل خدمة Phone Auth في لوحة تحكم Firebase."
+            : "Phone Auth is not enabled in Firebase Console yet."
+        );
+      } else {
+        const errorDetail = err?.code ? ` (${err.code})` : (err?.message ? `: ${err.message}` : "");
+        toast.error(
+          (isAr
+            ? "فشل إرسال رمز التحقق"
+            : "Failed to send SMS code") + errorDetail
+        );
+      }
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleConfirmOtp = async () => {
+    if (!confirmationResult || otpCode.trim().length !== 6) {
+      toast.error(isAr ? "يرجى إدخال الرمز المكون من 6 أرقام" : "Please enter the 6-digit code");
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    try {
+      const result = await confirmationResult.confirm(otpCode.trim());
+      if (result.user) {
+        setIsPhoneVerified(true);
+        setShowOtpInput(false);
+        toast.success(isAr ? "تم التحقق من رقم هاتفك بنجاح!" : "Phone number verified successfully!");
+      }
+    } catch (err: any) {
+      console.error("OTP verification error:", err);
+      toast.error(
+        isAr ? "رمز التحقق غير صحيح أو انتهت صلاحيته" : "Invalid or expired verification code"
+      );
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
   // Step Validation
   const canProceedStep1 = Boolean(formData.studioName.trim().length >= 2);
   const canProceedStep2 = Boolean(
     formData.governorate &&
     formData.district.trim().length >= 2 &&
-    formData.phoneNumber.trim().length >= 8
+    formData.phoneNumber.trim().length >= 8 &&
+    isPhoneVerified
   );
 
   const handleNextStep = () => {
@@ -273,6 +441,14 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
       }
       if (!formData.phoneNumber.trim()) {
         toast.error(isAr ? "يرجى كتابة رقم الهاتف أو الواتساب للتواصل والشحن" : "Please enter your contact phone number");
+        return;
+      }
+      if (!isPhoneVerified) {
+        toast.error(
+          isAr
+            ? "يرجى تأكيد رقم هاتفك عبر رسالة SMS للمتابعة إلى الخطوة التالية"
+            : "Please verify your phone number via SMS to proceed to the next step"
+        );
         return;
       }
       setCurrentStep(3);
@@ -303,6 +479,15 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
 
     if (!formData.studioName.trim() || !formData.district.trim() || !formData.phoneNumber.trim()) {
       toast.error(isAr ? "يرجى إكمال بيانات المتجر المطلوبة." : "Please fill in all required shop details.");
+      return;
+    }
+
+    if (!isPhoneVerified) {
+      toast.error(
+        isAr
+          ? "يرجى تأكيد رقم الهاتف عبر رسالة SMS قبل إطلاق المتجر."
+          : "Please verify your phone number via SMS before launching your shop."
+      );
       return;
     }
 
@@ -843,28 +1028,154 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
                       </div>
                     </div>
 
-                    {/* Phone Number */}
-                    <div className="space-y-2 relative z-10">
-                      <label className="text-xs font-bold text-primary flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-accent" />
-                        <span>{isAr ? "رقم الهاتف / الواتساب *" : "Phone / WhatsApp *"}</span>
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        value={formData.phoneNumber}
-                        onChange={(e) => {
-                          const clean = stripEmojis(e.target.value);
-                          setFormData({ ...formData, phoneNumber: clean });
-                        }}
-                        placeholder="+20 100 000 0000"
-                        className="w-full h-13 px-4 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary placeholder:text-primary/30 transition-all"
-                      />
+                    {/* Phone Number & SMS Verification */}
+                    <div className="space-y-2.5 relative z-10">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-primary flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-accent" />
+                          <span>{isAr ? "رقم الهاتف / الواتساب *" : "Phone / WhatsApp *"}</span>
+                        </label>
+                        {isPhoneVerified && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>{isAr ? "تم التحقق" : "Verified"}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          required
+                          disabled={isPhoneVerified}
+                          value={formData.phoneNumber}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const clean = stripEmojis(val);
+                            if (clean !== val) {
+                              toast.error(isAr ? "الرموز التعبيرية غير مسموح بها" : "Emojis are not allowed", { id: "no-emoji" });
+                            }
+                            setFormData({ ...formData, phoneNumber: clean });
+                            if (isPhoneVerified) {
+                              setIsPhoneVerified(false);
+                              setShowOtpInput(false);
+                              setOtpCode("");
+                            }
+                          }}
+                          placeholder="+20 100 000 0000"
+                          className={cn(
+                            "w-full h-13 px-4 bg-cream/30 border border-primary/20 rounded-2xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-sm font-bold text-primary placeholder:text-primary/30 transition-all",
+                            isPhoneVerified && "bg-emerald-500/5 border-emerald-500/30 text-emerald-950 font-mono tracking-wider cursor-not-allowed pr-24"
+                          )}
+                        />
+                        {isPhoneVerified && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPhoneVerified(false);
+                              setShowOtpInput(false);
+                              setOtpCode("");
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-accent hover:underline px-2 py-1 cursor-pointer"
+                          >
+                            {isAr ? "تغيير الرقم" : "Change"}
+                          </button>
+                        )}
+                      </div>
+
                       <p className="text-[11px] text-charcoal/50">
                         {isAr
-                          ? "يستخدم لإشعارات الطلبات وتنسيق استلام شحنات متجرك."
-                          : "Used strictly for order updates and courier pickups."}
+                          ? "يستخدم لإرسال كود التأكيد، إشعارات المبيعات، ومندوب الشحن."
+                          : "Used for SMS verification, order notifications, and courier pickups."}
                       </p>
+
+                      {/* Invisible Firebase reCAPTCHA container */}
+                      <div id={`recaptcha-container-${recaptchaKey}`} key={recaptchaKey}></div>
+
+                      {/* Verification Trigger or Inline OTP Card */}
+                      {!isPhoneVerified && (
+                        <div className="pt-1">
+                          {!showOtpInput ? (
+                            <button
+                              type="button"
+                              disabled={isSendingOtp || formData.phoneNumber.trim().length < 8}
+                              onClick={handleSendPhoneOtp}
+                              className="w-full h-11 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary-light transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                            >
+                              {isSendingOtp ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                              ) : (
+                                <ShieldCheck className="w-4 h-4 text-accent" />
+                              )}
+                              <span>
+                                {isSendingOtp
+                                  ? (isAr ? "جارٍ إرسال كود التحقق..." : "Sending verification code...")
+                                  : (isAr ? "تأكيد رقم الهاتف عبر رسالة SMS (مجاناً)" : "Verify Number via SMS (Free)")}
+                              </span>
+                            </button>
+                          ) : (
+                            <motion.div
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="p-4 rounded-2xl bg-cream/40 border border-primary/20 space-y-3"
+                            >
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-primary flex items-center gap-1.5">
+                                  <ShieldCheck className="w-3.5 h-3.5 text-accent" />
+                                  <span>{isAr ? "رمز التحقق المرسل لهاتفك" : "SMS Verification Code"}</span>
+                                </label>
+                                <span className="text-[11px] font-mono text-primary/60" dir="ltr">
+                                  {formatEgyptPhone(formData.phoneNumber)}
+                                </span>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  maxLength={6}
+                                  value={otpCode}
+                                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                                  placeholder="123456"
+                                  className="flex-1 h-12 px-4 text-center text-lg tracking-[0.35em] font-mono font-bold rounded-xl border border-primary/25 bg-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent text-primary placeholder:text-primary/20"
+                                />
+                                <button
+                                  type="button"
+                                  disabled={isVerifyingOtp || otpCode.trim().length !== 6}
+                                  onClick={handleConfirmOtp}
+                                  className="h-12 px-5 rounded-xl text-xs font-bold bg-accent text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                >
+                                  {isVerifyingOtp && <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />}
+                                  <span>{isVerifyingOtp ? (isAr ? "جارٍ التأكيد..." : "Verifying...") : (isAr ? "تأكيد" : "Verify")}</span>
+                                </button>
+                              </div>
+
+                              <div className="flex items-center justify-between text-[11px] text-charcoal/60 pt-0.5">
+                                <button
+                                  type="button"
+                                  disabled={otpCooldown > 0 || isSendingOtp}
+                                  onClick={handleSendPhoneOtp}
+                                  className="font-semibold text-accent hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
+                                >
+                                  {otpCooldown > 0
+                                    ? `${isAr ? "إعادة الإرسال بعد" : "Resend in"} ${otpCooldown}s`
+                                    : (isAr ? "إعادة إرسال الرمز" : "Resend code")}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowOtpInput(false);
+                                    setOtpCode("");
+                                  }}
+                                  className="hover:text-primary underline cursor-pointer"
+                                >
+                                  {isAr ? "إلغاء / تعديل الرقم" : "Cancel"}
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Step 2 Actions */}

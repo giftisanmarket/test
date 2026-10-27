@@ -220,6 +220,11 @@ export function Footer({ dict }: FooterProps) {
                     </Link>
                   </li>
                   <li>
+                    <Link href="/artisan-terms" className="inline-block py-0.5 hover:text-primary hover:underline transition-all">
+                      {dict?.common?.artisan_terms || (isArabic ? "شروط وأحكام الحرفيين" : "Artisan Terms & Conditions")}
+                    </Link>
+                  </li>
+                  <li>
                     <Link href="/terms" className="inline-block py-0.5 hover:text-primary hover:underline transition-all">
                       {isArabic ? "ميثاق الجودة والحرفية" : "Artisan Guidelines"}
                     </Link>
@@ -274,6 +279,11 @@ export function Footer({ dict }: FooterProps) {
                   <li>
                     <Link href="/shipping" className="inline-block py-0.5 hover:text-primary hover:underline transition-all">
                       {dict?.common?.shipping || (isArabic ? "سياسة الشحن والتوصيل" : "Shipping Policy")}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/refund" className="inline-block py-0.5 hover:text-primary hover:underline transition-all">
+                      {dict?.common?.refund || (isArabic ? "سياسة الاسترجاع والاستبدال" : "Refund & Return Policy")}
                     </Link>
                   </li>
                   <li>
@@ -402,10 +412,6 @@ export function Footer({ dict }: FooterProps) {
               <span className="text-charcoal/30 select-none">•</span>
               <Link href="/shipping" className="px-1 py-0.5 hover:text-primary hover:underline transition-colors">
                 {dict?.common?.shipping || (isArabic ? "الشحن" : "Shipping")}
-              </Link>
-              <span className="text-charcoal/30 select-none">•</span>
-              <Link href="/track" className="px-1 py-0.5 hover:text-primary hover:underline transition-colors font-medium text-accent">
-                {dict?.track?.btn_track || (isArabic ? "تتبع طلبك" : "Track Order")}
               </Link>
               <span className="text-charcoal/30 select-none">•</span>
               <Link href="/refund" className="px-1 py-0.5 hover:text-primary hover:underline transition-colors">

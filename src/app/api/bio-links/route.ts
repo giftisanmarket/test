@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isSafeHttpUrl } from "@/lib/security";
 
 export async function GET() {
   try {
@@ -47,8 +48,18 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { title, url, icon, isFeatured } = body;
 
-    if (!title || !url) {
-      return NextResponse.json({ error: "Title and URL are required" }, { status: 400 });
+    if (typeof title !== "string" || !title.trim() || title.trim().length > 120) {
+      return NextResponse.json(
+        { error: "A valid title (up to 120 characters) is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!isSafeHttpUrl(url)) {
+      return NextResponse.json(
+        { error: "Invalid URL. Must start with https:// or http://" },
+        { status: 400 }
+      );
     }
 
     // Get current highest order index
@@ -67,12 +78,17 @@ export async function POST(req: Request) {
       });
     }
 
+    const safeIcon =
+      typeof icon === "string" && icon.trim().length > 0
+        ? icon.trim().slice(0, 40)
+        : "link";
+
     const newLink = await prisma.artisanBioLink.create({
       data: {
         artisanId: artisan.id,
         title: title.trim(),
-        url: url.trim(),
-        icon: icon || "link",
+        url: String(url).trim(),
+        icon: safeIcon,
         isFeatured: Boolean(isFeatured),
         order: nextOrder,
       },

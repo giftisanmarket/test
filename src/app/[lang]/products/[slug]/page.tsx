@@ -5,14 +5,15 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { cache } from "react";
 
+export const revalidate = 60; // ISR: Cache product page for 60 seconds with on-demand revalidation on edits/reviews
+
 interface Props {
   params: Promise<{ slug: string; lang: string }>;
 }
 
 import { SITE_URL, SITE_NAME } from "@/lib/constants";
 import { getDictionary } from "@/app/[lang]/dictionaries";
-
-import { cookies } from "next/headers";
+import { PUBLIC_ARTISAN_SELECT, PUBLIC_USER_SELECT, sanitizePublicProduct } from "@/lib/public-selects";
 
 // Cached product fetch to deduplicate queries between metadata generation and page rendering
 const getProduct = cache(async (rawSlug: string) => {
@@ -36,14 +37,14 @@ const getProduct = cache(async (rawSlug: string) => {
     },
     include: {
       artisan: {
-        include: {
-          user: true
-        }
+        select: PUBLIC_ARTISAN_SELECT
       },
       variants: true,
       reviews: {
         include: {
-          user: true
+          user: {
+            select: PUBLIC_USER_SELECT
+          }
         }
       }
     }
@@ -60,9 +61,9 @@ const getProduct = cache(async (rawSlug: string) => {
         ]
       },
       include: {
-        artisan: { include: { user: true } },
+        artisan: { select: PUBLIC_ARTISAN_SELECT },
         variants: true,
-        reviews: { include: { user: true } }
+        reviews: { include: { user: { select: PUBLIC_USER_SELECT } } }
       }
     });
   }
@@ -103,6 +104,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = product.description.slice(0, 160);
 
   return {
+    metadataBase: new URL(SITE_URL),
     title: product.name,
     description: description,
     keywords: [product.name, product.category, lang === 'ar' ? "صنع يدوياً" : "Handcrafted", SITE_NAME, lang === 'ar' ? "مصر" : "Egypt"],
@@ -112,6 +114,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         "en-US": `${SITE_URL}/en/products/${product.slug || product.id}`,
         "ar-EG": `${SITE_URL}/ar/products/${product.slug || product.id}`,
+        "x-default": `${SITE_URL}/en/products/${product.slug || product.id}`,
       }
     },
     openGraph: {
@@ -168,32 +171,22 @@ export default async function ProductPage({ params }: Props) {
     },
     include: { 
       artisan: { 
-        include: { user: true } 
+        select: PUBLIC_ARTISAN_SELECT
       },
       variants: true
     },
     take: 6
   });
 
-  // Sanitize data to prevent serialization crashes
+  // Sanitize data to prevent PII leaks and serialization crashes
+  const baseSanitizedProduct = sanitizePublicProduct(product);
   const sanitizedProduct = {
-    ...product,
-    variants: product.variants || [],
-    images: Array.isArray(product.images) ? product.images.map((img: string) => (img?.length || 0) > 300000 ? "" : img) : [],
-    artisan: {
-      ...product.artisan,
-      avatar: (product.artisan.avatar?.length || 0) > 300000 ? "" : product.artisan.avatar
-    }
+    ...baseSanitizedProduct,
+    variants: baseSanitizedProduct.variants || [],
+    rejectionReason: isAdmin || isOwner ? product.rejectionReason : null,
   };
 
-  const sanitizedRelated = relatedProducts.map(p => ({
-    ...p,
-    images: Array.isArray(p.images) ? p.images.map((img: string) => (img?.length || 0) > 300000 ? "" : img) : [],
-    artisan: {
-      ...p.artisan,
-      avatar: (p.artisan.avatar?.length || 0) > 300000 ? "" : p.artisan.avatar
-    }
-  }));
+  const sanitizedRelated = relatedProducts.map((p) => sanitizePublicProduct(p));
 
   const getAbsoluteUrl = (url: string | null) => {
     if (!url) return null;

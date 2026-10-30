@@ -21,7 +21,11 @@ import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
 import { ArtisanCard } from "@/components/artisans/artisan-card";
 import { triggerHaptic, useIsNative } from "@/lib/native";
-import { NativeFavoritesView } from "@/components/native/native-favorites-view";
+import dynamic from "next/dynamic";
+const NativeFavoritesView = dynamic(
+  () => import("@/components/native/native-favorites-view").then((mod) => mod.NativeFavoritesView),
+  { ssr: false }
+);
 
 interface FavoritesClientProps {
   dict: any;

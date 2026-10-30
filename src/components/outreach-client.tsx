@@ -5,7 +5,11 @@ import { createPortal } from "react-dom";
 import { Send, User, MessageSquare, Mail, Check, AlertCircle, Eye, X, ShieldCheck, Calendar, Briefcase, FileText, Sparkles, Laptop, Smartphone, Plus } from "lucide-react";
 import { sendCustomEmailAction, getAudienceRecipientsAction, type AudienceGroup } from "@/lib/actions";
 import { toast } from "react-hot-toast";
-import { RichTextEditor } from "@/components/admin/rich-text-editor";
+import dynamic from "next/dynamic";
+const RichTextEditor = dynamic(
+  () => import("@/components/admin/rich-text-editor").then((mod) => mod.RichTextEditor),
+  { ssr: false, loading: () => <div className="h-64 rounded-xl border border-charcoal/10 bg-cream/30 animate-pulse" /> }
+);
 import { motion, AnimatePresence } from "framer-motion";
 
 const SENDER_PRESETS = [
@@ -120,7 +124,9 @@ export function OutreachClient({
           .filter(e => !existingSet.has(e.toLowerCase()));
 
         if (newEmails.length === 0) {
-          toast(isAr ? "تمت إضافة جميع هذه العناوين مسبقاً" : "All of these emails are already in the list", { icon: "ℹ️" });
+          toast(isAr ? "تمت إضافة جميع هذه العناوين مسبقاً" : "All of these emails are already in the list", {
+            icon: <AlertCircle className="w-4 h-4 text-accent" />,
+          });
           return;
         }
 
@@ -1203,6 +1209,7 @@ export function OutreachClient({
                     )}
                     <iframe
                       srcDoc={getBrandedHtml(gmailBody, gmailDir, templateStyle)}
+                      sandbox=""
                       className="w-full flex-1 border-0"
                       title="Branded Email Preview"
                     />

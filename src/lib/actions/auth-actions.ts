@@ -8,6 +8,9 @@ import { slugify } from "@/lib/utils";
 import { generateVerificationToken, generatePasswordResetToken } from "@/lib/tokens";
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/mail";
 import { getClientIp, checkRateLimit } from "@/lib/rate-limit";
+import { verifyOrderAccessToken } from "@/lib/security";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
   const ip = await getClientIp();
@@ -16,55 +19,71 @@ export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
     return { error: "Too many sign-up attempts. Please wait a minute before trying again." };
   }
 
-  const { name, email, password } = formData;
+  const rawName = typeof formData?.name === "string" ? formData.name.trim() : "";
+  const normalizedEmail =
+    typeof formData?.email === "string" ? formData.email.trim().toLowerCase() : "";
+  const passwordStr = typeof formData?.password === "string" ? formData.password : "";
 
-  if (!name || !email || !password) {
+  if (!rawName || !normalizedEmail || !passwordStr) {
     return { error: "Missing required fields" };
   }
 
+  if (!EMAIL_REGEX.test(normalizedEmail)) {
+    return { error: "Please enter a valid email address." };
+  }
+
+  if (passwordStr.length < 8 || passwordStr.length > 72) {
+    return { error: "Password must be between 8 and 72 characters." };
+  }
+
+  // Runtime role whitelist — never permit privilege escalation to ADMIN via signUp
+  const safeRole: "CLIENT" | "ARTISAN" = role === "ARTISAN" ? "ARTISAN" : "CLIENT";
+
   try {
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
 
     if (existingUser) {
       return { error: "User already exists with this email" };
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(passwordStr, 10);
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: rawName,
+        email: normalizedEmail,
         password: hashedPassword,
-        role,
+        role: safeRole,
       },
     });
 
-    if (role === "ARTISAN") {
-      const baseSlug = slugify(name);
-      const artisanSlug = baseSlug ? `${baseSlug}-${user.id.slice(-4)}` : `artisan-${user.id.slice(-4)}`;
+    if (safeRole === "ARTISAN") {
+      const baseSlug = slugify(rawName);
+      const artisanSlug = baseSlug
+        ? `${baseSlug}-${user.id.slice(-4)}`
+        : `artisan-${user.id.slice(-4)}`;
       await prisma.artisanProfile.create({
         data: {
           userId: user.id,
           slug: artisanSlug,
           bio: "",
           location: "",
-          avatar: `https://api.dicebear.com/10.x/gaze/svg?seed=${name}`,
+          avatar: `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(rawName)}`,
         },
       });
     }
 
     // Generate verification token and send email
-    const verificationToken = await generateVerificationToken(email);
+    const verificationToken = await generateVerificationToken(normalizedEmail);
     await sendVerificationEmail(verificationToken.identifier, verificationToken.token);
 
     // Auto-login the user immediately
     try {
       await signIn("credentials", {
-        email,
-        password,
+        email: normalizedEmail,
+        password: passwordStr,
         redirect: false,
       });
       return { success: true, autoLogin: true };
@@ -82,7 +101,10 @@ export async function login(formData: any) {
   const ip = await getClientIp();
   const rateCheck = checkRateLimit(`login:${ip}`, 10, 60 * 1000);
   if (!rateCheck.success) {
-    return { error: "Too many login attempts. Please wait a minute before trying again.", code: "RATE_LIMITED" };
+    return {
+      error: "Too many login attempts. Please wait a minute before trying again.",
+      code: "RATE_LIMITED",
+    };
   }
 
   let email = "";
@@ -102,8 +124,7 @@ export async function login(formData: any) {
     return { error: "Please enter both email and password.", code: "MISSING_CREDENTIALS" };
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  if (!EMAIL_REGEX.test(email)) {
     return { error: "Please enter a valid email address.", code: "INVALID_EMAIL" };
   }
 
@@ -131,7 +152,8 @@ export async function login(formData: any) {
       const customCode = (error as any).code || (error as any).cause?.err?.message;
       if (customCode === "UNVERIFIED_EMAIL") {
         return {
-          error: "Please verify your email address before logging in. Check your inbox for a link!",
+          error:
+            "Please verify your email address before logging in. Check your inbox for a link!",
           code: "UNVERIFIED_EMAIL",
         };
       }
@@ -149,20 +171,29 @@ export async function login(formData: any) {
 }
 
 export async function resendVerificationEmailAction(email: string) {
+  const ip = await getClientIp();
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const rateCheck = checkRateLimit(`resend-verify:${ip}:${normalizedEmail}`, 3, 60 * 1000);
+  if (!rateCheck.success) {
+    return { error: "Please wait a minute before requesting another verification email." };
+  }
+
+  if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+    return { error: "Please provide a valid email address." };
+  }
+
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
     });
 
-    if (!user) {
-      return { error: "User not found." };
+    if (!user || user.emailVerified) {
+      // Return generic success to prevent email/status enumeration
+      return { success: true };
     }
 
-    if (user.emailVerified) {
-      return { error: "Email is already verified." };
-    }
-
-    const verificationToken = await generateVerificationToken(email);
+    const targetEmail = user.email || normalizedEmail;
+    const verificationToken = await generateVerificationToken(targetEmail);
     await sendVerificationEmail(verificationToken.identifier, verificationToken.token);
 
     return { success: true };
@@ -191,24 +222,30 @@ export async function getUserInfo(userId: string) {
 
 export async function sendPasswordResetEmailAction(email: string) {
   const ip = await getClientIp();
-  const rateCheck = checkRateLimit(`reset:${ip}`, 3, 60 * 1000);
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  const rateCheck = checkRateLimit(`reset:${ip}:${normalizedEmail}`, 3, 60 * 1000);
   if (!rateCheck.success) {
     return { error: "Too many password reset requests. Please wait a few minutes." };
   }
 
+  if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
+    return { error: "Please enter a valid email address." };
+  }
+
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+      omit: { password: false },
       include: { accounts: true },
     });
-    if (!user) return { error: "If an account exists with this email, we've sent a reset link." };
 
-    // Check if it's a social account (no password)
-    if (user.accounts.length > 0 && !user.password) {
-      return { error: "This account was created with Google. Please use Google Sign-in." };
+    // Uniform response to prevent account / OAuth-provider enumeration
+    if (!user || (user.accounts.length > 0 && !user.password)) {
+      return { success: true };
     }
 
-    const token = await generatePasswordResetToken(email);
+    const targetEmail = user.email || normalizedEmail;
+    const token = await generatePasswordResetToken(targetEmail);
     const sent = await sendPasswordResetEmail(token.email, token.token);
     if (!sent.success) {
       return { error: "Mailing service is temporarily down. Please try again later." };
@@ -221,8 +258,25 @@ export async function sendPasswordResetEmailAction(email: string) {
 }
 
 export async function resetPasswordAction(token: string, password: any) {
+  const ip = await getClientIp();
+  const rateCheck = checkRateLimit(`reset-confirm:${ip}`, 5, 60 * 1000);
+  if (!rateCheck.success) {
+    return { error: "Too many attempts. Please wait a minute before trying again." };
+  }
+
+  if (typeof token !== "string" || !token.trim()) {
+    return { error: "This link is invalid or has already been used." };
+  }
+
+  const passwordStr = typeof password === "string" ? password : "";
+  if (passwordStr.length < 8 || passwordStr.length > 72) {
+    return { error: "Password must be between 8 and 72 characters." };
+  }
+
   try {
-    const existingToken = await prisma.passwordResetToken.findUnique({ where: { token } });
+    const existingToken = await prisma.passwordResetToken.findUnique({
+      where: { token: token.trim() },
+    });
     if (!existingToken) return { error: "This link is invalid or has already been used." };
 
     const hasExpired = new Date(existingToken.expires) < new Date();
@@ -231,16 +285,19 @@ export async function resetPasswordAction(token: string, password: any) {
       return { error: "This link has expired. Please request a new one." };
     }
 
-    const user = await prisma.user.findUnique({ where: { email: existingToken.email } });
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: existingToken.email, mode: "insensitive" } },
+    });
     if (!user) return { error: "Something went wrong. User not found." };
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
-
-    await prisma.passwordResetToken.delete({ where: { id: existingToken.id } });
+    const hashedPassword = await bcrypt.hash(passwordStr, 10);
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      }),
+      prisma.passwordResetToken.delete({ where: { id: existingToken.id } }),
+    ]);
 
     return { success: true };
   } catch (error) {
@@ -256,6 +313,61 @@ export async function deleteAccountAction(userId: string) {
       return { error: "Unauthorized" };
     }
 
+    // Protect active orders and financial ledgers from destructive cascade deletion
+    const [orderCount, artisanProfile] = await Promise.all([
+      prisma.order.count({ where: { userId } }),
+      prisma.artisanProfile.findUnique({
+        where: { userId },
+        include: {
+          _count: { select: { transactions: true, products: true } },
+        },
+      }),
+    ]);
+
+    if (
+      orderCount > 0 ||
+      (artisanProfile &&
+        (artisanProfile._count.transactions > 0 || artisanProfile._count.products > 0))
+    ) {
+      // Soft-anonymize user credentials while preserving financial & order audit history
+      await prisma.$transaction(async (tx) => {
+        await tx.account.deleteMany({ where: { userId } });
+        await tx.session.deleteMany({ where: { userId } });
+        if (artisanProfile) {
+          await tx.product.updateMany({
+            where: { artisanId: artisanProfile.id },
+            data: { status: "REJECTED", stock: 0 },
+          });
+          await tx.artisanProfile.update({
+            where: { id: artisanProfile.id },
+            data: {
+              status: "REJECTED",
+              isVerified: false,
+              phoneNumber: null,
+              pickupAddress: null,
+              pickupCity: null,
+              pickupDistrict: null,
+              pickupBuilding: null,
+              pickupNotes: null,
+              payoutAddress: null,
+              payoutName: null,
+            },
+          });
+        }
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            name: "Deleted User",
+            email: `deleted-${userId}@deleted.giftisan.local`,
+            password: null,
+            image: null,
+            role: "CLIENT",
+          },
+        });
+      });
+      return { success: true };
+    }
+
     await prisma.user.delete({
       where: { id: userId },
     });
@@ -269,65 +381,81 @@ export async function deleteAccountAction(userId: string) {
 export async function convertGuestToAccount({
   orderId,
   password,
+  accessToken,
 }: {
   orderId: string;
   password: string;
+  accessToken?: string;
 }) {
   try {
-    if (!password || password.length < 8) {
-      return { success: false, error: "Password must be at least 8 characters long." };
+    const ip = await getClientIp();
+    const rateCheck = checkRateLimit(`guest-convert:${ip}:${orderId}`, 5, 60 * 1000);
+    if (!rateCheck.success) {
+      return { success: false, error: "Too many attempts. Please wait a minute." };
+    }
+
+    if (typeof password !== "string" || password.length < 8 || password.length > 72) {
+      return { success: false, error: "Password must be between 8 and 72 characters long." };
     }
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
     });
 
-    if (!order || !order.clientEmail) {
-      return { success: false, error: "Order or customer email not found." };
+    if (!order || !order.clientEmail || order.userId) {
+      return { success: false, error: "Order is not eligible for guest account setup." };
     }
 
     const email = order.clientEmail.toLowerCase().trim();
 
-    let user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    if (user) {
-      if (!user.password) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { password: hashedPassword },
-        });
-      } else {
-        return { success: false, error: "An account with this email already exists. Please log in to view your orders." };
-      }
-    } else {
-      const clientName = (order as any).clientName || email.split("@")[0];
-      user = await prisma.user.create({
-        data: {
-          email,
-          name: clientName,
-          password: hashedPassword,
-          role: "CLIENT",
-        },
-      });
+    // Require cryptographic proof that this browser session just completed this order
+    if (!verifyOrderAccessToken(accessToken, order.id, email)) {
+      return {
+        success: false,
+        error: "Checkout session expired. Please use regular Sign Up to create an account.",
+      };
     }
 
-    await prisma.order.updateMany({
-      where: {
-        clientEmail: email,
-        userId: null,
-      },
+    const existingUser = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
+
+    // CRITICAL: Never overwrite or attach a password onto an existing User (prevents OAuth/Admin takeover)
+    if (existingUser) {
+      return {
+        success: false,
+        error: "An account with this email already exists. Please log in to view your orders.",
+      };
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const clientName = (order as any).clientName || email.split("@")[0];
+
+    const user = await prisma.user.create({
       data: {
-        userId: user.id,
+        email,
+        name: clientName,
+        password: hashedPassword,
+        role: "CLIENT",
       },
     });
+
+    // Link only this verified order (not unverified historical orders) until email is verified
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { userId: user.id },
+    });
+
+    try {
+      const verificationToken = await generateVerificationToken(email);
+      await sendVerificationEmail(verificationToken.identifier, verificationToken.token);
+    } catch {
+      // Non-blocking verification email
+    }
 
     return { success: true, email: user.email };
   } catch (error: any) {
     console.error("convertGuestToAccount error:", error);
-    return { success: false, error: error?.message || "Failed to create account." };
+    return { success: false, error: "Failed to create account." };
   }
 }

@@ -1,5 +1,5 @@
 export async function sendDiscordInquiryNotification(name: string, email: string, message: string) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL || "https://discord.com/api/webhooks/1535954597040889938/gzknt7tdYrGFyO2Amuyi1KTmsLND5GJ-vfBA4Gr0b4b3YVE4S7iXdMaRj4RehnedKyXI";
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
   if (!webhookUrl) {
     console.warn("Discord webhook URL is not configured.");
@@ -11,21 +11,21 @@ export async function sendDiscordInquiryNotification(name: string, email: string
     avatar_url: "https://giftisan.com/icon.png",
     embeds: [
       {
-        title: "📬 New Contact Form Inquiry",
+        title: "New Contact Form Inquiry",
         color: 0xda7b5a, // Terracotta accent color (#da7b5a)
         fields: [
           {
-            name: "👤 Name",
+            name: "Name",
             value: name || "N/A",
             inline: true,
           },
           {
-            name: "📧 Email",
+            name: "Email",
             value: email || "N/A",
             inline: true,
           },
           {
-            name: "💬 Message",
+            name: "Message",
             value: message ? (message.length > 1024 ? message.substring(0, 1021) + "..." : message) : "No message provided",
             inline: false,
           },

@@ -3,6 +3,53 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { cache } from "react";
 import { ArtisanBioView } from "@/components/bio/ArtisanBioView";
+import { sanitizePublicArtisan, sanitizePublicProduct } from "@/lib/public-selects";
+import { isSafeHttpUrl } from "@/lib/security";
+import { slugify } from "@/lib/utils";
+
+export const revalidate = 60; // ISR: Cache artisan bio pages for 60 seconds
+
+const BIO_INCLUDE = {
+  user: {
+    select: { id: true, name: true, image: true },
+  },
+  bioLinks: {
+    orderBy: { order: "asc" as const },
+  },
+  products: {
+    where: { status: "APPROVED" as const },
+    include: {
+      reviews: { select: { rating: true } },
+      orderItems: {
+        where: {
+          order: {
+            status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] as string[] },
+          },
+        },
+        select: { id: true },
+      },
+    },
+    orderBy: [
+      { isFeatured: "desc" as const },
+      { createdAt: "desc" as const },
+    ],
+    take: 50,
+  },
+};
+
+function sanitizeBioArtisan(artisan: any) {
+  const safeArtisan = sanitizePublicArtisan(artisan);
+  if (!safeArtisan) return null;
+  return {
+    ...safeArtisan,
+    bioLinks: Array.isArray(artisan.bioLinks)
+      ? artisan.bioLinks.filter((l: any) => isSafeHttpUrl(l?.url))
+      : [],
+    products: Array.isArray(artisan.products)
+      ? artisan.products.map((p: any) => sanitizePublicProduct(p))
+      : [],
+  };
+}
 
 const getArtisanBioBySlug = cache(async (rawSlug: string) => {
   let decodedSlug = rawSlug;
@@ -22,79 +69,41 @@ const getArtisanBioBySlug = cache(async (rawSlug: string) => {
       ],
       status: { in: ["APPROVED", "PENDING"] },
     },
-    include: {
-      user: {
-        select: { name: true, image: true },
-      },
-      bioLinks: {
-        orderBy: { order: "asc" },
-      },
-      products: {
-        where: { status: "APPROVED" },
-        include: {
-          reviews: { select: { rating: true } },
-          orderItems: {
-            where: {
-              order: {
-                status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
-              },
-            },
-            select: { id: true },
-          },
-        },
-        orderBy: [
-          { isFeatured: "desc" },
-          { createdAt: "desc" },
-        ],
-        take: 50,
-      },
-    },
+    include: BIO_INCLUDE,
   });
 
-  if (artisan) return artisan;
+  if (artisan) return sanitizeBioArtisan(artisan);
 
-  // Fallback match by user name slug
-  const users = await prisma.user.findMany({
+  // Lightweight fallback match by studio/user name slug without full-table relation scan
+  const candidates = await prisma.artisanProfile.findMany({
     where: {
-      role: "ARTISAN",
-      artisanProfile: {
-        status: { in: ["APPROVED", "PENDING"] },
-      },
+      status: { in: ["APPROVED", "PENDING"] },
     },
-    include: {
-      artisanProfile: {
-        include: {
-          user: { select: { name: true, image: true } },
-          bioLinks: { orderBy: { order: "asc" } },
-          products: {
-            where: { status: "APPROVED" },
-            include: {
-              reviews: { select: { rating: true } },
-              orderItems: {
-                where: {
-                  order: {
-                    status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] },
-                  },
-                },
-                select: { id: true },
-              },
-            },
-            orderBy: [
-              { isFeatured: "desc" },
-              { createdAt: "desc" },
-            ],
-            take: 50,
-          },
-        },
-      },
+    select: {
+      id: true,
+      studioName: true,
+      user: { select: { name: true } },
     },
   });
 
-  const matchingUser = users.find(
-    (u) => u.name?.toLowerCase().replace(/\s+/g, "-") === decodedSlug
-  );
+  const matchedCandidate = candidates.find((c) => {
+    const userSlug = c.user?.name ? slugify(c.user.name) : "";
+    const studioSlug = c.studioName ? slugify(c.studioName) : "";
+    return (
+      c.user?.name?.toLowerCase().replace(/\s+/g, "-") === decodedSlug ||
+      userSlug === decodedSlug ||
+      studioSlug === decodedSlug
+    );
+  });
 
-  return matchingUser?.artisanProfile || null;
+  if (!matchedCandidate) return null;
+
+  const matchedProfile = await prisma.artisanProfile.findUnique({
+    where: { id: matchedCandidate.id },
+    include: BIO_INCLUDE,
+  });
+
+  return matchedProfile ? sanitizeBioArtisan(matchedProfile) : null;
 });
 
 interface Props {
@@ -128,7 +137,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
   }
 
-  const name = artisan.studioName || artisan.user.name || "Artisan";
+  const name = artisan.studioName || artisan.user?.name || "Artisan";
   const bioDesc = artisan.bio || `Explore handcrafted creations and bio links for ${name} on Giftisan.`;
   
   const getAbsoluteUrl = (url: string | null) => {
@@ -140,11 +149,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImage = getAbsoluteUrl(artisan.avatar || artisan.bannerImage) || `${SITE_URL}/hero.webp`;
 
   return {
+    metadataBase: new URL(SITE_URL),
     title: `${name} | Giftisan Bio`,
     description: bioDesc.slice(0, 160),
     robots: isApproved ? { index: true, follow: true } : { index: false, follow: false },
     alternates: {
       canonical: `${SITE_URL}/${lang}/bio/${slug}`,
+      languages: {
+        "en-US": `${SITE_URL}/en/bio/${slug}`,
+        "ar-EG": `${SITE_URL}/ar/bio/${slug}`,
+        "x-default": `${SITE_URL}/en/bio/${slug}`,
+      },
     },
     openGraph: {
       title: `${name} | ${SITE_NAME} Studio Bio`,

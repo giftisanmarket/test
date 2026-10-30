@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 
 import { SITE_URL } from './constants';
+import { escapeHtml } from './security';
 
 // 1. Resend instance (Reserved EXCLUSIVELY for Auth & Security)
 const resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder");
@@ -106,7 +107,7 @@ const emailMeta = `
 
 /** Generate a hidden inbox preview snippet with zero-width spacers to prevent body content from bleeding into the preview. */
 const getPreheader = (text: string) =>
-  `<div style="display:none;max-height:0px;overflow:hidden;mso-hide:all;font-size:1px;color:#f5f3ee;line-height:1px;">${text}&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>`;
+  `<div style="display:none;max-height:0px;overflow:hidden;mso-hide:all;font-size:1px;color:#f5f3ee;line-height:1px;">${escapeHtml(text)}&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;</div>`;
 
 /** Bulletproof artisan card email header — table-based, 100% inlined */
 const getEmailHeader = (lang: 'ar' | 'en' = 'en') => {
@@ -373,8 +374,8 @@ const wrapEmail = (
 ) => {
   const style = options?.style || 'artisan';
   const isAr = lang === 'ar';
-  const senderName = options?.senderName || (isAr ? 'إدارة جيفتيزان' : 'Giftisan Management');
-  const senderEmail = options?.senderEmail || 'management@giftisan.com';
+  const senderName = escapeHtml(options?.senderName || (isAr ? 'إدارة جيفتيزان' : 'Giftisan Management'));
+  const senderEmail = escapeHtml(options?.senderEmail || 'management@giftisan.com');
   const preheader = options?.preheader || '';
 
   if (style === 'corporate') {
@@ -389,15 +390,16 @@ const wrapEmail = (
 
 export const sendWelcomeEmail = async (email: string, name: string, lang: 'ar' | 'en' = 'en') => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: WELCOME EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\n-----------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: WELCOME EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\n-----------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeName = escapeHtml(name);
   const subject = isAr ? 'مرحباً بك في دائرة جيفتيزان' : 'Welcome to the Circle | Giftisan';
 
   const arContent = `
-    <h1 style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 24px; font-weight: 800; margin: 0 0 16px 0; line-height: 1.3;">مرحباً بك في الدائرة، ${name}!</h1>
+    <h1 style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 24px; font-weight: 800; margin: 0 0 16px 0; line-height: 1.3;">مرحباً بك في الدائرة، ${safeName}!</h1>
     <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: #6b7280; line-height: 1.9; font-size: 15px; margin: 0 0 28px 0;">نتشرف بانضمامك إلى مجتمعنا من الحرفيين ومقتني المنتجات. &laquo;جيفتيزان&raquo; هو الملاذ الذي تلتقي فيه الحرفة الأصيلة بالروح والإبداع.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 28px 0;">
       <tr><td align="center">${getCtaButton(BASE_URL, 'اكتشف الخزائن', ACCENT_COLOR, 'ar')}</td></tr>
@@ -406,7 +408,7 @@ export const sendWelcomeEmail = async (email: string, name: string, lang: 'ar' |
   `;
 
   const enContent = `
-    <h1 style="font-family: Helvetica, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 24px; font-weight: 800; margin: 0 0 16px 0; line-height: 1.3;">Welcome to the Circle, ${name}!</h1>
+    <h1 style="font-family: Helvetica, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 24px; font-weight: 800; margin: 0 0 16px 0; line-height: 1.3;">Welcome to the Circle, ${safeName}!</h1>
     <p style="font-family: Helvetica, Arial, sans-serif; color: #6b7280; line-height: 1.8; font-size: 15px; margin: 0 0 28px 0;">We&rsquo;re honored to have you join our community of artisans and product hunters. Giftisan is a sanctum where authentic craft meets soul.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 28px 0;">
       <tr><td align="center">${getCtaButton(BASE_URL, 'Explore the Vault', ACCENT_COLOR, 'en')}</td></tr>
@@ -425,21 +427,23 @@ export const sendWelcomeEmail = async (email: string, name: string, lang: 'ar' |
 
 export const sendOrderNotification = async (artisanEmail: string, artisanName: string, orderId: string, totalAmount: number, lang: 'ar' | 'en' = 'en') => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: ORDER NOTIFICATION (${lang.toUpperCase()}) ---\nTarget: ${artisanEmail}\nOrder: ${orderId}\nAmount: EGP ${totalAmount}\n----------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: ORDER NOTIFICATION (${lang.toUpperCase()}) ---\nTarget: ${artisanEmail}\nOrder: ${orderId}\nAmount: EGP ${totalAmount}\n----------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeArtisanName = escapeHtml(artisanName);
+  const safeOrderId = escapeHtml(orderId);
   const subject = isAr ? `تنبيه مبيعة جديدة: تم طلب قطعة من متجرك! (#${orderId})` : `New Sale Alert: A product has been claimed! (#${orderId})`;
 
   const arContent = `
     <h1 style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: ${ACCENT_COLOR}; font-size: 24px; font-weight: 800; margin: 0 0 12px 0;">تنبيه مبيعة جديدة!</h1>
-    <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 24px 0; line-height: 1.8;">أهلاً ${artisanName}، لقد قام أحد مقتني المنتجات بشراء قطعة من متجرك الآن.</p>
+    <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 24px 0; line-height: 1.8;">أهلاً ${safeArtisanName}، لقد قام أحد مقتني المنتجات بشراء قطعة من متجرك الآن.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 24px;">
       <tr>
         <td style="background-color: #f9fafb; padding: 22px 24px; border-radius: 12px; border: 1px solid #f0ede8;">
           <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 4px 0; color: #9ca3af; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;">رقم الطلب</p>
-          <p style="font-family: monospace; margin: 0 0 18px 0; color: ${PRIMARY_COLOR}; font-size: 17px; font-weight: 700; word-break: break-all;">#${orderId}</p>
+          <p style="font-family: monospace; margin: 0 0 18px 0; color: ${PRIMARY_COLOR}; font-size: 17px; font-weight: 700; word-break: break-all;">#${safeOrderId}</p>
           <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 4px 0; color: #9ca3af; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;">أرباحك المحققة (0% عمولة للمنصة)</p>
           <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0; color: ${ACCENT_COLOR}; font-size: 26px; font-weight: 800;">${totalAmount.toLocaleString()} ج.م</p>
         </td>
@@ -453,12 +457,12 @@ export const sendOrderNotification = async (artisanEmail: string, artisanName: s
 
   const enContent = `
     <h1 style="font-family: Helvetica, Arial, sans-serif; color: ${ACCENT_COLOR}; font-size: 24px; font-weight: 800; margin: 0 0 12px 0;">New Sale Alert!</h1>
-    <p style="font-family: Helvetica, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 24px 0; line-height: 1.7;">Hi ${artisanName}, a collector has just claimed a product from your shop.</p>
+    <p style="font-family: Helvetica, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 24px 0; line-height: 1.7;">Hi ${safeArtisanName}, a collector has just claimed a product from your shop.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 24px;">
       <tr>
         <td style="background-color: #f9fafb; padding: 22px 24px; border-radius: 12px; border: 1px solid #f0ede8;">
           <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 4px 0; color: #9ca3af; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;">Order Reference</p>
-          <p style="font-family: monospace; margin: 0 0 18px 0; color: ${PRIMARY_COLOR}; font-size: 17px; font-weight: 700; word-break: break-all;">#${orderId}</p>
+          <p style="font-family: monospace; margin: 0 0 18px 0; color: ${PRIMARY_COLOR}; font-size: 17px; font-weight: 700; word-break: break-all;">#${safeOrderId}</p>
           <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 4px 0; color: #9ca3af; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;">Your Earnings (0% Platform Fee)</p>
           <p style="font-family: Helvetica, Arial, sans-serif; margin: 0; color: ${ACCENT_COLOR}; font-size: 26px; font-weight: 800;">EGP ${totalAmount.toLocaleString()}</p>
         </td>
@@ -481,24 +485,26 @@ export const sendOrderNotification = async (artisanEmail: string, artisanName: s
 
 export const sendMessageNotification = async (receiverEmail: string, receiverName: string, senderName: string, lang: 'ar' | 'en' = 'en') => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: MESSAGE NOTIFICATION (${lang.toUpperCase()}) ---\nTarget: ${receiverEmail}\nSender: ${senderName}\n------------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: MESSAGE NOTIFICATION (${lang.toUpperCase()}) ---\nTarget: ${receiverEmail}\nSender: ${senderName}\n------------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeReceiverName = escapeHtml(receiverName);
+  const safeSenderName = escapeHtml(senderName);
   const subject = isAr ? `رسالة جديدة من ${senderName} | جيفتيزان` : `New Dialogue from ${senderName} | Giftisan`;
 
   const arContent = `
-    <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 12px 0;">أهلاً ${receiverName}،</p>
-    <h2 style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 20px; font-weight: 800; margin: 0 0 28px 0; line-height: 1.5;">لديك رسالة تواصل جديدة من <strong>${senderName}</strong> بخصوص أحد المعروضات.</h2>
+    <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 12px 0;">أهلاً ${safeReceiverName}،</p>
+    <h2 style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 20px; font-weight: 800; margin: 0 0 28px 0; line-height: 1.5;">لديك رسالة تواصل جديدة من <strong>${safeSenderName}</strong> بخصوص أحد المعروضات.</h2>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 28px 0;">
       <tr><td align="center">${getCtaButton(`${BASE_URL}/profile/messages`, 'الرد على الرسالة', PRIMARY_COLOR, 'ar')}</td></tr>
     </table>
   `;
 
   const enContent = `
-    <p style="font-family: Helvetica, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 12px 0;">Hi ${receiverName},</p>
-    <h2 style="font-family: Helvetica, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 20px; font-weight: 800; margin: 0 0 28px 0; line-height: 1.5;"><strong>${senderName}</strong> has initiated a dialogue regarding a product.</h2>
+    <p style="font-family: Helvetica, Arial, sans-serif; color: #6b7280; font-size: 15px; margin: 0 0 12px 0;">Hi ${safeReceiverName},</p>
+    <h2 style="font-family: Helvetica, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 20px; font-weight: 800; margin: 0 0 28px 0; line-height: 1.5;"><strong>${safeSenderName}</strong> has initiated a dialogue regarding a product.</h2>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 28px 0;">
       <tr><td align="center">${getCtaButton(`${BASE_URL}/profile/messages`, 'Join Dialogue', PRIMARY_COLOR, 'en')}</td></tr>
     </table>
@@ -514,10 +520,10 @@ export const sendMessageNotification = async (receiverEmail: string, receiverNam
 };
 
 export const sendVerificationEmail = async (email: string, token: string, lang: 'ar' | 'en' = 'en') => {
-  const confirmLink = `${BASE_URL}/api/auth/verify-email?token=${token}`;
+  const confirmLink = `${BASE_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
 
   if (isDevOnly()) {
-    console.log("\n--- 📧 DEV: VERIFICATION EMAIL ---");
+    console.log("\n--- [MAIL] DEV: VERIFICATION EMAIL ---");
     console.log(`Target: ${email}`);
     console.log(`Link:   ${confirmLink}`);
     console.log("----------------------------------\n");
@@ -590,12 +596,18 @@ export const sendOrderStatusUpdateEmail = async (
   lang: 'ar' | 'en' = 'en'
 ) => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: ORDER STATUS UPDATE (${lang.toUpperCase()}) ---\nTarget: ${email}\nOrder: ${orderId}\nStatus: ${status}\nCarrier: ${carrier || 'None'}\nTracking: ${trackingNumber || 'None'}\n----------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: ORDER STATUS UPDATE (${lang.toUpperCase()}) ---\nTarget: ${email}\nOrder: ${orderId}\nStatus: ${status}\nCarrier: ${carrier || 'None'}\nTracking: ${trackingNumber || 'None'}\n----------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
   const isDelivered = status === 'DELIVERED';
+  const safeName = escapeHtml(name);
+  const safeOrderId = escapeHtml(orderId);
+  const safeStatus = escapeHtml(status);
+  const safeProductName = escapeHtml(productName);
+  const safeCarrier = carrier ? escapeHtml(carrier) : '';
+  const safeTracking = trackingNumber ? escapeHtml(trackingNumber) : '';
   const statusColors: Record<string, string> = {
     'PROCESSING': '#3b82f6',
     'SHIPPED': ACCENT_COLOR,
@@ -618,8 +630,8 @@ export const sendOrderStatusUpdateEmail = async (
   };
 
   const ctaLink = isDelivered && productSlug
-    ? `${BASE_URL}/${lang}/products/${productSlug}#reviews`
-    : `${BASE_URL}/${lang}/track/${orderId}`;
+    ? `${BASE_URL}/${lang}/products/${encodeURIComponent(productSlug)}#reviews`
+    : `${BASE_URL}/${lang}/track/${encodeURIComponent(orderId)}`;
 
   const subject = isAr
     ? isDelivered ? `وصلت قطعتك الفنية! شاركنا رأيك | جيفتيزان` : `تحديث لطلبك #${orderId}: ${statusTextAr[status] || status}`
@@ -627,23 +639,23 @@ export const sendOrderStatusUpdateEmail = async (
 
   const arContent = `
     <h1 style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 23px; font-weight: 800; margin: 0 0 14px 0;">${isDelivered ? 'وصلت قطعتك الفنية!' : 'تحديث مسار الطلب'}</h1>
-    <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: #6b7280; font-size: 15px; line-height: 1.8; margin: 0 0 22px 0;">أهلاً ${name}، نود إعلامك بأن طلبك لـ <strong>${productName}</strong> ${statusTextAr[status] || 'يتحرك في مساره'}.</p>
+    <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; color: #6b7280; font-size: 15px; line-height: 1.8; margin: 0 0 22px 0;">أهلاً ${safeName}، نود إعلامك بأن طلبك لـ <strong>${safeProductName}</strong> ${statusTextAr[status] || 'يتحرك في مساره'}.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 22px;">
       <tr>
         <td style="background-color: #f9fafb; padding: 22px 24px; border-radius: 12px; border: 1px solid #f0ede8; text-align: center;">
           <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 6px 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9ca3af;">الحالة الحالية</p>
           <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: ${statusColors[status] || PRIMARY_COLOR};">${status === 'PROCESSING' ? 'قيد التجهيز' : status === 'SHIPPED' ? 'تم الشحن' : status === 'DELIVERED' ? 'تم التوصيل' : 'ملغي'}</p>
-          <p style="font-family: monospace; margin: 0; font-size: 11px; font-weight: 700; color: #9ca3af; word-break: break-all;">رقم الطلب: #${orderId}</p>
+          <p style="font-family: monospace; margin: 0; font-size: 11px; font-weight: 700; color: #9ca3af; word-break: break-all;">رقم الطلب: #${safeOrderId}</p>
         </td>
       </tr>
     </table>
-    ${status === 'SHIPPED' && trackingNumber ? `
+    ${status === 'SHIPPED' && safeTracking ? `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 18px;">
         <tr>
           <td style="background-color: #f0fdf4; border-radius: 10px; border: 1px solid #bbf7d0; padding: 16px 20px;" dir="rtl">
             <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 6px 0; color: #166534; font-size: 13px; font-weight: 800;">بيانات الشحنة والتتبع</p>
-            <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 3px 0; color: #14532d; font-size: 12px;"><strong>شركة الشحن:</strong> ${carrier || 'الشحن المحلي السريع'}</p>
-            <p style="font-family: monospace; margin: 0; color: #14532d; font-size: 12px;"><strong>رقم التتبع:</strong> ${trackingNumber}</p>
+            <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 3px 0; color: #14532d; font-size: 12px;"><strong>شركة الشحن:</strong> ${safeCarrier || 'الشحن المحلي السريع'}</p>
+            <p style="font-family: monospace; margin: 0; color: #14532d; font-size: 12px;"><strong>رقم التتبع:</strong> ${safeTracking}</p>
           </td>
         </tr>
       </table>
@@ -656,23 +668,23 @@ export const sendOrderStatusUpdateEmail = async (
 
   const enContent = `
     <h1 style="font-family: Helvetica, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 23px; font-weight: 800; margin: 0 0 14px 0;">${isDelivered ? 'Your Product has Arrived' : 'Journey Update'}</h1>
-    <p style="font-family: Helvetica, Arial, sans-serif; color: #6b7280; font-size: 15px; line-height: 1.7; margin: 0 0 22px 0;">Hi ${name}, your order for <strong>${productName}</strong> ${statusTextEn[status] || 'is moving forward'}.</p>
+    <p style="font-family: Helvetica, Arial, sans-serif; color: #6b7280; font-size: 15px; line-height: 1.7; margin: 0 0 22px 0;">Hi ${safeName}, your order for <strong>${safeProductName}</strong> ${statusTextEn[status] || 'is moving forward'}.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 22px;">
       <tr>
         <td style="background-color: #f9fafb; padding: 22px 24px; border-radius: 12px; border: 1px solid #f0ede8; text-align: center;">
           <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 6px 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9ca3af;">Current Milestone</p>
-          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: ${statusColors[status] || PRIMARY_COLOR};">${status}</p>
-          <p style="font-family: monospace; margin: 0; font-size: 11px; font-weight: 700; color: #9ca3af; word-break: break-all;">Ref: #${orderId}</p>
+          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: ${statusColors[status] || PRIMARY_COLOR};">${safeStatus}</p>
+          <p style="font-family: monospace; margin: 0; font-size: 11px; font-weight: 700; color: #9ca3af; word-break: break-all;">Ref: #${safeOrderId}</p>
         </td>
       </tr>
     </table>
-    ${status === 'SHIPPED' && trackingNumber ? `
+    ${status === 'SHIPPED' && safeTracking ? `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 18px;">
         <tr>
           <td style="background-color: #f0fdf4; border-radius: 10px; border: 1px solid #bbf7d0; padding: 16px 20px;">
             <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 6px 0; color: #166534; font-size: 13px; font-weight: 800;">Shipment Information</p>
-            <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 3px 0; color: #14532d; font-size: 12px;"><strong>Carrier:</strong> ${carrier || 'Local Shipping Partner'}</p>
-            <p style="font-family: monospace; margin: 0; color: #14532d; font-size: 12px;"><strong>Tracking ID:</strong> ${trackingNumber}</p>
+            <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 3px 0; color: #14532d; font-size: 12px;"><strong>Carrier:</strong> ${safeCarrier || 'Local Shipping Partner'}</p>
+            <p style="font-family: monospace; margin: 0; color: #14532d; font-size: 12px;"><strong>Tracking ID:</strong> ${safeTracking}</p>
           </td>
         </tr>
       </table>
@@ -693,10 +705,10 @@ export const sendOrderStatusUpdateEmail = async (
 };
 
 export const sendPasswordResetEmail = async (email: string, token: string, lang: 'ar' | 'en' = 'en') => {
-  const resetLink = `${BASE_URL}/reset-password?token=${token}`;
+  const resetLink = `${BASE_URL}/reset-password?token=${encodeURIComponent(token)}`;
 
   if (isDevOnly()) {
-    console.log("\n--- 📧 DEV: PASSWORD RESET EMAIL ---");
+    console.log("\n--- [MAIL] DEV: PASSWORD RESET EMAIL ---");
     console.log(`Target: ${email}`);
     console.log(`Link:   ${resetLink}`);
     console.log("------------------------------------\n");
@@ -759,23 +771,27 @@ export const sendPasswordResetEmail = async (email: string, token: string, lang:
 
 export const sendInquiryNotification = async (name: string, email: string, message: string) => {
   if (isDevOnly()) {
-    console.log("\n--- 📧 DEV: NEW INQUIRY NOTIFICATION ---\nFrom:", name, "<", email, ">\nMessage:", message, "\n--------------------------------------\n");
+    console.log("\n--- [MAIL] DEV: NEW INQUIRY NOTIFICATION ---\nFrom:", name, "<", email, ">\nMessage:", message, "\n--------------------------------------\n");
     return { success: true };
   }
+
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safeMessage = escapeHtml(message).replace(/\r?\n/g, '<br />');
 
   const content = `
     <h1 style="font-family: Helvetica, Arial, sans-serif; color: ${PRIMARY_COLOR}; font-size: 20px; font-weight: 800; margin: 0 0 20px 0; text-align: center;">New Customer Inquiry</h1>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 24px;">
       <tr>
         <td style="background-color: #f9fafb; padding: 20px 22px; border-radius: 10px; border: 1px solid #f0ede8;">
-          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 8px 0; color: #4b5563; font-size: 13px;"><strong>Name:</strong> ${name}</p>
-          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 8px 0; color: #4b5563; font-size: 13px;"><strong>Email:</strong> ${email}</p>
-          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0; color: #4b5563; font-size: 13px; line-height: 1.7;"><strong>Message:</strong><br />${message}</p>
+          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 8px 0; color: #4b5563; font-size: 13px;"><strong>Name:</strong> ${safeName}</p>
+          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 8px 0; color: #4b5563; font-size: 13px;"><strong>Email:</strong> ${safeEmail}</p>
+          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0; color: #4b5563; font-size: 13px; line-height: 1.7;"><strong>Message:</strong><br />${safeMessage}</p>
         </td>
       </tr>
     </table>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-      <tr><td align="center">${getCtaButton(`mailto:${email}`, 'Reply to Customer', ACCENT_COLOR, 'en')}</td></tr>
+      <tr><td align="center">${getCtaButton(`mailto:${encodeURIComponent(email)}`, 'Reply to Customer', ACCENT_COLOR, 'en')}</td></tr>
     </table>
   `;
 
@@ -790,22 +806,23 @@ export const sendInquiryNotification = async (name: string, email: string, messa
 
 export const sendArtisanApprovalEmail = async (email: string, name: string, lang: 'ar' | 'en' = 'en') => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: ARTISAN APPROVAL EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\n--------------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: ARTISAN APPROVAL EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\n--------------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeName = escapeHtml(name);
   const subject = isAr 
     ? 'مبروك! تم اعتماد متجرك في جيفتيزان وأصبح متاحاً الآن'
     : 'Welcome to the Guild: Your Shop is Officially Live! | Giftisan';
 
   const arContent = `
     <h1 class="heading" style="color: ${ACCENT_COLOR}; font-size: 26px; margin-bottom: 18px;">مبروك! تم اعتماد متجرك</h1>
-    <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 25px;">أهلاً يا ${name}، لقد قام فريق التقييم بمراجعة متجرك والتأكد من استيفاء كافة بياناتك ومنتجاتك. يسعدنا جداً أن نرحب بك رسمياً في دائرة "جيفتيزان"! متجرك ومنتجاتك الآن متاحة للجمهور وجاهزة لاستقبال الطلبات من مقتني المنتجات.</p>
+    <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 25px;">أهلاً يا ${safeName}، لقد قام فريق التقييم بمراجعة متجرك والتأكد من استيفاء كافة بياناتك ومنتجاتك. يسعدنا جداً أن نرحب بك رسمياً في دائرة "جيفتيزان"! متجرك ومنتجاتك الآن متاحة للجمهور وجاهزة لاستقبال الطلبات من مقتني المنتجات.</p>
     
     <div style="background-color: #f0fdf4; padding: 22px; border-radius: 18px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
-      <p style="margin: 0; color: #166534; font-weight: 900; font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em;">✨ شارة الحرفي المؤسس 2026</p>
-      <p style="margin: 8px 0 0 0; color: #14532d; font-size: 14px; line-height: 1.8;">كشريك مبكر، تم منحك صفة **حرفي مؤسس**. استمتع بـ **0% عمولة للمنصة** واحتفظ بـ 100% من أرباحك طوال موسم 2026 بالكامل.</p>
+      <p style="margin: 0; color: #166534; font-weight: 900; font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em;">شارة الحرفي المؤسس 2026</p>
+      <p style="margin: 8px 0 0 0; color: #14532d; font-size: 14px; line-height: 1.8;">كشريك مبكر، تم منحك صفة <strong>حرفي مؤسس</strong>. استمتع بـ <strong>0% عمولة للمنصة</strong> واحتفظ بـ 100% من أرباحك طوال موسم 2026 بالكامل.</p>
     </div>
 
     <div style="background-color: #f9fafb; padding: 22px; border-radius: 18px; border: 1px solid #f3f4f6; margin-bottom: 25px;">
@@ -827,11 +844,11 @@ export const sendArtisanApprovalEmail = async (email: string, name: string, lang
 
   const enContent = `
     <h1 class="heading" style="color: ${ACCENT_COLOR}; font-size: 26px; margin-bottom: 18px;">Congratulations! Your Shop is Approved</h1>
-    <p style="color: #4b5563; font-size: 16px; line-height: 1.8; margin-bottom: 25px;">Hi ${name}, our curators have reviewed your shop and verified all your onboarding requirements. We're thrilled to officially welcome you to the Giftisan Guild! Your shop and handcrafted products are now live and visible to collectors across the marketplace.</p>
+    <p style="color: #4b5563; font-size: 16px; line-height: 1.8; margin-bottom: 25px;">Hi ${safeName}, our curators have reviewed your shop and verified all your onboarding requirements. We're thrilled to officially welcome you to the Giftisan Guild! Your shop and handcrafted products are now live and visible to collectors across the marketplace.</p>
     
     <div style="background-color: #f0fdf4; padding: 22px; border-radius: 18px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
-      <p style="margin: 0; color: #166534; font-weight: 900; font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em;">✨ 2026 Founding Member Status</p>
-      <p style="margin: 8px 0 0 0; color: #14532d; font-size: 14px; line-height: 1.6;">As an early partner, you've been granted **Founding Artisan** status. Enjoy **0% platform fees** and keep 100% of your earnings throughout the entire 2026 season.</p>
+      <p style="margin: 0; color: #166534; font-weight: 900; font-size: 15px; text-transform: uppercase; letter-spacing: 0.05em;">2026 Founding Member Status</p>
+      <p style="margin: 8px 0 0 0; color: #14532d; font-size: 14px; line-height: 1.6;">As an early partner, you've been granted <strong>Founding Artisan</strong> status. Enjoy <strong>0% platform fees</strong> and keep 100% of your earnings throughout the entire 2026 season.</p>
     </div>
 
     <div style="background-color: #f9fafb; padding: 22px; border-radius: 18px; border: 1px solid #f3f4f6; margin-bottom: 25px;">
@@ -862,14 +879,17 @@ export const sendArtisanApprovalEmail = async (email: string, name: string, lang
 
 export const sendArtisanOutreachEmail = async (email: string, name: string, product: string, subject: string, lang: 'ar' | 'en' = 'en') => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: OUTREACH EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\nProduct: ${product}\n------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: OUTREACH EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\nProduct: ${product}\n------------------------------\n`);
     return { success: true };
   }
 
+  const safeName = escapeHtml(name);
+  const safeProduct = escapeHtml(product);
+
   const arContent = `
-    <p style="color: ${PRIMARY_COLOR}; font-size: 20px; font-weight: bold; margin-bottom: 20px;">أهلاً يا ${name}،</p>
+    <p style="color: ${PRIMARY_COLOR}; font-size: 20px; font-weight: bold; margin-bottom: 20px;">أهلاً يا ${safeName}،</p>
     <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 18px;">
-      شفت شغل الـ <strong style="color: ${ACCENT_COLOR};">${product}</strong> بتاعك النهاردة، وبجد حاجة تشرف ومستواها عالي جداً. ده بالظبط نوع الفن اللي نفسنا نعرضه ونكبره في "جيفتيزان".
+      شفت شغل الـ <strong style="color: ${ACCENT_COLOR};">${safeProduct}</strong> بتاعك النهاردة، وبجد حاجة تشرف ومستواها عالي جداً. ده بالظبط نوع الفن اللي نفسنا نعرضه ونكبره في "جيفتيزان".
     </p>
     <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 18px;">
       إحنا بنأسس منصة حصرية قائمة على الدعوات الخاصة، معمول مخصوص عشان يريح "الحرفيين" والفنانين من دوشة المبيعات واللوجستيات. بمجرد انضمامك، بنوفرلك لوحة تحكم <strong>المتجر</strong> متكاملة تقدر من خلالها تعرض منتجاتك، تتابع أرباحك وتدير طلباتك بكل سهولة، بالإضافة لرسائل التواصل المباشر مع العملاء. والأهم إن النظام بيتولى إرسال كل إيميلات التأكيد أوتوماتيك، عشان تفضل "رايق" ومركز بس في فنك ومساحتك الإبداعية.
@@ -894,9 +914,9 @@ export const sendArtisanOutreachEmail = async (email: string, name: string, prod
   `;
 
   const enContent = `
-    <p style="color: ${PRIMARY_COLOR}; font-size: 19px; font-weight: bold; margin-bottom: 20px;">Hello ${name},</p>
+    <p style="color: ${PRIMARY_COLOR}; font-size: 19px; font-weight: bold; margin-bottom: 20px;">Hello ${safeName},</p>
     <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 18px;">
-      I came across your work on <strong style="color: ${ACCENT_COLOR};">${product}</strong> today, and I have to say — it's genuinely impressive. It's exactly the kind of craft we want to celebrate and showcase on <strong>Giftisan</strong>.
+      I came across your work on <strong style="color: ${ACCENT_COLOR};">${safeProduct}</strong> today, and I have to say — it's genuinely impressive. It's exactly the kind of craft we want to celebrate and showcase on <strong>Giftisan</strong>.
     </p>
     <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 18px;">
       We're building an invite-only platform designed specifically to free artisans and creators from the noise of selling, logistics, and marketing. Once you join, we give you a fully-equipped <strong>Shop Dashboard</strong> where you can list your products, track your earnings, manage orders effortlessly, and message customers directly — while our system handles all confirmation emails automatically.
@@ -947,7 +967,7 @@ export const sendCustomEmail = async (
   const style = options?.templateStyle || 'corporate';
 
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: CUSTOM EMAIL [${style.toUpperCase()}] (${dir.toUpperCase()}) ---\nFrom: ${from}\nReply-To: ${replyTo}\nTarget: ${to}\nSubject: ${subject}\n------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: CUSTOM EMAIL [${style.toUpperCase()}] (${dir.toUpperCase()}) ---\nFrom: ${from}\nReply-To: ${replyTo}\nTarget: ${to}\nSubject: ${subject}\n------------------------------\n`);
     return { success: true };
   }
 
@@ -979,12 +999,15 @@ export const sendProductStatusUpdateEmail = async (
   lang: 'ar' | 'en' = 'en'
 ) => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: PRODUCT STATUS UPDATE (${lang.toUpperCase()}) ---\nTarget: ${email}\nProduct: ${productName}\nStatus: ${status}\nReason: ${reason || 'N/A'}\n-------------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: PRODUCT STATUS UPDATE (${lang.toUpperCase()}) ---\nTarget: ${email}\nProduct: ${productName}\nStatus: ${status}\nReason: ${reason || 'N/A'}\n-------------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
   const isApproved = status === "APPROVED";
+  const safeName = escapeHtml(name);
+  const safeProductName = escapeHtml(productName);
+  const safeReason = reason ? escapeHtml(reason).replace(/\r?\n/g, '<br/>') : '';
   const subject = isAr
     ? isApproved ? `مبروك! تم اعتماد منتجك "${productName}" وهو الآن متاح للجميع` : `تحديث تقييم لمنتجك "${productName}"`
     : isApproved ? `Product Unveiled: ${productName} is now live! | Giftisan` : `Curator Update: Status changed for ${productName}`;
@@ -994,12 +1017,12 @@ export const sendProductStatusUpdateEmail = async (
       ${isApproved ? 'تمت الموافقة على منتجك!' : 'تحديث حالة المنتج'}
     </h1>
     <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 25px;">
-      أهلاً يا ${name}، 
+      أهلاً يا ${safeName}، 
       ${isApproved
-        ? `خبر رائع! لقد وافق فريق التقييم على <strong>${productName}</strong>. منتجك الآن معروض في السوق ومتاح لجميع مقتني المنتجات.`
+        ? `خبر رائع! لقد وافق فريق التقييم على <strong>${safeProductName}</strong>. منتجك الآن معروض في السوق ومتاح لجميع مقتني المنتجات.`
         : status === "REJECTED"
-          ? `لقد راجع فريق التقييم <strong>${productName}</strong> وتقرر عدم عرضه في الوقت الحالي.${reason ? `<br/><br/><strong>ملاحظات المنسقين:</strong><br/>${reason}` : ' يرجى مراجعة معايير الجودة أو التواصل مع الدعم لمزيد من التفاصيل.'}`
-          : `تمت إعادة <strong>${productName}</strong> إلى قائمة المراجعة. سنقوم بإخطارك فور تحديث الحالة.`
+          ? `لقد راجع فريق التقييم <strong>${safeProductName}</strong> وتقرر عدم عرضه في الوقت الحالي.${safeReason ? `<br/><br/><strong>ملاحظات المنسقين:</strong><br/>${safeReason}` : ' يرجى مراجعة معايير الجودة أو التواصل مع الدعم لمزيد من التفاصيل.'}`
+          : `تمت إعادة <strong>${safeProductName}</strong> إلى قائمة المراجعة. سنقوم بإخطارك فور تحديث الحالة.`
       }
     </p>
 
@@ -1015,12 +1038,12 @@ export const sendProductStatusUpdateEmail = async (
       ${isApproved ? 'Product Approved!' : 'Product Status Update'}
     </h1>
     <p style="color: #4b5563; font-size: 16px; line-height: 1.8; margin-bottom: 25px;">
-      Hi ${name}, 
+      Hi ${safeName}, 
       ${isApproved
-        ? `Great news! Our curators have approved <strong>${productName}</strong>. It is now visible to all collectors and ready to be claimed.`
+        ? `Great news! Our curators have approved <strong>${safeProductName}</strong>. It is now visible to all collectors and ready to be claimed.`
         : status === "REJECTED"
-          ? `Our curators have reviewed <strong>${productName}</strong> and decided not to list it at this time.${reason ? `<br/><br/><strong>Feedback from Curators:</strong><br/>${reason}` : ' Please review our quality guidelines or contact support for more details.'}`
-          : `<strong>${productName}</strong> has been moved back to the review queue. We will notify you once the status changes.`
+          ? `Our curators have reviewed <strong>${safeProductName}</strong> and decided not to list it at this time.${safeReason ? `<br/><br/><strong>Feedback from Curators:</strong><br/>${safeReason}` : ' Please review our quality guidelines or contact support for more details.'}`
+          : `<strong>${safeProductName}</strong> has been moved back to the review queue. We will notify you once the status changes.`
       }
     </p>
 
@@ -1042,18 +1065,22 @@ export const sendProductStatusUpdateEmail = async (
 
 export const sendPayoutRequestEmail = async (artisanName: string, amount: number, method: string, address: string) => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: PAYOUT REQUEST SUBMITTED ---\nArtisan: ${artisanName}\nAmount: ${amount} EGP\nMethod: ${method}\nAddress: ${address}\n---------------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: PAYOUT REQUEST SUBMITTED ---\nArtisan: ${artisanName}\nAmount: ${amount} EGP\nMethod: ${method}\nAddress: ${address}\n---------------------------------------\n`);
     return { success: true };
   }
+
+  const safeArtisanName = escapeHtml(artisanName);
+  const safeMethod = escapeHtml(method);
+  const safeAddress = escapeHtml(address);
 
   const content = `
     <h1 class="heading" style="color: ${PRIMARY_COLOR}; font-size: 22px; margin-bottom: 20px; text-align: center;">New Withdrawal Request</h1>
     
     <div style="background-color: #f9fafb; padding: 22px; border-radius: 18px; margin-bottom: 25px; border: 1px solid #f3f4f6;">
-      <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;"><strong>Artisan:</strong> ${artisanName}</p>
+      <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;"><strong>Artisan:</strong> ${safeArtisanName}</p>
       <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;"><strong>Amount Requested:</strong> <strong style="color: ${ACCENT_COLOR}; font-size: 18px;">${amount.toFixed(2)} EGP</strong></p>
-      <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;"><strong>Method:</strong> ${method}</p>
-      <p style="margin: 0; color: #4b5563; font-size: 14px; font-family: monospace;"><strong>Address/Account:</strong> ${address}</p>
+      <p style="margin: 0 0 10px 0; color: #4b5563; font-size: 14px;"><strong>Method:</strong> ${safeMethod}</p>
+      <p style="margin: 0; color: #4b5563; font-size: 14px; font-family: monospace;"><strong>Address/Account:</strong> ${safeAddress}</p>
     </div>
 
     <div style="text-align: center;">
@@ -1072,24 +1099,27 @@ export const sendPayoutRequestEmail = async (artisanName: string, amount: number
 
 export const sendPayoutApprovedEmail = async (email: string, name: string, amount: number, method: string, address: string, lang: 'ar' | 'en' = 'en') => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: PAYOUT APPROVED EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\nAmount: ${amount} EGP\n--------------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: PAYOUT APPROVED EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\nAmount: ${amount} EGP\n--------------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeName = escapeHtml(name);
+  const safeMethod = escapeHtml(method);
+  const safeAddress = escapeHtml(address);
   const subject = isAr 
     ? `تم تحويل مستحقاتك المالية بنجاح بقيمة ${amount.toFixed(2)} ج.م!`
     : `Payout Transferred: ${amount.toFixed(2)} EGP has been successfully sent! | Giftisan`;
 
   const arContent = `
     <h1 class="heading" style="color: #10b981; font-size: 24px; margin-bottom: 18px;">تم تحويل مستحقاتك بنجاح!</h1>
-    <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 25px;">أهلاً يا ${name}، لقد قام فريق الحسابات لدينا بمعالجة طلب السحب الخاص بك وتحويل المستحقات المالية بنجاح.</p>
+    <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 25px;">أهلاً يا ${safeName}، لقد قام فريق الحسابات لدينا بمعالجة طلب السحب الخاص بك وتحويل المستحقات المالية بنجاح.</p>
     
     <div style="background-color: #f0fdf4; padding: 22px; border-radius: 18px; border: 1px solid #bbf7d0; text-align: right; margin-bottom: 25px;">
       <p style="margin: 0 0 10px 0; color: #166534; font-size: 14px; font-weight: bold;">ملخص عملية التحويل:</p>
       <p style="margin: 0 0 6px 0; color: #14532d; font-size: 13px;"><strong>المبلغ المحول:</strong> <strong style="color: #166534; font-size: 16px;">${amount.toFixed(2)} جنيه مصري</strong></p>
-      <p style="margin: 0 0 6px 0; color: #14532d; font-size: 13px;"><strong>وسيلة التحويل:</strong> ${method === 'INSTAPAY' ? 'إنستا باي (InstaPay)' : method === 'VODAFONE_CASH' ? 'فودافون كاش' : 'تحويل بنكي IBAN'}</p>
-      <p style="margin: 0; color: #14532d; font-size: 13px; font-family: monospace;"><strong>إلى حساب:</strong> ${address}</p>
+      <p style="margin: 0 0 6px 0; color: #14532d; font-size: 13px;"><strong>وسيلة التحويل:</strong> ${safeMethod === 'INSTAPAY' ? 'إنستا باي (InstaPay)' : safeMethod === 'VODAFONE_CASH' ? 'فودافون كاش' : 'تحويل بنكي IBAN'}</p>
+      <p style="margin: 0; color: #14532d; font-size: 13px; font-family: monospace;"><strong>إلى حساب:</strong> ${safeAddress}</p>
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
@@ -1099,13 +1129,13 @@ export const sendPayoutApprovedEmail = async (email: string, name: string, amoun
 
   const enContent = `
     <h1 class="heading" style="color: #10b981; font-size: 24px; margin-bottom: 18px;">Payout Transferred Successfully!</h1>
-    <p style="color: #4b5563; font-size: 16px; line-height: 1.8; margin-bottom: 25px;">Hi ${name}, our accounting team has processed your withdrawal request and successfully transferred your funds.</p>
+    <p style="color: #4b5563; font-size: 16px; line-height: 1.8; margin-bottom: 25px;">Hi ${safeName}, our accounting team has processed your withdrawal request and successfully transferred your funds.</p>
     
     <div style="background-color: #f0fdf4; padding: 22px; border-radius: 18px; border: 1px solid #bbf7d0; text-align: left; margin-bottom: 25px;">
       <p style="margin: 0 0 10px 0; color: #166534; font-size: 14px; font-weight: bold;">Payout Summary:</p>
       <p style="margin: 0 0 6px 0; color: #14532d; font-size: 13px;"><strong>Amount:</strong> <strong style="color: #166534; font-size: 16px;">${amount.toFixed(2)} EGP</strong></p>
-      <p style="margin: 0 0 6px 0; color: #14532d; font-size: 13px;"><strong>Channel:</strong> ${method}</p>
-      <p style="margin: 0; color: #14532d; font-size: 13px; font-family: monospace;"><strong>To Account:</strong> ${address}</p>
+      <p style="margin: 0 0 6px 0; color: #14532d; font-size: 13px;"><strong>Channel:</strong> ${safeMethod}</p>
+      <p style="margin: 0; color: #14532d; font-size: 13px; font-family: monospace;"><strong>To Account:</strong> ${safeAddress}</p>
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
@@ -1124,21 +1154,23 @@ export const sendPayoutApprovedEmail = async (email: string, name: string, amoun
 
 export const sendPayoutDeclinedEmail = async (email: string, name: string, amount: number, reason: string, lang: 'ar' | 'en' = 'en') => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: PAYOUT DECLINED EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\nAmount: ${amount} EGP\nReason: ${reason}\n--------------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: PAYOUT DECLINED EMAIL (${lang.toUpperCase()}) ---\nTarget: ${email}\nName: ${name}\nAmount: ${amount} EGP\nReason: ${reason}\n--------------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeName = escapeHtml(name);
+  const safeReason = escapeHtml(reason).replace(/\r?\n/g, '<br/>');
   const subject = isAr 
     ? `تحديث سحب المستحقات: تم إلغاء طلب السحب وإرجاع المبلغ للرصيد`
     : `Fulfillment Update: Withdrawal Request declined | Giftisan`;
 
   const arContent = `
     <h1 class="heading" style="color: #ef4444; font-size: 24px; margin-bottom: 18px;">تم إلغاء طلب سحب المستحقات</h1>
-    <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 20px;">أهلاً يا ${name}، تم إلغاء طلب السحب الخاص بك بقيمة <strong>${amount.toFixed(2)} جنيه مصري</strong> وإعادة كامل المبلغ فوراً لرصيدك القابل للسحب في لوحة التحكم.</p>
+    <p style="color: #4b5563; font-size: 16px; line-height: 2; margin-bottom: 20px;">أهلاً يا ${safeName}، تم إلغاء طلب السحب الخاص بك بقيمة <strong>${amount.toFixed(2)} جنيه مصري</strong> وإعادة كامل المبلغ فوراً لرصيدك القابل للسحب في لوحة التحكم.</p>
     
     <div style="background-color: #fef2f2; padding: 20px; border-radius: 18px; border: 1px solid #fecaca; text-align: right; margin-bottom: 25px;">
-      <p style="margin: 0; color: #991b1b; font-size: 13px;"><strong>سبب الإلغاء والإرجاع:</strong><br/>${reason}</p>
+      <p style="margin: 0; color: #991b1b; font-size: 13px;"><strong>سبب الإلغاء والإرجاع:</strong><br/>${safeReason}</p>
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
@@ -1148,10 +1180,10 @@ export const sendPayoutDeclinedEmail = async (email: string, name: string, amoun
 
   const enContent = `
     <h1 class="heading" style="color: #ef4444; font-size: 24px; margin-bottom: 18px;">Withdrawal Request Declined</h1>
-    <p style="color: #4b5563; font-size: 16px; line-height: 1.8; margin-bottom: 20px;">Hi ${name}, your payout request for <strong>${amount.toFixed(2)} EGP</strong> was declined and the funds have been fully refunded back to your Withdrawable balance.</p>
+    <p style="color: #4b5563; font-size: 16px; line-height: 1.8; margin-bottom: 20px;">Hi ${safeName}, your payout request for <strong>${amount.toFixed(2)} EGP</strong> was declined and the funds have been fully refunded back to your Withdrawable balance.</p>
     
     <div style="background-color: #fef2f2; padding: 20px; border-radius: 18px; border: 1px solid #fecaca; text-align: left; margin-bottom: 25px;">
-      <p style="margin: 0; color: #991b1b; font-size: 13px;"><strong>Reason for Cancellation:</strong><br/>${reason}</p>
+      <p style="margin: 0; color: #991b1b; font-size: 13px;"><strong>Reason for Cancellation:</strong><br/>${safeReason}</p>
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
@@ -1178,42 +1210,45 @@ export const sendBuyerOrderReceiptEmail = async (
   lang: 'ar' | 'en' = 'en'
 ) => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: BUYER ORDER RECEIPT (${lang.toUpperCase()}) ---\nTarget: ${email}\nOrder: ${orderId}\nTotal: ${totalAmount} EGP\n--------------------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: BUYER ORDER RECEIPT (${lang.toUpperCase()}) ---\nTarget: ${email}\nOrder: ${orderId}\nTotal: ${totalAmount} EGP\n--------------------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeCustomerName = escapeHtml(customerName);
+  const safeOrderId = escapeHtml(orderId);
+  const safeShippingCity = shippingCity ? escapeHtml(shippingCity) : '';
   const subject = isAr
     ? `تم تأكيد طلبك بنجاح (#${orderId}) | شكراً لدعمك الحرفيين`
     : `Order Confirmed: #${orderId} | Thank you for supporting authentic craft`;
 
   const itemsHtmlAr = items.map(item => `
     <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
-      <span style="color: #1a2c2c; font-weight: bold;">${item.name} <span style="color: #9ca3af; font-weight: normal;">(×${item.quantity})</span></span>
+      <span style="color: #1a2c2c; font-weight: bold;">${escapeHtml(item.name)} <span style="color: #9ca3af; font-weight: normal;">(×${item.quantity})</span></span>
       <span style="color: #1a2c2c; font-weight: bold;">${(item.price * item.quantity).toLocaleString()} ج.م</span>
     </div>
   `).join('');
 
   const itemsHtmlEn = items.map(item => `
     <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
-      <span style="color: #1a2c2c; font-weight: bold;">${item.name} <span style="color: #9ca3af; font-weight: normal;">(×${item.quantity})</span></span>
+      <span style="color: #1a2c2c; font-weight: bold;">${escapeHtml(item.name)} <span style="color: #9ca3af; font-weight: normal;">(×${item.quantity})</span></span>
       <span style="color: #1a2c2c; font-weight: bold;">EGP ${(item.price * item.quantity).toLocaleString()}</span>
     </div>
   `).join('');
 
   const arContent = `
     <h1 class="heading" style="color: ${ACCENT_COLOR}; font-size: 24px; margin-bottom: 12px;">تم تأكيد طلبك بنجاح!</h1>
-    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 25px;">أهلاً ${customerName}، يسعدنا إعلامك بأنه تم تأكيد واستلام طلبك بنجاح. الحرفيون يستعدون لتجهيز قطعك الفنية بكل حب وإتقان.</p>
+    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 25px;">أهلاً ${safeCustomerName}، يسعدنا إعلامك بأنه تم تأكيد واستلام طلبك بنجاح. الحرفيون يستعدون لتجهيز قطعك الفنية بكل حب وإتقان.</p>
     
     <div style="background-color: #f9fafb; padding: 22px; border-radius: 18px; border: 1px solid #f3f4f6; margin-bottom: 25px;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">رقم الطلب</span>
-        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${orderId}</span>
+        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${safeOrderId}</span>
       </div>
-      ${shippingCity ? `
+      ${safeShippingCity ? `
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">مدينة التوصيل</span>
-          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${shippingCity}</span>
+          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${safeShippingCity}</span>
         </div>
       ` : ''}
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 12px 0;" />
@@ -1227,23 +1262,23 @@ export const sendBuyerOrderReceiptEmail = async (
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="${BASE_URL}/${lang}/track/${orderId}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">تتبع مسار الطلب لحظة بلحظة</a>
+      <a href="${BASE_URL}/${lang}/track/${encodeURIComponent(orderId)}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">تتبع مسار الطلب لحظة بلحظة</a>
     </div>
   `;
 
   const enContent = `
     <h1 class="heading" style="color: ${ACCENT_COLOR}; font-size: 24px; margin-bottom: 12px;">Order Confirmed!</h1>
-    <p style="color: #4b5563; font-size: 15px; line-height: 1.7; margin-bottom: 25px;">Hi ${customerName}, your order has been received and confirmed. Our artisans are now preparing your handcrafted products with care and mastery.</p>
+    <p style="color: #4b5563; font-size: 15px; line-height: 1.7; margin-bottom: 25px;">Hi ${safeCustomerName}, your order has been received and confirmed. Our artisans are now preparing your handcrafted products with care and mastery.</p>
     
     <div style="background-color: #f9fafb; padding: 22px; border-radius: 18px; border: 1px solid #f3f4f6; margin-bottom: 25px;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.1em;">Order Reference</span>
-        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${orderId}</span>
+        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${safeOrderId}</span>
       </div>
-      ${shippingCity ? `
+      ${safeShippingCity ? `
         <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
           <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">Delivery City</span>
-          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${shippingCity}</span>
+          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${safeShippingCity}</span>
         </div>
       ` : ''}
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 12px 0;" />
@@ -1257,7 +1292,7 @@ export const sendBuyerOrderReceiptEmail = async (
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-      <a href="${BASE_URL}/${lang}/track/${orderId}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">Track Order Live</a>
+      <a href="${BASE_URL}/${lang}/track/${encodeURIComponent(orderId)}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 18px 40px; text-decoration: none; border-radius: 16px; font-weight: 800; font-size: 14px; display: inline-block;">Track Order Live</a>
     </div>
   `;
 
@@ -1290,35 +1325,40 @@ export const sendRefundRequestSubmittedEmail = async ({
   lang?: 'ar' | 'en';
 }) => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: REFUND CLAIM SUBMITTED (${lang.toUpperCase()}) ---\nTarget: ${email}\nOrder: ${orderId}\nTicket: ${ticketId}\n-----------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: REFUND CLAIM SUBMITTED (${lang.toUpperCase()}) ---\nTarget: ${email}\nOrder: ${orderId}\nTicket: ${ticketId}\n-----------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
+  const safeCustomerName = escapeHtml(customerName);
+  const safeOrderId = escapeHtml(orderId);
+  const safeTicketId = escapeHtml(ticketId);
+  const safeProductName = productName ? escapeHtml(productName) : '';
+  const safeReason = escapeHtml(reason);
   const subject = isAr 
     ? `تم استلام طلب الاسترجاع / الشكوى الخاص بك (#${orderId}) | Giftisan`
     : `Refund / Dispute Claim Received (#${orderId}) | Giftisan Support`;
 
   const arContent = `
-    <h1 class="heading" style="color: ${PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">تم استلام طلبك، ${customerName}</h1>
+    <h1 class="heading" style="color: ${PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">تم استلام طلبك، ${safeCustomerName}</h1>
     <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
-      نؤكد لك استلام طلب الاسترجاع / الإبلاغ عن مشكلة بخصوص طلبك رقم <strong>#${orderId}</strong>. يقوم فريق ضمان الجودة ومتابعة العملاء بمراجعة تفاصيل المشكلة والصور المرفقة لضمان حقك وحل الأمر بأسرع وقت.
+      نؤكد لك استلام طلب الاسترجاع / الإبلاغ عن مشكلة بخصوص طلبك رقم <strong>#${safeOrderId}</strong>. يقوم فريق ضمان الجودة ومتابعة العملاء بمراجعة تفاصيل المشكلة والصور المرفقة لضمان حقك وحل الأمر بأسرع وقت.
     </p>
 
     <div style="background-color: #f9fafb; padding: 20px; border-radius: 16px; border: 1px solid #f3f4f6; margin-bottom: 25px;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold; text-transform: uppercase;">رقم الشكوى / التذكرة</span>
-        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${ticketId}</span>
+        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${safeTicketId}</span>
       </div>
-      ${productName ? `
+      ${safeProductName ? `
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
           <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">المنتج</span>
-          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${productName}</span>
+          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${safeProductName}</span>
         </div>
       ` : ''}
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">سبب الطلب</span>
-        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${reason}</span>
+        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${safeReason}</span>
       </div>
       <div style="display: flex; justify-content: space-between;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">الإجراء المفضل</span>
@@ -1336,25 +1376,25 @@ export const sendRefundRequestSubmittedEmail = async ({
   `;
 
   const enContent = `
-    <h1 class="heading" style="color: ${PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">Claim Received, ${customerName}</h1>
+    <h1 class="heading" style="color: ${PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">Claim Received, ${safeCustomerName}</h1>
     <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
-      We have received your refund/dispute claim for order <strong>#${orderId}</strong>. Our customer assurance and mediation team is currently reviewing your submission and photo evidence.
+      We have received your refund/dispute claim for order <strong>#${safeOrderId}</strong>. Our customer assurance and mediation team is currently reviewing your submission and photo evidence.
     </p>
 
     <div style="background-color: #f9fafb; padding: 20px; border-radius: 16px; border: 1px solid #f3f4f6; margin-bottom: 25px;">
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold; text-transform: uppercase;">Ticket Reference</span>
-        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${ticketId}</span>
+        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold; font-family: monospace; word-break: break-all;">#${safeTicketId}</span>
       </div>
-      ${productName ? `
+      ${safeProductName ? `
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
           <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">Product</span>
-          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${productName}</span>
+          <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${safeProductName}</span>
         </div>
       ` : ''}
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">Reason</span>
-        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${reason}</span>
+        <span style="color: #1a2c2c; font-size: 13px; font-weight: bold;">${safeReason}</span>
       </div>
       <div style="display: flex; justify-content: space-between;">
         <span style="color: #9ca3af; font-size: 11px; font-weight: bold;">Preferred Action</span>
@@ -1398,13 +1438,16 @@ export const sendRefundResolvedEmail = async ({
   lang?: 'ar' | 'en';
 }) => {
   if (isDevOnly()) {
-    console.log(`\n--- 📧 DEV: REFUND RESOLVED (${lang.toUpperCase()}) ---\nTarget: ${email}\nStatus: ${status}\n-----------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: REFUND RESOLVED (${lang.toUpperCase()}) ---\nTarget: ${email}\nStatus: ${status}\n-----------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
   const isApproved = status === 'APPROVED';
   const isReplacement = status === 'REPLACEMENT_ISSUED';
+  const safeCustomerName = escapeHtml(customerName);
+  const safeOrderId = escapeHtml(orderId);
+  const safeAdminNote = adminNote ? escapeHtml(adminNote).replace(/\r?\n/g, '<br/>') : '';
 
   const subject = isAr
     ? isApproved
@@ -1423,7 +1466,7 @@ export const sendRefundResolvedEmail = async ({
       ${isApproved ? 'تمت الموافقة على طلب الاسترداد' : isReplacement ? 'تمت الموافقة على إرسال قطعة بديلة' : 'تحديث بخصوص طلبك'}
     </h1>
     <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
-      مرحباً ${customerName}، تمت مراجعة مطالبتك بخصوص الطلب <strong>#${orderId}</strong> من قِبل إدارة جيفتيزان.
+      مرحباً ${safeCustomerName}، تمت مراجعة مطالبتك بخصوص الطلب <strong>#${safeOrderId}</strong> من قِبل إدارة جيفتيزان.
     </p>
 
     ${isApproved ? `
@@ -1444,14 +1487,14 @@ export const sendRefundResolvedEmail = async ({
       <div style="background-color: #fef2f2; padding: 20px; border-radius: 16px; border: 1px solid #fecaca; margin-bottom: 25px;">
         <p style="color: #991b1b; font-size: 14px; font-weight: bold; margin-bottom: 8px;">لم نتمكن من قبول المطالبة</p>
         <p style="color: #b91c1c; font-size: 13px; margin: 0;">
-          ${adminNote || 'بعد فحص تفاصيل وصور المنتج، تعذر قبول طلب الاسترداد وفقاً لسياسة الإرجاع للمنتجات المصنوعة خصيصاً.'}
+          ${safeAdminNote || 'بعد فحص تفاصيل وصور المنتج، تعذر قبول طلب الاسترداد وفقاً لسياسة الإرجاع للمنتجات المصنوعة خصيصاً.'}
         </p>
       </div>
     `}
 
-    ${adminNote && isApproved ? `
+    ${safeAdminNote && isApproved ? `
       <p style="color: #6b7280; font-size: 13px; font-style: italic; margin-bottom: 25px;">
-        ملاحظة من الدعم: "${adminNote}"
+        ملاحظة من الدعم: "${safeAdminNote}"
       </p>
     ` : ''}
 
@@ -1465,7 +1508,7 @@ export const sendRefundResolvedEmail = async ({
       ${isApproved ? 'Refund Claim Approved' : isReplacement ? 'Replacement Approved' : 'Claim Decision Update'}
     </h1>
     <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
-      Hi ${customerName}, your claim for order <strong>#${orderId}</strong> has been reviewed by Giftisan support.
+      Hi ${safeCustomerName}, your claim for order <strong>#${safeOrderId}</strong> has been reviewed by Giftisan support.
     </p>
 
     ${isApproved ? `
@@ -1486,14 +1529,14 @@ export const sendRefundResolvedEmail = async ({
       <div style="background-color: #fef2f2; padding: 20px; border-radius: 16px; border: 1px solid #fecaca; margin-bottom: 25px;">
         <p style="color: #991b1b; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Claim Declined</p>
         <p style="color: #b91c1c; font-size: 13px; margin: 0;">
-          ${adminNote || 'Following thorough examination of the photos and order specifications, the claim could not be approved under our bespoke product policy.'}
+          ${safeAdminNote || 'Following thorough examination of the photos and order specifications, the claim could not be approved under our bespoke product policy.'}
         </p>
       </div>
     `}
 
-    ${adminNote && isApproved ? `
+    ${safeAdminNote && isApproved ? `
       <p style="color: #6b7280; font-size: 13px; font-style: italic; margin-bottom: 25px;">
-        Support note: "${adminNote}"
+        Support note: "${safeAdminNote}"
       </p>
     ` : ''}
 

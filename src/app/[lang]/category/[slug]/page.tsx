@@ -17,6 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const ogImage = `${SITE_URL}/images/categories/${slug}.webp`;
 
   return {
+    metadataBase: new URL(SITE_URL),
     title,
     description,
     keywords: [title, categoryName, lang === 'ar' ? "هدايا مصرية" : "Egyptian Handmade", "Giftisan"],
@@ -79,7 +80,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    "itemListElement": products.map((p, i) => ({
+    "itemListElement": products.map((p: any, i) => ({
       "@type": "ListItem",
       "position": i + 1,
       "url": `${SITE_URL}/${lang}/products/${p.slug || p.id}`

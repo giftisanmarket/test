@@ -37,9 +37,10 @@ import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 import { retryPaymentAction, cancelPendingOrderAction, submitRefundRequestAction } from "@/lib/actions";
 import { useParams } from "next/navigation";
-import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import dynamic from "next/dynamic";
+const ConfirmationModal = dynamic(() => import("@/components/ui/confirmation-modal").then((mod) => mod.ConfirmationModal), { ssr: false });
 import { toast } from "react-hot-toast";
-import { NativeProfileView } from "@/components/native/native-profile-view";
+const NativeProfileView = dynamic(() => import("@/components/native/native-profile-view").then((mod) => mod.NativeProfileView), { ssr: false });
 
 interface ProfileClientProps {
   user: any;

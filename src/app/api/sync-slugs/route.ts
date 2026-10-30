@@ -1,22 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/utils";
-import { NextResponse } from "next/server";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { generateUniqueProductSlug } from "@/lib/actions";
+import { safeCompareSecrets } from "@/lib/security";
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Authorization Guard (CRON_SECRET or Admin session)
     const authHeader = request.headers.get("authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
     const cronSecret = process.env.CRON_SECRET;
-    const isProd = process.env.NODE_ENV === "production";
 
-    let isAuthorized = false;
-
-    if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-      isAuthorized = true;
-    }
+    let isAuthorized = Boolean(cronSecret && safeCompareSecrets(bearerToken, cronSecret));
 
     if (!isAuthorized) {
       const session = await auth();
@@ -25,33 +20,60 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (isProd && !isAuthorized) {
+    if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const products = await prisma.product.findMany();
-    for (const product of products) {
+    // Backfill ONLY products that do not yet have a slug so existing indexed URLs never break
+    const productsMissingSlugs = await prisma.product.findMany({
+      where: { OR: [{ slug: null }, { slug: "" }] },
+      select: { id: true, name: true },
+    });
+
+    let updatedProducts = 0;
+    for (const product of productsMissingSlugs) {
       const slug = await generateUniqueProductSlug(product.name, product.id);
       await prisma.product.update({
         where: { id: product.id },
-        data: { slug }
+        data: { slug },
       });
+      updatedProducts++;
     }
 
-    const artisans = await prisma.artisanProfile.findMany({
-      include: { user: true }
+    // Backfill ONLY artisans that do not yet have a slug so custom studio URLs and QR codes stay intact
+    const artisansMissingSlugs = await prisma.artisanProfile.findMany({
+      where: { OR: [{ slug: null }, { slug: "" }] },
+      select: {
+        id: true,
+        userId: true,
+        studioName: true,
+        user: { select: { name: true } },
+      },
     });
-    for (const artisan of artisans) {
+
+    let updatedArtisans = 0;
+    for (const artisan of artisansMissingSlugs) {
       const nameToUse = artisan.studioName || artisan.user.name || "artisan";
-      const slug = `${slugify(nameToUse)}-${artisan.userId.slice(-4)}`;
+      const baseSlug = slugify(nameToUse) || "artisan";
+      const candidateSlug = `${baseSlug}-${artisan.userId.slice(-4)}`;
       await prisma.artisanProfile.update({
         where: { id: artisan.id },
-        data: { slug }
+        data: { slug: candidateSlug },
       });
+      updatedArtisans++;
     }
 
-    return NextResponse.json({ success: true, message: "Slugs synced successfully" });
+    return NextResponse.json({
+      success: true,
+      updatedProducts,
+      updatedArtisans,
+      message: "Missing slugs backfilled successfully",
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message });
+    console.error("[sync-slugs] Error:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to sync slugs" },
+      { status: 500 }
+    );
   }
 }

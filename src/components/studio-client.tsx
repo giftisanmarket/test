@@ -58,14 +58,26 @@ const EditProductModal = dynamic(() => import("@/components/edit-product-modal")
 const SalesChart = dynamic(() => import("@/components/sales-chart").then(mod => mod.SalesChart), {
   ssr: false
 });
-import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+const ConfirmationModal = dynamic(() => import("@/components/ui/confirmation-modal").then(mod => mod.ConfirmationModal), { ssr: false });
 import { OverviewTab } from "./studio/overview-tab";
-import { InventoryTab } from "./studio/inventory-tab";
-import { SalesTab } from "./studio/sales-tab";
-import { GrowthTab } from "./studio/growth-tab";
-import { PaymentTab } from "./studio/payment-tab";
-import { ReviewsTab } from "./studio/reviews-tab";
-import { SettingsTab } from "./studio/settings-tab";
+const InventoryTab = dynamic(() => import("./studio/inventory-tab").then(mod => mod.InventoryTab), {
+  loading: () => <div className="h-96 rounded-3xl bg-cream/30 animate-pulse border border-primary/5" />
+});
+const SalesTab = dynamic(() => import("./studio/sales-tab").then(mod => mod.SalesTab), {
+  loading: () => <div className="h-96 rounded-3xl bg-cream/30 animate-pulse border border-primary/5" />
+});
+const GrowthTab = dynamic(() => import("./studio/growth-tab").then(mod => mod.GrowthTab), {
+  loading: () => <div className="h-96 rounded-3xl bg-cream/30 animate-pulse border border-primary/5" />
+});
+const PaymentTab = dynamic(() => import("./studio/payment-tab").then(mod => mod.PaymentTab), {
+  loading: () => <div className="h-96 rounded-3xl bg-cream/30 animate-pulse border border-primary/5" />
+});
+const ReviewsTab = dynamic(() => import("./studio/reviews-tab").then(mod => mod.ReviewsTab), {
+  loading: () => <div className="h-96 rounded-3xl bg-cream/30 animate-pulse border border-primary/5" />
+});
+const SettingsTab = dynamic(() => import("./studio/settings-tab").then(mod => mod.SettingsTab), {
+  loading: () => <div className="h-96 rounded-3xl bg-cream/30 animate-pulse border border-primary/5" />
+});
 import { useIsNative } from "@/lib/native";
 import { useNotifications } from "./notification-provider";
 import { getEffectiveArtisanCommissionRate } from "@/lib/commission";
@@ -892,9 +904,13 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     <thead>
                       <tr className="border-b-2 border-primary/10">
                         <th className="py-4 text-start text-[10px] font-black uppercase tracking-widest text-primary/40">Item Description</th>
-                        <th className="py-4 text-center text-[10px] font-black uppercase tracking-widest text-primary/40">Qty</th>
-                        <th className="py-4 text-end text-[10px] font-black uppercase tracking-widest text-primary/40">Price</th>
-                        <th className="py-4 text-end text-[10px] font-black uppercase tracking-widest text-primary/40">Total</th>
+                        <th className={cn("py-4 text-[10px] font-black uppercase tracking-widest text-primary/40", selectedItem.order.isGift ? "text-end" : "text-center")}>Qty</th>
+                        {!selectedItem.order.isGift && (
+                          <>
+                            <th className="py-4 text-end text-[10px] font-black uppercase tracking-widest text-primary/40">Price</th>
+                            <th className="py-4 text-end text-[10px] font-black uppercase tracking-widest text-primary/40">Total</th>
+                          </>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-primary/5">
@@ -911,9 +927,13 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                             </div>
                           )}
                         </td>
-                        <td className="py-6 text-center font-bold text-primary text-lg">{selectedItem.quantity}</td>
-                        <td className="py-6 text-end text-primary text-sm">{dict.product.currency} {selectedItem.price}</td>
-                        <td className="py-6 text-end font-bold text-primary text-lg">{dict.product.currency} {(selectedItem.price * selectedItem.quantity).toFixed(2)}</td>
+                        <td className={cn("py-6 font-bold text-primary text-lg", selectedItem.order.isGift ? "text-end" : "text-center")}>{selectedItem.quantity}</td>
+                        {!selectedItem.order.isGift && (
+                          <>
+                            <td className="py-6 text-end text-primary text-sm">{dict.product.currency} {selectedItem.price}</td>
+                            <td className="py-6 text-end font-bold text-primary text-lg">{dict.product.currency} {(selectedItem.price * selectedItem.quantity).toFixed(2)}</td>
+                          </>
+                        )}
                       </tr>
                     </tbody>
                   </table>

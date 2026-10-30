@@ -38,7 +38,7 @@ function getLocale(request: NextRequest): string {
 
 export default function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
-  
+
   // 1. Skip proxy for essential paths (manual matcher)
   if (
     pathname.startsWith('/api') ||
@@ -62,17 +62,27 @@ export default function proxy(request: NextRequest) {
   }
 
   const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
-  const isDevBypass = request.cookies.get('dev_bypass')?.value === 'active' || searchParams.get('dev') === 'true';
+  const bypassSecret = process.env.MAINTENANCE_BYPASS_SECRET;
+  const queryBypassParam = searchParams.get('dev');
+  const isValidQueryBypass = Boolean(
+    bypassSecret && bypassSecret.length >= 16 && queryBypassParam === bypassSecret
+  );
+  const isValidCookieBypass = Boolean(
+    bypassSecret &&
+      bypassSecret.length >= 16 &&
+      request.cookies.get('dev_bypass')?.value === bypassSecret
+  );
+  const isDevBypass = isValidCookieBypass || isValidQueryBypass;
 
-  // 3. Handle Developer Bypass
-  if (searchParams.get('dev') === 'true') {
+  // 3. Handle Developer Bypass (requires server-configured MAINTENANCE_BYPASS_SECRET)
+  if (isValidQueryBypass && bypassSecret) {
     const response = NextResponse.next();
-    response.cookies.set('dev_bypass', 'active', { 
+    response.cookies.set('dev_bypass', bypassSecret, {
       maxAge: 60 * 60 * 24, // 24 hours
       path: '/',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
+      sameSite: 'lax',
     });
     return response;
   }
@@ -89,7 +99,7 @@ export default function proxy(request: NextRequest) {
     return acc;
   }, pathname);
 
-  const isAllowedInMaintenance = 
+  const isAllowedInMaintenance =
     purePathname === '/maintenance' ||
     purePathname.startsWith('/bio') ||
     purePathname.startsWith('/about') ||
@@ -107,7 +117,8 @@ export default function proxy(request: NextRequest) {
   }
 
   // 6. Redirect everything else to maintenance (with locale)
-  const currentLocale = locales.find(l => pathname.startsWith(`/${l}/`) || pathname === `/${l}`) || defaultLocale;
+  const currentLocale =
+    locales.find((l) => pathname.startsWith(`/${l}/`) || pathname === `/${l}`) || defaultLocale;
   return NextResponse.redirect(new URL(`/${currentLocale}/maintenance`, request.url));
 }
 

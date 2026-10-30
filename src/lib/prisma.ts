@@ -3,12 +3,6 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-  pool: Pool | undefined;
-};
-
-// DATABASE_URL must be set via environment variables — never hardcode credentials here
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error(
@@ -16,7 +10,7 @@ if (!connectionString) {
   );
 }
 
-const pool = globalForPrisma.pool ?? new Pool({
+const adapterPool = new Pool({
   connectionString,
   ssl: {
     rejectUnauthorized: false,
@@ -26,9 +20,26 @@ const pool = globalForPrisma.pool ?? new Pool({
   connectionTimeoutMillis: 15000, // Allow sufficient time for Neon cold starts
 });
 
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg(adapterPool);
 
-const createPrismaClient = () => new PrismaClient({ adapter });
+const createPrismaClient = () =>
+  new PrismaClient({
+    adapter,
+    omit: {
+      user: {
+        password: true,
+      },
+    },
+  });
+
+type CustomPrismaClient = ReturnType<typeof createPrismaClient>;
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: CustomPrismaClient | undefined;
+  pool: Pool | undefined;
+};
+
+const pool = globalForPrisma.pool ?? adapterPool;
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
@@ -36,6 +47,3 @@ if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
   globalForPrisma.pool = pool;
 }
-
-
-

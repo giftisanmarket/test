@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isSafeHttpUrl } from "@/lib/security";
 
 export async function PATCH(
   req: Request,
@@ -32,6 +33,26 @@ export async function PATCH(
     const body = await req.json();
     const { title, url, icon, isFeatured, order } = body;
 
+    if (title !== undefined) {
+      if (typeof title !== "string" || !title.trim() || title.trim().length > 120) {
+        return NextResponse.json(
+          { error: "Title must be between 1 and 120 characters" },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (url !== undefined && !isSafeHttpUrl(url)) {
+      return NextResponse.json(
+        { error: "Invalid URL. Must start with https:// or http://" },
+        { status: 400 }
+      );
+    }
+
+    if (order !== undefined && !Number.isFinite(Number(order))) {
+      return NextResponse.json({ error: "Invalid order value" }, { status: 400 });
+    }
+
     if (isFeatured) {
       await prisma.artisanBioLink.updateMany({
         where: { artisanId: artisan.id },
@@ -43,10 +64,12 @@ export async function PATCH(
       where: { id },
       data: {
         ...(title !== undefined && { title: title.trim() }),
-        ...(url !== undefined && { url: url.trim() }),
-        ...(icon !== undefined && { icon }),
+        ...(url !== undefined && { url: String(url).trim() }),
+        ...(icon !== undefined && {
+          icon: typeof icon === "string" && icon.trim() ? icon.trim().slice(0, 40) : "link",
+        }),
         ...(isFeatured !== undefined && { isFeatured: Boolean(isFeatured) }),
-        ...(order !== undefined && { order: Number(order) }),
+        ...(order !== undefined && { order: Math.round(Number(order)) }),
       },
     });
 

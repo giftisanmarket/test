@@ -1334,9 +1334,10 @@ export function AdminExpensesClient({
                                   setFundingNotes("");
                                   setFundingProofImage("");
                                 }}
-                                className="block text-[10px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
                               >
-                                {isAr ? "تأكيد التحويل الآن ➔" : "Confirm Transfer ➔"}
+                                <span>{isAr ? "تأكيد التحويل الآن" : "Confirm Transfer"}</span>
+                                <ArrowUpRight className="w-3 h-3" />
                               </button>
                             ) : (
                               <p className="text-[10px] text-charcoal/50 font-medium">

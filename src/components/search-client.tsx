@@ -13,7 +13,8 @@ import {
   X, 
   ChevronDown, 
   RotateCcw,
-  Star
+  Star,
+  Check
 } from "lucide-react";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -1130,7 +1131,7 @@ export function SearchClient({ query, initialProducts, dict }: SearchClientProps
                         "w-5 h-5 rounded-full border flex items-center justify-center text-xs transition-colors",
                         showVerifiedOnly ? "bg-accent border-accent text-white" : "border-primary/20"
                       )}>
-                        {showVerifiedOnly && "✓"}
+                        {showVerifiedOnly && <Check className="w-3 h-3 stroke-[3]" />}
                       </span>
                     </button>
 
@@ -1154,7 +1155,7 @@ export function SearchClient({ query, initialProducts, dict }: SearchClientProps
                         "w-5 h-5 rounded-full border flex items-center justify-center text-xs transition-colors",
                         showCustomizableOnly ? "bg-accent border-accent text-white" : "border-primary/20"
                       )}>
-                        {showCustomizableOnly && "✓"}
+                        {showCustomizableOnly && <Check className="w-3 h-3 stroke-[3]" />}
                       </span>
                     </button>
                   </div>

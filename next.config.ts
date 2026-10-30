@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ['192.168.1.18', '192.168.1.*', '169.254.83.107', 'localhost', '127.0.0.1'],
   images: {
     formats: ['image/avif', 'image/webp'],
+    qualities: [75, 80, 85],
     minimumCacheTTL: 2592000, // 30 days
     remotePatterns: [
       {
@@ -34,9 +35,23 @@ const nextConfig: NextConfig = {
     ],
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+        ],
+      },
+    ];
   },
   experimental: {
-    cpus: 4,
+    optimizePackageImports: ['lucide-react', 'recharts', 'date-fns', 'framer-motion', 'react-hot-toast'],
     serverActions: {
       bodySizeLimit: '10mb', // Images are pre-processed by Sharp before upload; 100mb was a DoS risk
     },
@@ -45,4 +60,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-// Force dev HMR reload

@@ -44,6 +44,8 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([role])
 }
 
 model Message {
@@ -170,6 +172,9 @@ model ArtisanProfile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 model ArtisanAgreementAcceptance {
@@ -253,6 +258,7 @@ model Product {
   @@index([artisanId])
   @@index([status, category])
   @@index([artisanId, status])
+  @@index([status, createdAt(sort: Desc)])
   @@index([isFeatured, createdAt(sort: Desc)])
 }
 
@@ -307,6 +313,8 @@ model Review {
 
   @@index([productId])
   @@index([userId])
+  @@index([productId, rating])
+  @@index([productId, createdAt(sort: Desc)])
 }
 
 model Order {
@@ -352,6 +360,9 @@ model Order {
   @@index([userId])
   @@index([userId, createdAt(sort: Desc)])
   @@index([status])
+  @@index([clientEmail])
+  @@index([clientPhone])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 model ShippingMethod {
@@ -424,6 +435,8 @@ model Coupon {
 
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+
+  @@index([code, isActive])
 }
 
 enum PayoutMethod {
@@ -462,6 +475,8 @@ model ArtisanTransaction {
   @@index([artisanId])
   @@index([orderId])
   @@index([type, status]) // Used by escrow clearance cron and admin payout queries
+  @@index([artisanId, createdAt(sort: Desc)])
+  @@index([artisanId, type, status])
 }
 
 enum TransactionType {

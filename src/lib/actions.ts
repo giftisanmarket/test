@@ -3,9 +3,9 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signIn, auth } from "@/auth";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { AuthError, CredentialsSignin } from "next-auth";
-import { slugify, stripEmojis, getEscrowClearanceThresholdDate } from "@/lib/utils";
+import { slugify, stripEmojis } from "@/lib/utils";
 import cloudinary from "@/lib/cloudinary";
 import sharp from "sharp";
 import { sendWelcomeEmail, sendOrderNotification, sendMessageNotification, sendVerificationEmail, sendOrderStatusUpdateEmail, sendPasswordResetEmail, sendInquiryNotification, sendArtisanApprovalEmail, sendArtisanOutreachEmail, sendCustomEmail, sendProductStatusUpdateEmail, sendPayoutRequestEmail, sendPayoutApprovedEmail, sendPayoutDeclinedEmail, sendRefundRequestSubmittedEmail, sendRefundResolvedEmail, sendAbandonedCheckoutNotification, sendBuyerOrderReceiptEmail } from "@/lib/mail";
@@ -19,6 +19,34 @@ import {
   isArtisanAgreementLanguage,
 } from "@/lib/artisan-agreement";
 import { getEffectiveArtisanCommissionRate } from "@/lib/commission";
+import {
+  recordArtisanOrderLedgerInTx,
+  clearEligibleArtisanEscrow,
+  processOrderCancellationInTx,
+  processOrderRefundInTx,
+} from "@/lib/services/order-service";
+import {
+  signOrderAccessToken,
+  signDeliveryVerifyToken,
+} from "@/lib/security";
+import {
+  PUBLIC_USER_SELECT,
+  sanitizePublicArtisan,
+  sanitizePublicProduct,
+} from "@/lib/public-selects";
+
+export async function revalidateCatalog(slug?: string) {
+  try {
+    revalidatePath("/", "layout");
+    if (slug) {
+      revalidatePath(`/en/products/${slug}`);
+      revalidatePath(`/ar/products/${slug}`);
+    }
+  } catch (err) {
+    console.error("Revalidation error:", err);
+  }
+}
+import { getClientIp, checkRateLimit } from "@/lib/rate-limit";
 import {
   signUp as _signUp,
   login as _login,
@@ -70,7 +98,7 @@ export async function deleteAccountAction(userId: string) {
   return _deleteAccountAction(userId);
 }
 
-export async function convertGuestToAccount(params: { orderId: string; password: string }) {
+export async function convertGuestToAccount(params: { orderId: string; password: string; accessToken?: string }) {
   return _convertGuestToAccount(params);
 }
 
@@ -106,21 +134,46 @@ export async function subscribeToNewsletter(email: string) {
 
 export async function uploadImage(base64Data: string, skipWebPConversion = true) {
   try {
-    if (base64Data.startsWith('http')) {
-      return { success: true, url: base64Data };
+    if (!base64Data || typeof base64Data !== "string") {
+      return { success: false, error: "Invalid media payload" };
+    }
+
+    if (base64Data.startsWith("http://") || base64Data.startsWith("https://")) {
+      if (base64Data.startsWith("https://res.cloudinary.com/")) {
+        return { success: true, url: base64Data };
+      }
+      return { success: false, error: "External media URLs are not allowed" };
+    }
+
+    if (base64Data.length > 16_000_000) {
+      return { success: false, error: "Media file exceeds maximum allowed size (12 MB)" };
+    }
+
+    const ip = await getClientIp();
+    const rate = checkRateLimit(`upload:${ip}`, 25, 60_000);
+    if (!rate.success) {
+      return { success: false, error: "Too many uploads. Please wait a minute." };
+    }
+
+    const session = await auth();
+    const resourceType: "image" | "auto" =
+      session?.user?.role === "ADMIN" || session?.user?.role === "ARTISAN" ? "auto" : "image";
+
+    if (resourceType === "image" && !base64Data.startsWith("data:image/")) {
+      return { success: false, error: "Only image uploads are allowed" };
     }
 
     let uploadPayload: string | Buffer = base64Data;
     let isBuffer = false;
 
     // Convert to WebP if it's an image and NOT already WebP
-    if (!skipWebPConversion && base64Data.startsWith('data:image/') && !base64Data.startsWith('data:image/webp') && !base64Data.includes('svg+xml')) {
+    if (!skipWebPConversion && base64Data.startsWith("data:image/") && !base64Data.startsWith("data:image/webp") && !base64Data.includes("svg+xml")) {
       try {
-        const base64Image = base64Data.split(';base64,').pop();
+        const base64Image = base64Data.split(";base64,").pop();
         if (base64Image) {
-          const buffer = Buffer.from(base64Image, 'base64');
+          const buffer = Buffer.from(base64Image, "base64");
           uploadPayload = await sharp(buffer)
-            .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
+            .resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true })
             .webp({ quality: 80 })
             .toBuffer();
           isBuffer = true;
@@ -132,14 +185,14 @@ export async function uploadImage(base64Data: string, skipWebPConversion = true)
     }
 
     // Use upload_stream for Buffers or large strings to be more reliable
-    if (isBuffer || (typeof uploadPayload === 'string' && uploadPayload.length > 50000)) {
-      const bufferToUpload = isBuffer ? (uploadPayload as Buffer) : Buffer.from((uploadPayload as string).split(';base64,').pop() || '', 'base64');
+    if (isBuffer || (typeof uploadPayload === "string" && uploadPayload.length > 50000)) {
+      const bufferToUpload = isBuffer ? (uploadPayload as Buffer) : Buffer.from((uploadPayload as string).split(";base64,").pop() || "", "base64");
       
       const uploadResponse = await new Promise<any>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "giftisan",
-            resource_type: "auto",
+            resource_type: resourceType,
           },
           (error, result) => {
             if (error) {
@@ -156,7 +209,7 @@ export async function uploadImage(base64Data: string, skipWebPConversion = true)
     // Standard upload for small strings or fallback
     const uploadResponse = await cloudinary.uploader.upload(uploadPayload as string, {
       folder: "giftisan",
-      resource_type: "auto",
+      resource_type: resourceType,
     });
     return { success: true, url: uploadResponse.secure_url };
   } catch (error) {
@@ -424,7 +477,7 @@ export async function searchProducts(query: string) {
       }
     }
 
-    return products;
+    return products.map((p) => sanitizePublicProduct(p));
   } catch (error) {
     console.error("Search error:", error);
     return [];
@@ -637,7 +690,7 @@ export async function getProductsByCategory(category: string) {
         ],
         take: 80
       });
-      return products;
+      return products.map((p) => sanitizePublicProduct(p));
     } catch (error) {
       console.error("Gifts fetch error:", error);
       return [];
@@ -685,7 +738,7 @@ export async function getProductsByCategory(category: string) {
       }
     });
 
-    return products;
+    return products.map((p) => sanitizePublicProduct(p));
   } catch (error) {
     console.error("Fetch error:", error);
     return [];
@@ -696,7 +749,7 @@ export async function getFeaturedProducts() {
   try {
     const getCachedFeatured = unstable_cache(
       async () => {
-        return await prisma.product.findMany({
+        const items = await prisma.product.findMany({
           where: {
             status: "APPROVED",
             artisan: {
@@ -718,8 +771,9 @@ export async function getFeaturedProducts() {
             { createdAt: "desc" }
           ]
         });
+        return items.map((p) => sanitizePublicProduct(p));
       },
-      ["featured-products-cache-key"],
+      ["featured-products-cache-key-v2"],
       { revalidate: 300, tags: ["featured-products", "products"] }
     );
     return await getCachedFeatured();
@@ -751,7 +805,7 @@ export async function getAllProducts() {
         createdAt: "desc"
       }
     });
-    return products;
+    return products.map((p) => sanitizePublicProduct(p));
   } catch (error) {
     console.error("Get all products error:", error);
     return [];
@@ -798,7 +852,7 @@ export async function getProductBySlug(slug: string) {
       }
     }
 
-    return product;
+    return sanitizePublicProduct(product);
   } catch (error) {
     console.error("Get product by slug error:", error);
     return null;
@@ -808,6 +862,11 @@ export async function getProductBySlug(slug: string) {
 
 export async function toggleFavoriteAction(productId: string, userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || (session.user.id !== userId && session.user.role !== "ADMIN")) {
+      return { error: "Unauthorized" };
+    }
+
     const existing = await prisma.favorite.findUnique({
       where: {
         userId_productId: {
@@ -841,6 +900,11 @@ export async function toggleFavoriteAction(productId: string, userId: string) {
 
 export async function getUserFavorites(userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || (session.user.id !== userId && session.user.role !== "ADMIN")) {
+      return [];
+    }
+
     const favorites = await prisma.favorite.findMany({
       where: { userId },
       include: {
@@ -858,15 +922,7 @@ export async function getUserFavorites(userId: string) {
     });
     return favorites
       .filter(f => f.product && f.product.status === "APPROVED" && f.product.artisan?.status === "APPROVED")
-      .map(f => ({
-        ...f.product,
-        images: Array.isArray(f.product.images) ? f.product.images.map((img: string) => (img?.length || 0) > 300000 ? "" : img) : [],
-        artisan: {
-          ...f.product.artisan,
-          avatar: (f.product.artisan.avatar?.length || 0) > 300000 ? "" : f.product.artisan.avatar,
-          user: { name: f.product.artisan.user?.name }
-        }
-      }));
+      .map(f => sanitizePublicProduct(f.product));
   } catch (error) {
     console.error("Get favorites error:", error);
     return [];
@@ -876,9 +932,10 @@ export async function getUserFavorites(userId: string) {
 export async function getProductsByIds(ids: string[]) {
   if (!ids || ids.length === 0) return [];
   try {
+    const safeIds = ids.slice(0, 100);
     const products = await prisma.product.findMany({
       where: {
-        id: { in: ids },
+        id: { in: safeIds },
         status: "APPROVED",
         artisan: {
           status: "APPROVED"
@@ -893,562 +950,540 @@ export async function getProductsByIds(ids: string[]) {
         variants: true
       }
     });
-    return products.map(p => ({
-      ...p,
-      images: Array.isArray(p.images) ? p.images.map((img: string) => (img?.length || 0) > 300000 ? "" : img) : [],
-      artisan: {
-        ...p.artisan,
-        avatar: (p.artisan.avatar?.length || 0) > 300000 ? "" : p.artisan.avatar,
-        user: { name: p.artisan.user?.name }
-      }
-    }));
+    return products.map(p => sanitizePublicProduct(p));
   } catch (error) {
     console.error("Get products by IDs error:", error);
     return [];
   }
 }
 
-interface OrderLedgerItem {
-  productId: string;
-  name?: string;
-  price: number;
-  quantity: number;
+function roundCurrency(value: number): number {
+  return Math.round((Number(value) || 0) * 100) / 100;
 }
 
-/**
- * Centrally records artisan sales transactions and increments pending escrow balances.
- * Fully coupon-aware:
- * - If coupon is artisan-specific (artisanId !== null), the discount is deducted from the artisan's share.
- * - If coupon is platform-wide (artisanId === null), the discount is absorbed by Giftisan; the artisan receives 100% of their item price.
- */
-export async function recordArtisanOrderLedgerInTx(
-  tx: any,
-  params: {
-    orderId: string;
-    couponId?: string | null;
-    discountApplied?: number | null;
-    items: OrderLedgerItem[];
-  }
+export async function createOrder(
+  _clientUserId: string | null,
+  _clientTotalAmount: number,
+  items: any[],
+  shippingData?: any
 ) {
-  const { orderId, couponId, discountApplied = 0, items } = params;
-  if (!items || items.length === 0) return { productMap: new Map<string, any>() };
-
-  // 1. Fetch coupon details if attached to order
-  const coupon = couponId
-    ? await tx.coupon.findUnique({
-        where: { id: couponId },
-        select: { id: true, code: true, artisanId: true, discountType: true, discountValue: true }
-      })
-    : null;
-
-  // 2. Fetch products and their artisan details
-  const productIds = Array.from(new Set(items.map(i => i.productId)));
-  const products = await tx.product.findMany({
-    where: { id: { in: productIds } },
-    select: {
-      id: true,
-      name: true,
-      artisanId: true,
-      artisan: {
-        select: {
-          id: true,
-          commissionRate: true,
-          createdAt: true,
-          termsAcceptedAt: true,
-          studioName: true,
-          user: { select: { name: true, email: true } }
-        }
-      }
-    }
-  });
-
-  const productMap = new Map<string, any>(products.map((p: any) => [p.id, p]));
-
-  // 3. If coupon is artisan-specific (artisanId !== null), calculate the subtotal of that artisan's items
-  // to distribute the coupon discount accurately across their items.
-  const artisanSponsoredTotal = (coupon?.artisanId)
-    ? items
-        .filter(item => {
-          const prod = productMap.get(item.productId);
-          return prod?.artisanId === coupon.artisanId;
-        })
-        .reduce((sum, item) => sum + (item.price * item.quantity), 0)
-    : 0;
-
-  // 4. Record transactions and balance updates
-  for (const item of items) {
-    const product: any = productMap.get(item.productId);
-    const artisan: any = product?.artisan;
-    if (!artisan) continue;
-
-    const itemTotal = item.price * item.quantity;
-    let netItemTotal = itemTotal;
-    let discountNote = "";
-
-    // A. Artisan-specific coupon: artisan offered the discount, so it deducts from their earnings
-    if (coupon?.artisanId && coupon.artisanId === artisan.id && artisanSponsoredTotal > 0) {
-      const itemDiscountShare = (itemTotal / artisanSponsoredTotal) * (discountApplied || 0);
-      netItemTotal = Math.max(0, itemTotal - itemDiscountShare);
-      discountNote = ` (Shop coupon "${coupon.code}": -${itemDiscountShare.toFixed(2)} EGP)`;
-    } 
-    // B. Platform-wide promo: Giftisan platform funds the promo, artisan receives 100% full item price
-    else if (coupon && !coupon.artisanId && (discountApplied || 0) > 0) {
-      discountNote = ` (Platform promo "${coupon.code}" absorbed by Giftisan)`;
-    }
-
-    const commissionRate = getEffectiveArtisanCommissionRate(artisan);
-    const adminShare = netItemTotal * commissionRate;
-    const artisanShare = netItemTotal - adminShare;
-
-    await tx.artisanTransaction.create({
-      data: {
-        artisanId: artisan.id,
-        orderId,
-        amount: artisanShare,
-        type: "SALE",
-        status: "PENDING",
-        description: `Earnings from "${product.name || item.name || "Item"}" (Qty: ${item.quantity}). Total: ${itemTotal.toFixed(2)} EGP${discountNote}${adminShare > 0 ? ` (Commission: ${adminShare.toFixed(2)} EGP)` : ""}`
-      }
-    });
-
-    await tx.artisanBalance.upsert({
-      where: { artisanId: artisan.id },
-      update: { pending: { increment: artisanShare } },
-      create: { artisanId: artisan.id, pending: artisanShare, withdrawable: 0.0, withdrawn: 0.0 }
-    });
-  }
-
-  return { productMap };
-}
-
-export async function createOrder(userId: string | null, totalAmount: number, items: any[], shippingData?: any) {
   try {
-    const processedItems = await Promise.all(items.map(async item => ({
-      ...item,
-      processedCustomImage: item.customImage ? await processImage(item.customImage) : null
-    })));
+    const ip = await getClientIp();
+    const rate = checkRateLimit(`checkout:${ip}`, 15, 60_000);
+    if (!rate.success) {
+      return { error: "Too many checkout attempts. Please wait a minute and try again." };
+    }
 
-    // Final Inventory Guard: Verify stock and shop approval for all items before processing (read-only check)
-    for (const item of processedItems) {
-      if (item.variantId) {
-        const variant = await prisma.productVariant.findUnique({
-          where: { id: item.variantId },
-          select: { 
-            stock: true, 
-            name: true,
-            product: {
-              select: {
-                status: true,
-                artisan: {
-                  select: { status: true }
-                }
-              }
-            }
-          }
-        });
-        if (!variant || variant.stock < item.quantity) {
-          throw new Error(`The variation "${variant?.name || 'One of your items'}" just sold out! Please remove it from your cart to proceed.`);
-        }
-        if (variant.product.status !== "APPROVED" || variant.product.artisan?.status !== "APPROVED") {
-          throw new Error(`The item "${variant.name || 'One of your items'}" is currently unavailable.`);
-        }
+    if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
+      return { error: "Your cart is empty or invalid." };
+    }
+
+    const buyerEmail = String(shippingData?.email || "").trim().toLowerCase();
+    const buyerPhone = String(shippingData?.phone || "").trim();
+    const buyerAddress = String(shippingData?.address || "").trim();
+    const buyerCity = String(shippingData?.city || "").trim();
+
+    if (!buyerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
+      return { error: "A valid email address is required." };
+    }
+    if (!buyerPhone || buyerPhone.replace(/[^0-9]/g, "").length < 8) {
+      return { error: "A valid phone number is required." };
+    }
+    if (!buyerAddress || !buyerCity) {
+      return { error: "Complete shipping address and city are required." };
+    }
+
+    // 1. Validate item quantities and aggregate requested stock per SKU to block duplicate-row bypass
+    const requestedVariantQty = new Map<string, number>();
+    const requestedProductQty = new Map<string, number>();
+    const productIds = new Set<string>();
+
+    for (const rawItem of items) {
+      const productId = typeof rawItem?.id === "string" ? rawItem.id.trim() : "";
+      const qty = Number(rawItem?.quantity);
+      if (!productId || !Number.isInteger(qty) || qty < 1 || qty > 999) {
+        return { error: "Invalid item quantity in cart." };
+      }
+      productIds.add(productId);
+      const variantId = typeof rawItem?.variantId === "string" && rawItem.variantId.trim() ? rawItem.variantId.trim() : null;
+      if (variantId) {
+        requestedVariantQty.set(variantId, (requestedVariantQty.get(variantId) || 0) + qty);
       } else {
-        const product = await prisma.product.findUnique({
-          where: { id: item.id },
-          select: { 
-            stock: true, 
-            name: true,
-            status: true,
-            artisan: {
-              select: { status: true }
-            }
-          }
-        });
-        if (!product || product.stock < item.quantity) {
-          throw new Error(`The product "${product?.name || 'One of your items'}" just sold out! Please remove it from your cart to proceed.`);
-        }
-        if (product.status !== "APPROVED" || product.artisan?.status !== "APPROVED") {
-          throw new Error(`The product "${product.name || 'One of your items'}" is currently unavailable.`);
-        }
+        requestedProductQty.set(productId, (requestedProductQty.get(productId) || 0) + qty);
       }
     }
 
-    const paymentMethod = shippingData?.paymentMethod as "paymob" | "cod" | undefined;
+    // 2. Fetch authoritative products, variants, and artisan status from DB
+    const dbProducts = await prisma.product.findMany({
+      where: { id: { in: Array.from(productIds) } },
+      include: {
+        variants: true,
+        artisan: {
+          select: {
+            id: true,
+            status: true,
+            studioName: true,
+            user: { select: { name: true, email: true } },
+          },
+        },
+      },
+    });
+    const dbProductMap = new Map(dbProducts.map((p) => [p.id, p]));
 
-    // ─── COD: Create order immediately (customer is committing) ───────────────
-    if (paymentMethod === "cod") {
-      // Resolve userId by email if guest
-      let effectiveUserId = userId;
-      if (!effectiveUserId && shippingData?.email) {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: shippingData.email.toLowerCase().trim() },
-          select: { id: true }
-        });
-        if (existingUser) effectiveUserId = existingUser.id;
+    const authoritativeItems = await Promise.all(
+      items.map(async (rawItem) => {
+        const productId = String(rawItem.id).trim();
+        const quantity = Number(rawItem.quantity);
+        const variantId =
+          typeof rawItem?.variantId === "string" && rawItem.variantId.trim()
+            ? rawItem.variantId.trim()
+            : null;
+
+        const product = dbProductMap.get(productId);
+        if (!product || product.status !== "APPROVED" || product.artisan?.status !== "APPROVED") {
+          throw new Error(
+            `The item "${product?.name || rawItem?.name || "One of your items"}" is currently unavailable.`
+          );
+        }
+
+        let unitPrice = roundCurrency(product.price);
+        let variantName: string | null = null;
+        let displayImage = product.images?.[0] || "";
+
+        if (variantId) {
+          // Verify variant strictly belongs to this product (blocks cross-product cheap variant substitution)
+          const variant = product.variants.find((v) => v.id === variantId);
+          if (!variant) {
+            throw new Error(`Selected option for "${product.name}" is no longer valid.`);
+          }
+          const totalVariantNeeded = requestedVariantQty.get(variantId) || quantity;
+          if (variant.stock < totalVariantNeeded) {
+            throw new Error(
+              `The variation "${variant.name}" of "${product.name}" just sold out! Please update your cart.`
+            );
+          }
+          unitPrice = roundCurrency(variant.price);
+          variantName = variant.name;
+          if (variant.image) displayImage = variant.image;
+        } else {
+          const totalProductNeeded = requestedProductQty.get(productId) || quantity;
+          if (product.stock < totalProductNeeded) {
+            throw new Error(
+              `The product "${product.name}" just sold out! Please remove it from your cart to proceed.`
+            );
+          }
+        }
+
+        const processedCustomImage = rawItem.customImage
+          ? await processImage(rawItem.customImage)
+          : null;
+
+        return {
+          id: product.id,
+          variantId,
+          variantName,
+          name: product.name,
+          description: product.description,
+          artisanId: product.artisanId,
+          artisan: product.artisan,
+          quantity,
+          price: unitPrice,
+          image: displayImage,
+          personalization:
+            typeof rawItem.personalization === "string" && rawItem.personalization.trim()
+              ? rawItem.personalization.trim().slice(0, 500)
+              : null,
+          processedCustomImage,
+        };
+      })
+    );
+
+    const serverSubtotal = roundCurrency(
+      authoritativeItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    );
+
+    // 3. Resolve authoritative ShippingMethod price from DB
+    let shippingMethod = shippingData?.shippingMethodId
+      ? await prisma.shippingMethod.findFirst({
+          where: { id: String(shippingData.shippingMethodId), isActive: true },
+        })
+      : null;
+
+    if (!shippingMethod) {
+      shippingMethod = await prisma.shippingMethod.findFirst({
+        where: { isActive: true },
+        orderBy: { price: "asc" },
+      });
+    }
+
+    const resolvedShippingMethodId = shippingMethod?.id || null;
+    const serverShippingCost = roundCurrency(shippingMethod ? shippingMethod.price : 84);
+
+    // 4. Recompute authoritative Coupon discount on the server
+    let resolvedCouponId: string | null = null;
+    let resolvedCouponCode: string | null = null;
+    let serverDiscount = 0;
+
+    const requestedCouponId =
+      typeof shippingData?.couponId === "string" && shippingData.couponId.trim()
+        ? shippingData.couponId.trim()
+        : null;
+    const requestedCouponCode =
+      typeof shippingData?.couponCode === "string" && shippingData.couponCode.trim()
+        ? shippingData.couponCode.trim().toUpperCase()
+        : null;
+
+    if (requestedCouponId || requestedCouponCode) {
+      const coupon = requestedCouponId
+        ? await prisma.coupon.findUnique({ where: { id: requestedCouponId } })
+        : await prisma.coupon.findUnique({ where: { code: requestedCouponCode! } });
+
+      if (!coupon) throw new Error("The coupon code used for this order is invalid.");
+      if (!coupon.isActive) throw new Error("The coupon code used for this order is no longer active.");
+      if (coupon.expiresAt && new Date() > coupon.expiresAt) {
+        throw new Error("The coupon code used for this order has expired.");
+      }
+      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+        throw new Error("This coupon has just reached its maximum usage limit!");
       }
 
-      const codOrderResult = await prisma.$transaction(async (tx) => {
+      let discountableSubtotal = serverSubtotal;
+      if (coupon.artisanId) {
+        const eligibleItems = authoritativeItems.filter(
+          (item) => item.artisanId === coupon.artisanId
+        );
+        if (eligibleItems.length === 0) {
+          throw new Error("This coupon does not apply to the items in your cart.");
+        }
+        discountableSubtotal = roundCurrency(
+          eligibleItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+        );
+      }
+
+      if (coupon.minOrderAmount && discountableSubtotal < coupon.minOrderAmount) {
+        throw new Error(
+          `This coupon requires a minimum eligible subtotal of EGP ${coupon.minOrderAmount}.`
+        );
+      }
+
+      let rawDiscount = 0;
+      if (coupon.discountType === "PERCENTAGE") {
+        rawDiscount = discountableSubtotal * (coupon.discountValue / 100);
+        if (coupon.maxDiscount && rawDiscount > coupon.maxDiscount) {
+          rawDiscount = coupon.maxDiscount;
+        }
+      } else if (coupon.discountType === "FIXED") {
+        rawDiscount = coupon.discountValue;
+      }
+
+      serverDiscount = Math.min(roundCurrency(rawDiscount), discountableSubtotal);
+      resolvedCouponId = coupon.id;
+      resolvedCouponCode = coupon.code;
+    }
+
+    const serverTotalAmount = Math.max(
+      0,
+      roundCurrency(serverSubtotal - serverDiscount + serverShippingCost)
+    );
+
+    // 5. Derive buyer userId strictly from server session (or match guest email)
+    const session = await auth();
+    let effectiveUserId: string | null = session?.user?.id || null;
+    if (!effectiveUserId && buyerEmail) {
+      const existingUser = await prisma.user.findFirst({
+        where: { email: { equals: buyerEmail, mode: "insensitive" } },
+        select: { id: true },
+      });
+      if (existingUser) effectiveUserId = existingUser.id;
+    }
+
+    const firstName = String(shippingData?.firstName || "").trim();
+    const lastName = String(shippingData?.lastName || "").trim();
+    const customerName = `${firstName} ${lastName}`.trim() || buyerEmail.split("@")[0] || "Customer";
+
+    const rawNotes = String(shippingData?.orderNotes || "").trim();
+    const enrichedOrderNotes = [
+      customerName && !/\[Customer:/i.test(rawNotes) ? `[Customer: ${customerName}]` : "",
+      rawNotes,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const paymentMethod = shippingData?.paymentMethod === "cod" ? "cod" : "paymob";
+
+    // ─── COD: Create order immediately with atomic stock guards ───────────────
+    if (paymentMethod === "cod") {
+      const codOrder = await prisma.$transaction(async (tx) => {
+        // Conditional atomic stock decrements
+        for (const [variantId, qty] of requestedVariantQty.entries()) {
+          const updated = await tx.productVariant.updateMany({
+            where: { id: variantId, stock: { gte: qty } },
+            data: { stock: { decrement: qty } },
+          });
+          if (updated.count !== 1) {
+            throw new Error("One of your selected variations just sold out! Please review your cart.");
+          }
+        }
+
+        for (const [productId, qty] of requestedProductQty.entries()) {
+          const updated = await tx.product.updateMany({
+            where: { id: productId, stock: { gte: qty } },
+            data: { stock: { decrement: qty } },
+          });
+          if (updated.count !== 1) {
+            const pName = dbProductMap.get(productId)?.name || "One of your items";
+            throw new Error(`The product "${pName}" just sold out! Please review your cart.`);
+          }
+        }
+
+        if (resolvedCouponId) {
+          const couponRow = await tx.coupon.findUnique({ where: { id: resolvedCouponId } });
+          if (
+            !couponRow ||
+            !couponRow.isActive ||
+            (couponRow.expiresAt && new Date() > couponRow.expiresAt) ||
+            (couponRow.maxUses !== null && couponRow.usedCount >= couponRow.maxUses)
+          ) {
+            throw new Error("The promo code applied to this order is no longer available.");
+          }
+          await tx.coupon.update({
+            where: { id: resolvedCouponId },
+            data: { usedCount: { increment: 1 } },
+          });
+        }
+
         const newOrder = await tx.order.create({
           data: {
             userId: effectiveUserId,
-            totalAmount,
+            totalAmount: serverTotalAmount,
             status: "PROCESSING",
-            shippingAddress: shippingData?.address,
-            shippingCity: shippingData?.city,
-            shippingZip: shippingData?.zip,
-            shippingCountry: shippingData?.country,
-            clientPhone: shippingData?.phone,
-            clientEmail: shippingData?.email,
-            orderNotes: shippingData?.orderNotes,
-            isGift: shippingData?.isGift || false,
-            giftMessage: shippingData?.giftMessage || null,
-            couponId: shippingData?.couponId || null,
-            discountApplied: shippingData?.discountApplied || 0,
-            shippingMethodId: shippingData?.shippingMethodId || null,
-            shippingCost: shippingData?.shippingCost || 0,
+            shippingAddress: buyerAddress,
+            shippingCity: buyerCity,
+            shippingZip: shippingData?.zip ? String(shippingData.zip).trim() : null,
+            shippingCountry: shippingData?.country ? String(shippingData.country).trim() : "Egypt",
+            clientPhone: buyerPhone,
+            clientEmail: buyerEmail,
+            orderNotes: enrichedOrderNotes || null,
+            isGift: Boolean(shippingData?.isGift),
+            giftMessage:
+              shippingData?.isGift && shippingData?.giftMessage
+                ? String(shippingData.giftMessage).trim().slice(0, 1000)
+                : null,
+            couponId: resolvedCouponId,
+            discountApplied: serverDiscount,
+            shippingMethodId: resolvedShippingMethodId,
+            shippingCost: serverShippingCost,
             items: {
-              create: processedItems.map(item => ({
+              create: authoritativeItems.map((item) => ({
                 productId: item.id,
-                variantId: item.variantId || null,
+                variantId: item.variantId,
                 quantity: item.quantity,
                 price: item.price,
                 personalization: item.personalization,
-                customImage: item.processedCustomImage
-              }))
-            }
-          }
+                customImage: item.processedCustomImage,
+              })),
+            },
+          },
         });
 
-        // Validate & increment coupon usage
-        if (shippingData?.couponId) {
-          const coupon = await tx.coupon.findUnique({ where: { id: shippingData.couponId } });
-          if (!coupon) throw new Error("The coupon code used for this order is invalid.");
-          if (!coupon.isActive) throw new Error("The coupon code used for this order is no longer active.");
-          if (coupon.expiresAt && new Date() > coupon.expiresAt) throw new Error("The coupon code used for this order has expired.");
-          if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error("This coupon has just reached its maximum usage limit!");
-          await tx.coupon.update({ where: { id: shippingData.couponId }, data: { usedCount: { increment: 1 } } });
-        }
-
-        // Decrement stock
-        for (const item of items) {
-          if (item.variantId) {
-            await tx.productVariant.update({ where: { id: item.variantId }, data: { stock: { decrement: item.quantity } } });
-          } else {
-            await tx.product.update({ where: { id: item.id }, data: { stock: { decrement: item.quantity } } });
-          }
-        }
-
-        // Process artisan ledger for COD order
-        const { productMap } = (await recordArtisanOrderLedgerInTx(tx, {
+        await recordArtisanOrderLedgerInTx(tx, {
           orderId: newOrder.id,
-          couponId: shippingData?.couponId || null,
-          discountApplied: shippingData?.discountApplied || 0,
-          items: processedItems.map(item => ({
+          couponId: resolvedCouponId,
+          discountApplied: serverDiscount,
+          items: authoritativeItems.map((item) => ({
             productId: item.id,
             name: item.name,
             price: item.price,
-            quantity: item.quantity
-          }))
-        })) || { productMap: new Map() };
+            quantity: item.quantity,
+          })),
+        });
 
-        return { newOrder, productMap };
+        return newOrder;
       });
 
-      const codOrder = codOrderResult.newOrder;
-
-      // Send buyer receipt email non-blockingly
+      // Non-blocking buyer receipt email
       try {
-        const buyerEmail = shippingData?.email;
-        const buyerName = `${shippingData?.firstName || ""} ${shippingData?.lastName || ""}`.trim() || "Customer";
-        if (buyerEmail) {
-          const receiptItems = processedItems.map((i: any) => ({
-            name: codOrderResult.productMap?.get(i.id)?.name || i.name || "Product",
-            quantity: i.quantity,
-            price: i.price
-          }));
-          sendBuyerOrderReceiptEmail(buyerEmail, buyerName, codOrder.id, totalAmount, receiptItems, shippingData?.city || undefined)
-            .catch(err => console.error(`Failed to send buyer COD receipt email to ${buyerEmail}:`, err));
-        }
+        const receiptItems = authoritativeItems.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          price: i.price,
+        }));
+        sendBuyerOrderReceiptEmail(
+          buyerEmail,
+          customerName,
+          codOrder.id,
+          serverTotalAmount,
+          receiptItems,
+          buyerCity || undefined
+        ).catch((err) =>
+          console.error(`Failed to send buyer COD receipt email to ${buyerEmail}:`, err)
+        );
       } catch (err) {
         console.error("Failed to send buyer receipt email for COD order:", err);
       }
 
-      // Send artisan order notification emails non-blockingly
+      // Non-blocking artisan order notification emails
       try {
         const artisanEarnings = new Map<string, { name: string; email: string; total: number }>();
-        processedItems.forEach((item: any) => {
-          const product = codOrderResult.productMap?.get(item.id);
-          const artisan = product?.artisan;
+        authoritativeItems.forEach((item) => {
+          const artisan = item.artisan;
           if (artisan?.user?.email) {
             const current = artisanEarnings.get(artisan.user.email) || {
               name: artisan.user.name || artisan.studioName || "Artisan",
               email: artisan.user.email,
-              total: 0
+              total: 0,
             };
-            current.total += item.price * item.quantity;
+            current.total = roundCurrency(current.total + item.price * item.quantity);
             artisanEarnings.set(artisan.user.email, current);
           }
         });
 
         artisanEarnings.forEach((data) => {
-          sendOrderNotification(data.email, data.name, codOrder.id, data.total)
-            .catch(err => console.error(`Failed to send artisan order notification to ${data.email}:`, err));
+          sendOrderNotification(data.email, data.name, codOrder.id, data.total).catch((err) =>
+            console.error(`Failed to send artisan order notification to ${data.email}:`, err)
+          );
         });
       } catch (err) {
         console.error("Failed to send artisan order notifications for COD order:", err);
       }
 
-      return { success: true, orderId: codOrder.id, paymentUrl: null };
+      return {
+        success: true,
+        orderId: codOrder.id,
+        accessToken: signOrderAccessToken(codOrder.id, buyerEmail),
+        paymentUrl: null,
+      };
     }
 
-    // ─── PAYMOB: Save lead to AbandonedCheckout ONLY — no Order, no stock decrement ─
-    const firstName = shippingData?.firstName || "";
-    const lastName = shippingData?.lastName || "";
-    const customerName = `${firstName} ${lastName}`.trim() || shippingData?.email || "Customer";
+    // ─── PAYMOB: Persist authoritative server-priced AbandonedCheckout ────────
+    const createdLead = await prisma.abandonedCheckout.create({
+      data: {
+        customerName,
+        customerEmail: buyerEmail,
+        customerPhone: buyerPhone,
+        shippingAddress: buyerAddress,
+        shippingCity: buyerCity,
+        totalAmount: serverTotalAmount,
+        orderNotes: enrichedOrderNotes || null,
+        couponCode: resolvedCouponCode,
+        discountApplied: serverDiscount,
+        shippingCost: serverShippingCost,
+        status: "ABANDONED",
+        items: authoritativeItems.map((item) => ({
+          id: item.id,
+          variantId: item.variantId,
+          variantName: item.variantName,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          personalization: item.personalization,
+          customImage: item.processedCustomImage,
+          shippingData: {
+            userId: effectiveUserId,
+            couponId: resolvedCouponId,
+            discountApplied: serverDiscount,
+            shippingMethodId: resolvedShippingMethodId,
+            shippingCost: serverShippingCost,
+            address: buyerAddress,
+            city: buyerCity,
+            zip: shippingData?.zip ? String(shippingData.zip).trim() : null,
+            country: shippingData?.country ? String(shippingData.country).trim() : "Egypt",
+            phone: buyerPhone,
+            email: buyerEmail,
+            orderNotes: enrichedOrderNotes || null,
+            isGift: Boolean(shippingData?.isGift),
+            giftMessage:
+              shippingData?.isGift && shippingData?.giftMessage
+                ? String(shippingData.giftMessage).trim().slice(0, 1000)
+                : null,
+          },
+        })),
+      },
+    });
 
-    // Validate coupon upfront (read-only check) before creating abandoned checkout
-    if (shippingData?.couponId) {
-      const coupon = await prisma.coupon.findUnique({ where: { id: shippingData.couponId } });
-      if (!coupon) throw new Error("The coupon code used for this order is invalid.");
-      if (!coupon.isActive) throw new Error("The coupon code used for this order is no longer active.");
-      if (coupon.expiresAt && new Date() > coupon.expiresAt) throw new Error("The coupon code used for this order has expired.");
-      if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) throw new Error("This coupon has just reached its maximum usage limit!");
-    }
-
-    const abandonedCheckout = await prisma.$executeRawUnsafe(
-      `INSERT INTO "AbandonedCheckout" (id, "customerName", "customerEmail", "customerPhone", "shippingAddress", "shippingCity", "totalAmount", items, "orderNotes", "couponCode", "discountApplied", "shippingCost", status, "updatedAt")
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, 'ABANDONED', NOW())
-       RETURNING id`,
-      customerName,
-      shippingData?.email || "",
-      shippingData?.phone || "",
-      shippingData?.address || null,
-      shippingData?.city || null,
-      totalAmount,
-      JSON.stringify(items.map(item => ({
-        id: item.id,
-        variantId: item.variantId || null,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        personalization: item.personalization || null,
-        customImage: item.processedCustomImage || null,
-        shippingData: {
-          userId,
-          couponId: shippingData?.couponId || null,
-          discountApplied: shippingData?.discountApplied || 0,
-          shippingMethodId: shippingData?.shippingMethodId || null,
-          shippingCost: shippingData?.shippingCost || 0,
-          address: shippingData?.address,
-          city: shippingData?.city,
-          zip: shippingData?.zip,
-          country: shippingData?.country,
-          phone: shippingData?.phone,
-          email: shippingData?.email,
-          orderNotes: shippingData?.orderNotes,
-          isGift: shippingData?.isGift || false,
-          giftMessage: shippingData?.giftMessage || null
-        }
-      }))),
-      shippingData?.orderNotes || null,
-      shippingData?.couponCode || null,
-      shippingData?.discountApplied || 0,
-      shippingData?.shippingCost || 0
-    );
-
-    // Use a lookup to get the inserted ID (executeRawUnsafe returns row count not the row)
-    const acRow = await prisma.$queryRawUnsafe<{id: string}[]>(
-      `SELECT id FROM "AbandonedCheckout" WHERE "customerEmail" = $1 AND "totalAmount" = $2 ORDER BY "createdAt" DESC LIMIT 1`,
-      shippingData?.email || "",
-      totalAmount
-    );
-    const abandonedCheckoutId = acRow?.[0]?.id;
-
-    // Abandoned checkout is stored in DB for admin leads dashboard; email notification disabled per request
-
-    // Generate Paymob Payment Link
-    let paymentUrl = null;
     try {
-      const amountCents = Math.round(totalAmount * 100);
-
+      const amountCents = Math.round(serverTotalAmount * 100);
       const headersList = await headers();
       const host = headersList.get("host") || "localhost:3000";
-      const proto = headersList.get("x-forwarded-proto") || "http";
+      const proto = headersList.get("x-forwarded-proto") || "https";
       const origin = `${proto}://${host}`;
 
-      const itemsForPaymob = items.map(item => {
-        let imageUrl = item.image || (item.images && item.images.length > 0 ? item.images[0] : "");
-        if (imageUrl && !imageUrl.startsWith("http")) {
+      const itemsForPaymob = authoritativeItems.map((item) => {
+        let imageUrl = item.image || "";
+        if (imageUrl && !imageUrl.startsWith("http") && !imageUrl.startsWith("data:")) {
           imageUrl = `${origin}${imageUrl.startsWith("/") ? "" : "/"}${imageUrl}`;
+        } else if (imageUrl.startsWith("data:")) {
+          imageUrl = "";
         }
         return {
           name: item.name || "Item",
           price: item.price,
-          description: item.description || "Giftisan Product",
+          description: (item.description || "Giftisan Product").slice(0, 200),
           quantity: item.quantity,
-          image: imageUrl
+          image: imageUrl,
         };
       });
 
-      if (shippingData?.discountApplied && shippingData.discountApplied > 0) {
-        itemsForPaymob.push({ name: "Promo Discount", price: -shippingData.discountApplied, description: "Applied coupon discount", quantity: 1, image: "" });
+      if (serverDiscount > 0) {
+        itemsForPaymob.push({
+          name: "Promo Discount",
+          price: -serverDiscount,
+          description: "Applied coupon discount",
+          quantity: 1,
+          image: "",
+        });
       }
-      if (shippingData?.shippingCost && shippingData.shippingCost > 0) {
-        itemsForPaymob.push({ name: "Shipping", price: shippingData.shippingCost, description: "Shipping Cost", quantity: 1, image: "" });
+      if (serverShippingCost > 0) {
+        itemsForPaymob.push({
+          name: "Shipping",
+          price: serverShippingCost,
+          description: "Shipping Cost",
+          quantity: 1,
+          image: "",
+        });
       }
 
-      // Use abandonedCheckoutId as the paymob special_reference so we can recover it in the webhook
-      const reference = abandonedCheckoutId ? `AC-${abandonedCheckoutId}-${Date.now()}` : `GUEST-${Date.now()}`;
-
+      const reference = `AC-${createdLead.id}-${Date.now()}`;
       const clientSecret = await createPaymobIntention(
         amountCents,
         reference,
-        shippingData || {},
+        {
+          firstName: firstName || "Customer",
+          lastName: lastName || "NA",
+          email: buyerEmail,
+          phone: buyerPhone,
+          address: buyerAddress,
+          city: buyerCity,
+          country: shippingData?.country || "EG",
+          zip: shippingData?.zip || "",
+        },
         itemsForPaymob
       );
 
-      if (clientSecret) {
-        paymentUrl = `https://accept.paymob.com/unifiedcheckout/?publicKey=${PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecret}`;
+      if (!clientSecret) {
+        throw new Error("Paymob did not return a checkout session.");
       }
-    } catch (paymobError) {
-      console.error("Paymob initialization error:", paymobError);
-    }
 
-    // Return a fake orderId-like reference so the client flow still works (for future COD success page)
-    return { success: true, orderId: null, paymentUrl, abandonedCheckoutId };
+      const paymentUrl = `https://accept.paymob.com/unifiedcheckout/?publicKey=${PAYMOB_PUBLIC_KEY}&clientSecret=${clientSecret}`;
+      return { success: true, orderId: null, paymentUrl };
+    } catch (paymobError: any) {
+      console.error("Paymob initialization error:", paymobError);
+      await prisma.abandonedCheckout
+        .update({
+          where: { id: createdLead.id },
+          data: { status: "FAILED_PAYMENT" },
+        })
+        .catch(() => {});
+      return {
+        error:
+          "Online payment gateway is temporarily unavailable. Please try again in a moment or select Cash on Delivery.",
+      };
+    }
   } catch (error: any) {
     console.error("Create order error:", error);
-    return { error: error.message || "Failed to complete your pre-launch order." };
+    return { error: error.message || "Failed to complete your order." };
   }
-}
-
-/**
- * Called internally from the Paymob webhook on a successful payment.
- * Creates the real Order, decrements stock, processes financials.
- */
-export async function createOrderFromAbandonedCheckout(abandonedCheckoutId: string, paymobReference: string) {
-  // Fetch the abandoned checkout row
-  const rows = await prisma.$queryRawUnsafe<any[]>(
-    `SELECT * FROM "AbandonedCheckout" WHERE id = $1 LIMIT 1`,
-    abandonedCheckoutId
-  );
-  const ac = rows?.[0];
-  if (!ac) {
-    console.error(`AbandonedCheckout not found for id: ${abandonedCheckoutId}`);
-    return null;
-  }
-
-  // Prevent double-processing
-  if (ac.status === "CONVERTED") {
-    console.log(`AbandonedCheckout ${abandonedCheckoutId} already converted to order.`);
-    // Return the linked order if available
-    if (ac.orderId) {
-      return await prisma.order.findUnique({
-        where: { id: ac.orderId },
-        include: {
-          user: true,
-          items: { include: { product: { include: { artisan: { include: { user: true } } } } } }
-        }
-      });
-    }
-    return null;
-  }
-
-  // The item data was stored in the first item's shippingData field (shared)
-  const storedItems: any[] = ac.items || [];
-  const shippingData = storedItems?.[0]?.shippingData || {};
-  const userId = shippingData.userId || null;
-
-  // Resolve userId by email if guest
-  let effectiveUserId = userId;
-  if (!effectiveUserId && ac.customerEmail) {
-    const existingUser = await prisma.user.findUnique({
-      where: { email: ac.customerEmail.toLowerCase().trim() },
-      select: { id: true }
-    });
-    if (existingUser) effectiveUserId = existingUser.id;
-  }
-
-  const order = await prisma.$transaction(async (tx) => {
-    // Re-check stock before decrementing
-    for (const item of storedItems) {
-      if (item.variantId) {
-        const variant = await tx.productVariant.findUnique({ where: { id: item.variantId }, select: { stock: true, name: true } });
-        if (!variant || variant.stock < item.quantity) {
-          throw new Error(`Stock unavailable for variant "${variant?.name || item.name}". Cannot fulfil order.`);
-        }
-      } else {
-        const product = await tx.product.findUnique({ where: { id: item.id }, select: { stock: true, name: true } });
-        if (!product || product.stock < item.quantity) {
-          throw new Error(`Stock unavailable for "${product?.name || item.name}". Cannot fulfil order.`);
-        }
-      }
-    }
-
-    // Create the real Order
-    const newOrder = await tx.order.create({
-      data: {
-        userId: effectiveUserId,
-        totalAmount: ac.totalAmount,
-        status: "PROCESSING",
-        shippingAddress: shippingData.address || ac.shippingAddress,
-        shippingCity: shippingData.city || ac.shippingCity,
-        shippingZip: shippingData.zip || null,
-        shippingCountry: shippingData.country || "Egypt",
-        clientPhone: shippingData.phone || ac.customerPhone,
-        clientEmail: shippingData.email || ac.customerEmail,
-        orderNotes: shippingData.orderNotes || ac.orderNotes,
-        isGift: shippingData.isGift || false,
-        giftMessage: shippingData.giftMessage || null,
-        couponId: shippingData.couponId || null,
-        discountApplied: shippingData.discountApplied || 0,
-        shippingMethodId: shippingData.shippingMethodId || null,
-        shippingCost: shippingData.shippingCost || 0,
-        items: {
-          create: storedItems.map((item: any) => ({
-            productId: item.id,
-            variantId: item.variantId || null,
-            quantity: item.quantity,
-            price: item.price,
-            personalization: item.personalization || null,
-            customImage: item.customImage || null
-          }))
-        }
-      },
-      include: {
-        user: true,
-        items: { include: { product: { include: { artisan: { include: { user: true } } } } } }
-      }
-    });
-
-    // Validate & increment coupon usage
-    if (shippingData.couponId) {
-      const coupon = await tx.coupon.findUnique({ where: { id: shippingData.couponId } });
-      if (coupon && coupon.isActive) {
-        await tx.coupon.update({ where: { id: shippingData.couponId }, data: { usedCount: { increment: 1 } } });
-      }
-    }
-
-    // Decrement stock
-    for (const item of storedItems) {
-      if (item.variantId) {
-        await tx.productVariant.update({ where: { id: item.variantId }, data: { stock: { decrement: item.quantity } } });
-      } else {
-        await tx.product.update({ where: { id: item.id }, data: { stock: { decrement: item.quantity } } });
-      }
-    }
-
-    // Mark abandoned checkout as CONVERTED
-    await tx.$executeRawUnsafe(
-      `UPDATE "AbandonedCheckout" SET status = 'CONVERTED', "orderId" = $1, "updatedAt" = NOW() WHERE id = $2`,
-      newOrder.id,
-      abandonedCheckoutId
-    );
-
-    return newOrder;
-  });
-
-  return order;
 }
 
 export async function retryPaymentAction(orderId: string) {
@@ -1483,49 +1518,39 @@ export async function retryPaymentAction(orderId: string) {
     }
 
     if (order.status === "FAILED") {
-      // Re-reserve stock and set order status back to PENDING
+      // Atomically re-reserve stock and set order status back to PENDING
       await prisma.$transaction(async (tx) => {
-        for (const item of order.items) {
-          if (item.variantId) {
-            const variant = await tx.productVariant.findUnique({
-              where: { id: item.variantId },
-              select: { stock: true, name: true }
-            });
-            if (!variant || variant.stock < item.quantity) {
-              throw new Error(`The variation "${variant?.name || 'One of your items'}" just sold out! Please place a new order.`);
-            }
-            await tx.productVariant.update({
-              where: { id: item.variantId },
-              data: {
-                stock: {
-                  decrement: item.quantity
-                }
-              }
-            });
-          } else {
-            const product = await tx.product.findUnique({
-              where: { id: item.productId },
-              select: { stock: true, name: true }
-            });
-            if (!product || product.stock < item.quantity) {
-              throw new Error(`The product "${product?.name || 'One of your items'}" just sold out! Please place a new order.`);
-            }
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: {
-                  decrement: item.quantity
-                }
-              }
-            });
-          }
+        const claimed = await tx.order.updateMany({
+          where: { id: orderId, status: "FAILED" },
+          data: { status: "PENDING" },
+        });
+        if (claimed.count !== 1) {
+          throw new Error("Order state changed concurrently. Please refresh and try again.");
         }
 
-        // Set status back to PENDING since stock is now successfully re-reserved
-        await tx.order.update({
-          where: { id: orderId },
-          data: { status: "PENDING" }
-        });
+        for (const item of order.items) {
+          if (item.variantId) {
+            const updatedVariant = await tx.productVariant.updateMany({
+              where: { id: item.variantId, stock: { gte: item.quantity } },
+              data: { stock: { decrement: item.quantity } },
+            });
+            if (updatedVariant.count !== 1) {
+              throw new Error(
+                "One of your selected variations just sold out! Please place a new order."
+              );
+            }
+          } else {
+            const updatedProduct = await tx.product.updateMany({
+              where: { id: item.productId, stock: { gte: item.quantity } },
+              data: { stock: { decrement: item.quantity } },
+            });
+            if (updatedProduct.count !== 1) {
+              throw new Error(
+                `The product "${item.product?.name || "One of your items"}" just sold out! Please place a new order.`
+              );
+            }
+          }
+        }
       });
     }
 
@@ -1601,186 +1626,6 @@ export async function retryPaymentAction(orderId: string) {
   }
 }
 
-export async function processOrderCancellationInTx(tx: any, orderId: string) {
-  // 1. Mark all order items as CANCELLED
-  await tx.orderItem.updateMany({
-    where: { orderId },
-    data: { status: "CANCELLED" }
-  });
-
-  // 2. Fetch order items to restore stock
-  const orderItems = await tx.orderItem.findMany({
-    where: { orderId },
-    select: { variantId: true, productId: true, quantity: true }
-  });
-
-  for (const item of orderItems) {
-    if (item.variantId) {
-      await tx.productVariant.update({
-        where: { id: item.variantId },
-        data: {
-          stock: {
-            increment: item.quantity
-          }
-        }
-      });
-    } else if (item.productId) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: {
-          stock: {
-            increment: item.quantity
-          }
-        }
-      });
-    }
-  }
-
-  // 3. Reverse financial transactions and artisan balances
-  const transactions = await tx.artisanTransaction.findMany({
-    where: {
-      orderId,
-      status: { in: ["PENDING", "CLEARED"] }
-    }
-  });
-
-  for (const t of transactions) {
-    const amountToDeduct = Math.abs(t.amount);
-    const balance = await tx.artisanBalance.findUnique({
-      where: { artisanId: t.artisanId }
-    });
-
-    if (balance) {
-      if (t.status === "PENDING") {
-        const newPending = Math.max(0, balance.pending - amountToDeduct);
-        await tx.artisanBalance.update({
-          where: { artisanId: t.artisanId },
-          data: { pending: newPending }
-        });
-      } else if (t.status === "CLEARED") {
-        const newWithdrawable = Math.max(0, balance.withdrawable - amountToDeduct);
-        await tx.artisanBalance.update({
-          where: { artisanId: t.artisanId },
-          data: { withdrawable: newWithdrawable }
-        });
-      }
-    }
-
-    await tx.artisanTransaction.update({
-      where: { id: t.id },
-      data: { status: "FAILED" }
-    });
-  }
-
-  // 4. Restore coupon quota if a coupon was used
-  const order = await tx.order.findUnique({
-    where: { id: orderId },
-    select: { couponId: true }
-  });
-  if (order?.couponId) {
-    const coupon = await tx.coupon.findUnique({
-      where: { id: order.couponId },
-      select: { usedCount: true }
-    });
-    if (coupon && coupon.usedCount > 0) {
-      await tx.coupon.update({
-        where: { id: order.couponId },
-        data: { usedCount: { decrement: 1 } }
-      });
-    }
-  }
-}
-
-export async function processOrderRefundInTx(tx: any, orderId: string) {
-  // 1. Mark all order items as REFUNDED
-  await tx.orderItem.updateMany({
-    where: { orderId },
-    data: { status: "REFUNDED" }
-  });
-
-  // 2. Fetch order items to restore stock
-  const orderItems = await tx.orderItem.findMany({
-    where: { orderId },
-    select: { variantId: true, productId: true, quantity: true }
-  });
-
-  for (const item of orderItems) {
-    if (item.variantId) {
-      await tx.productVariant.update({
-        where: { id: item.variantId },
-        data: {
-          stock: {
-            increment: item.quantity
-          }
-        }
-      });
-    } else if (item.productId) {
-      await tx.product.update({
-        where: { id: item.productId },
-        data: {
-          stock: {
-            increment: item.quantity
-          }
-        }
-      });
-    }
-  }
-
-  // 3. Reverse financial transactions and artisan balances
-  const transactions = await tx.artisanTransaction.findMany({
-    where: {
-      orderId,
-      status: { in: ["PENDING", "CLEARED"] }
-    }
-  });
-
-  for (const t of transactions) {
-    const amountToDeduct = Math.abs(t.amount);
-    const balance = await tx.artisanBalance.findUnique({
-      where: { artisanId: t.artisanId }
-    });
-
-    if (balance) {
-      if (t.status === "PENDING") {
-        const newPending = Math.max(0, balance.pending - amountToDeduct);
-        await tx.artisanBalance.update({
-          where: { artisanId: t.artisanId },
-          data: { pending: newPending }
-        });
-      } else if (t.status === "CLEARED") {
-        const newWithdrawable = Math.max(0, balance.withdrawable - amountToDeduct);
-        await tx.artisanBalance.update({
-          where: { artisanId: t.artisanId },
-          data: { withdrawable: newWithdrawable }
-        });
-      }
-    }
-
-    await tx.artisanTransaction.update({
-      where: { id: t.id },
-      data: { status: "FAILED" }
-    });
-  }
-
-  // 4. Restore coupon quota if a coupon was used
-  const refundOrder = await tx.order.findUnique({
-    where: { id: orderId },
-    select: { couponId: true }
-  });
-  if (refundOrder?.couponId) {
-    const coupon = await tx.coupon.findUnique({
-      where: { id: refundOrder.couponId },
-      select: { usedCount: true }
-    });
-    if (coupon && coupon.usedCount > 0) {
-      await tx.coupon.update({
-        where: { id: refundOrder.couponId },
-        data: { usedCount: { decrement: 1 } }
-      });
-    }
-  }
-}
-
 export async function cancelOrder(orderId: string) {
   try {
     const session = await auth();
@@ -1834,6 +1679,11 @@ export const cancelPendingOrderAction = cancelOrder;
 
 export async function getUserOrders(userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || (session.user.id !== userId && session.user.role !== "ADMIN")) {
+      return [];
+    }
+
     const orders = await prisma.order.findMany({
       where: { userId },
       include: {
@@ -1861,64 +1711,16 @@ export async function getUserOrders(userId: string) {
         createdAt: "desc"
       }
     });
-    return orders;
+    return orders.map((order) => ({
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        product: item.product ? sanitizePublicProduct(item.product) : item.product,
+      })),
+    }));
   } catch (error) {
     console.error("Get orders error:", error);
     return [];
-  }
-}
-
-/**
- * Auto-clears any delivered sales older than 7 days for a specific artisan
- * Transitions them from PENDING -> CLEARED and moves the amount from pending to withdrawable balance.
- */
-export async function autoClearEligibleArtisanEscrow(artisanId: string) {
-  try {
-    const thresholdDate = getEscrowClearanceThresholdDate(7);
-
-    const eligibleTransactions = await prisma.artisanTransaction.findMany({
-      where: {
-        artisanId,
-        type: "SALE",
-        status: "PENDING",
-        createdAt: {
-          lt: thresholdDate
-        },
-        order: {
-          status: "DELIVERED"
-        }
-      }
-    });
-
-    if (eligibleTransactions.length === 0) return 0;
-
-    let clearedCount = 0;
-    for (const tx of eligibleTransactions) {
-      try {
-        await prisma.$transaction(async (prismaTx) => {
-          await prismaTx.artisanTransaction.update({
-            where: { id: tx.id },
-            data: { status: "CLEARED" }
-          });
-
-          await prismaTx.artisanBalance.update({
-            where: { artisanId: tx.artisanId },
-            data: {
-              pending: { decrement: tx.amount },
-              withdrawable: { increment: tx.amount }
-            }
-          });
-        });
-        clearedCount++;
-      } catch (err) {
-        console.error(`Failed to auto-clear transaction ${tx.id} for artisan ${artisanId}:`, err);
-      }
-    }
-
-    return clearedCount;
-  } catch (error) {
-    console.error(`Auto-clear escrow error for artisan ${artisanId}:`, error);
-    return 0;
   }
 }
 
@@ -1938,7 +1740,7 @@ export async function refreshArtisanBalanceAction(artisanId: string) {
       return { error: "Unauthorized access to this shop's finances." };
     }
 
-    const clearedCount = await autoClearEligibleArtisanEscrow(artisanId);
+    const { clearedCount } = await clearEligibleArtisanEscrow(artisanId);
     revalidatePath("/studio");
     return { success: true, clearedCount };
   } catch (error: any) {
@@ -1948,6 +1750,11 @@ export async function refreshArtisanBalanceAction(artisanId: string) {
 
 export async function getArtisanData(userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || (session.user.id !== userId && session.user.role !== "ADMIN")) {
+      return null;
+    }
+
     // 1. Lazy-clear any matured escrow sales for this artisan upon viewing studio
     const profile = await prisma.artisanProfile.findUnique({
       where: { userId },
@@ -1955,7 +1762,7 @@ export async function getArtisanData(userId: string) {
     });
 
     if (profile) {
-      await autoClearEligibleArtisanEscrow(profile.id);
+      await clearEligibleArtisanEscrow(profile.id);
     }
 
     const artisan = await prisma.artisanProfile.findUnique({
@@ -1972,14 +1779,14 @@ export async function getArtisanData(userId: string) {
             }
           },
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc"
           }
         },
         user: true,
         balances: true,
         transactions: {
           orderBy: {
-            createdAt: 'desc'
+            createdAt: "desc"
           }
         }
       }
@@ -1990,6 +1797,8 @@ export async function getArtisanData(userId: string) {
     return null;
   }
 }
+
+const VALID_PAYOUT_METHODS = new Set(["INSTAPAY", "VODAFONE_CASH", "BANK_TRANSFER"]);
 
 export async function requestPayoutAction(
   artisanId: string,
@@ -2004,8 +1813,24 @@ export async function requestPayoutAction(
       return { error: "You must be signed in to perform this action" };
     }
 
+    const normalizedMethod = String(method || "").trim().toUpperCase();
+    if (!VALID_PAYOUT_METHODS.has(normalizedMethod)) {
+      return { error: "Invalid payout method selected." };
+    }
+
+    const cleanAddress = String(address || "").trim();
+    const cleanName = String(name || "").trim();
+    if (!cleanAddress || !cleanName) {
+      return { error: "Beneficiary name and payout handle/address are required." };
+    }
+
+    const roundedAmount = roundCurrency(Number(amount));
+    if (!Number.isFinite(roundedAmount) || roundedAmount < MIN_PAYOUT_AMOUNT) {
+      return { error: `Minimum withdrawal amount is ${MIN_PAYOUT_AMOUNT} EGP.` };
+    }
+
     // Auto-clear any matured escrow sales for this artisan right before verifying balances
-    await autoClearEligibleArtisanEscrow(artisanId);
+    await clearEligibleArtisanEscrow(artisanId);
 
     const artisan = await prisma.artisanProfile.findUnique({
       where: { id: artisanId },
@@ -2017,59 +1842,50 @@ export async function requestPayoutAction(
     }
 
     const balance = artisan.balances[0] || { withdrawable: 0 };
-    if (isNaN(amount) || amount < MIN_PAYOUT_AMOUNT) {
-      return { error: `Minimum withdrawal amount is ${MIN_PAYOUT_AMOUNT} EGP.` };
-    }
-    if (amount > balance.withdrawable) {
+    if (roundedAmount > balance.withdrawable) {
       return { error: "Insufficient withdrawable balance." };
     }
 
     await prisma.$transaction(async (tx) => {
-      // Lock-guard verify: fetch live balance inside transaction lock before performing withdrawal
-      const liveBalance = await tx.artisanBalance.findUnique({
-        where: { artisanId: artisan.id }
+      // Atomic conditional balance deduction prevents concurrent double-withdrawals
+      const deducted = await tx.artisanBalance.updateMany({
+        where: {
+          artisanId: artisan.id,
+          withdrawable: { gte: roundedAmount },
+        },
+        data: {
+          withdrawable: { decrement: roundedAmount },
+        },
       });
 
-      if (!liveBalance || liveBalance.withdrawable < amount) {
+      if (deducted.count !== 1) {
         throw new Error("Insufficient withdrawable balance due to a concurrent pending transaction.");
-      }
-      if (amount < MIN_PAYOUT_AMOUNT) {
-        throw new Error(`Minimum withdrawal amount is ${MIN_PAYOUT_AMOUNT} EGP.`);
       }
 
       // 1. Log transaction as a negative payout
       await tx.artisanTransaction.create({
         data: {
           artisanId: artisan.id,
-          amount: -amount,
+          amount: -roundedAmount,
           type: "PAYOUT",
-          status: "PENDING", // Pending admin transfer approval
-          description: `Withdrawal request via ${method}. Sent to: ${address} (${name})`
+          status: "PENDING",
+          description: `Withdrawal request via ${normalizedMethod}. Sent to: ${cleanAddress} (${cleanName})`
         }
       });
 
-      // 2. Deduct from withdrawable balance
-      await tx.artisanBalance.update({
-        where: { artisanId: artisan.id },
-        data: {
-          withdrawable: { decrement: amount }
-        }
-      });
-
-      // 3. Update preferred profile payout coordinates
+      // 2. Update preferred profile payout coordinates
       await tx.artisanProfile.update({
         where: { id: artisan.id },
         data: {
-          payoutMethod: method as any,
-          payoutAddress: address,
-          payoutName: name
+          payoutMethod: normalizedMethod as any,
+          payoutAddress: cleanAddress,
+          payoutName: cleanName
         }
       });
     });
 
-    // Send email notification to admin (support@giftisan.com) non-blockingly
     const artisanName = artisan.studioName || artisan.user?.name || "Artisan";
-    sendPayoutRequestEmail(artisanName, amount, method, address).catch((err) =>
+    sendPayoutRequestEmail(artisanName, roundedAmount, normalizedMethod, cleanAddress).catch((err) =>
       console.error("Failed to send payout request email notification:", err)
     );
 
@@ -2088,7 +1904,7 @@ export async function updateArtisanCommission(artisanId: string, rate: number) {
       return { error: "You must be an admin to perform this action." };
     }
 
-    if (rate < 0 || rate > 1) {
+    if (!Number.isFinite(rate) || rate < 0 || rate > 1) {
       return { error: "Commission rate must be between 0 and 1 (e.g., 0.15 for 15%)." };
     }
 
@@ -2128,13 +1944,16 @@ export async function approvePayoutAction(transactionId: string) {
     const payoutAmount = Math.abs(transaction.amount);
 
     await prisma.$transaction(async (tx) => {
-      // 1. Update transaction status to COMPLETED
-      await tx.artisanTransaction.update({
-        where: { id: transactionId },
+      // Atomic claim: prevents double-approving if clicked twice
+      const claimed = await tx.artisanTransaction.updateMany({
+        where: { id: transactionId, type: "PAYOUT", status: "PENDING" },
         data: { status: "COMPLETED" }
       });
 
-      // 2. Increment withdrawn balance
+      if (claimed.count !== 1) {
+        throw new Error("This payout request has already been processed.");
+      }
+
       await tx.artisanBalance.update({
         where: { artisanId: transaction.artisanId },
         data: {
@@ -2143,7 +1962,6 @@ export async function approvePayoutAction(transactionId: string) {
       });
     });
 
-    // Send email notification to artisan in the background (non-blocking)
     if (transaction.artisan?.user?.email) {
       const email = transaction.artisan.user.email;
       const name = transaction.artisan.studioName || transaction.artisan.user.name || "Artisan";
@@ -2187,16 +2005,19 @@ export async function rejectPayoutAction(transactionId: string, reason?: string)
     const payoutAmount = Math.abs(transaction.amount);
 
     await prisma.$transaction(async (tx) => {
-      // 1. Update transaction status to FAILED/REJECTED
-      await tx.artisanTransaction.update({
-        where: { id: transactionId },
+      // Atomic claim: prevents double-refunding withdrawable if clicked twice
+      const claimed = await tx.artisanTransaction.updateMany({
+        where: { id: transactionId, type: "PAYOUT", status: "PENDING" },
         data: { 
           status: "FAILED",
           description: `REJECTED: ${transaction.description}${reason ? ` (Reason: ${reason})` : ""}`
         }
       });
 
-      // 2. Refund withdrawable balance back to the artisan
+      if (claimed.count !== 1) {
+        throw new Error("This payout request has already been processed.");
+      }
+
       await tx.artisanBalance.update({
         where: { artisanId: transaction.artisanId },
         data: {
@@ -2205,7 +2026,6 @@ export async function rejectPayoutAction(transactionId: string, reason?: string)
       });
     });
 
-    // Send email notification to artisan in the background (non-blocking)
     if (transaction.artisan?.user?.email) {
       const email = transaction.artisan.user.email;
       const name = transaction.artisan.studioName || transaction.artisan.user.name || "Artisan";
@@ -2230,51 +2050,23 @@ export async function triggerEscrowClearanceAction() {
       return { error: "You must be an admin to perform this action." };
     }
 
-    const thresholdDate = getEscrowClearanceThresholdDate(7);
+    const { clearedCount } = await clearEligibleArtisanEscrow();
 
-    const pendingSales = await prisma.artisanTransaction.findMany({
-      where: {
-        type: "SALE",
-        status: "PENDING",
-        createdAt: {
-          lt: thresholdDate
-        },
-        order: {
-          status: "DELIVERED"
-        }
-      }
-    });
-
-    if (pendingSales.length === 0) {
-      return { success: true, clearedCount: 0, message: "No pending escrow balances older than 7 days matched the clearance criteria today." };
-    }
-
-    let clearedCount = 0;
-    for (const tx of pendingSales) {
-      try {
-        await prisma.$transaction(async (prismaTx) => {
-          await prismaTx.artisanTransaction.update({
-            where: { id: tx.id },
-            data: { status: "CLEARED" }
-          });
-
-          await prismaTx.artisanBalance.update({
-            where: { artisanId: tx.artisanId },
-            data: {
-              pending: { decrement: tx.amount },
-              withdrawable: { increment: tx.amount }
-            }
-          });
-        });
-        clearedCount++;
-      } catch (err: any) {
-        console.error(`Failed to clear transaction ${tx.id}:`, err);
-      }
+    if (clearedCount === 0) {
+      return {
+        success: true,
+        clearedCount: 0,
+        message: "No pending escrow balances older than 7 days matched the clearance criteria today.",
+      };
     }
 
     revalidatePath("/admin/payouts");
     revalidatePath("/studio");
-    return { success: true, clearedCount, message: `Successfully cleared ${clearedCount} transaction(s) from escrow to withdrawable balances.` };
+    return {
+      success: true,
+      clearedCount,
+      message: `Successfully cleared ${clearedCount} transaction(s) from escrow to withdrawable balances.`,
+    };
   } catch (error: any) {
     console.error("Manual escrow clearance error:", error);
     return { error: error.message || "Failed to trigger escrow settlement." };
@@ -2303,10 +2095,13 @@ export async function getAllArtisans() {
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        createdAt: "desc"
       }
     });
-    return artisans;
+    return artisans.map((a) => ({
+      ...sanitizePublicArtisan(a),
+      products: a.products.map((p) => sanitizePublicProduct(p)),
+    }));
   } catch (error) {
     console.error("Get all artisans error:", error);
     return [];
@@ -2422,6 +2217,7 @@ export async function updateArtisanProfile(userId: string, data: any) {
     revalidatePath("/studio");
     revalidatePath("/");
     revalidatePath("/artisans");
+    revalidateCatalog();
     return {
       success: true,
       artisan: {
@@ -2632,6 +2428,7 @@ export async function createProduct(artisanId: string, formData: FormData) {
     revalidatePath("/studio");
     revalidatePath("/");
     revalidatePath("/artisans");
+    revalidateCatalog();
     revalidatePath("/categories");
 
     return { success: true, product };
@@ -2671,9 +2468,32 @@ export async function getArtisanSales(artisanId: string) {
       },
       include: {
         order: {
-          include: {
-            user: true,
-            coupon: true
+          select: {
+            id: true,
+            userId: true,
+            createdAt: true,
+            updatedAt: true,
+            status: true,
+            shippingCity: true,
+            isGift: true,
+            giftMessage: true,
+            discountApplied: true,
+            orderNotes: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+              }
+            },
+            coupon: {
+              select: {
+                id: true,
+                code: true,
+                artisanId: true,
+                discountType: true,
+                discountValue: true,
+              }
+            }
           }
         },
         product: true,
@@ -2687,7 +2507,15 @@ export async function getArtisanSales(artisanId: string) {
       take: 50
     });
 
-    return sales;
+    if (isAdmin) return sales;
+
+    return sales.map((s) => ({
+      ...s,
+      order: {
+        ...s.order,
+        orderNotes: s.order.orderNotes?.match(/\[Payment:[^\]]+\]/i)?.[0] || null,
+      },
+    }));
   } catch (error) {
     console.error("Fetch sales error:", error);
     return [];
@@ -2703,7 +2531,9 @@ export async function getArtisanReviews(artisanId: string) {
         }
       },
       include: {
-        user: true,
+        user: {
+          select: PUBLIC_USER_SELECT
+        },
         product: true
       },
       orderBy: {
@@ -2724,6 +2554,11 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
     const session = await auth();
     if (!session?.user) {
       return { error: "You must be signed in to perform this action" };
+    }
+
+    const allowedStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
+    if (!allowedStatuses.includes(status)) {
+      return { error: "Invalid order item status" };
     }
 
     const orderItem = await prisma.orderItem.findUnique({
@@ -2749,6 +2584,8 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
     if (!isAdmin && (!isOwner || status !== "PROCESSING")) {
       return { error: "Only platform administrators can update shipping statuses. Artisans can only mark items as ready." };
     }
+
+    const wasAlreadyDelivered = orderItem.status === "DELIVERED";
 
     const updatedItem = await prisma.orderItem.update({
       where: { id: itemId },
@@ -2782,7 +2619,7 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
       newOrderStatus = "SHIPPED";
     }
 
-    if (newOrderStatus !== updatedItem.order.status) {
+    if (newOrderStatus !== updatedItem.order.status && updatedItem.order.status !== "CANCELLED" && updatedItem.order.status !== "REFUNDED") {
       await prisma.order.update({
         where: { id: updatedItem.orderId },
         data: { status: newOrderStatus }
@@ -2791,8 +2628,8 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
       console.log(`[Order Sync] Updated parent Order ${updatedItem.orderId} status to "${newOrderStatus}" because all items reached this milestone.`);
     }
 
-    // Reset escrow countdown to START NOW from the delivery moment (Security Escrow Start)
-    if (status === "DELIVERED") {
+    // Reset escrow countdown to START NOW only when transitioning into DELIVERED
+    if (status === "DELIVERED" && !wasAlreadyDelivered) {
       await prisma.artisanTransaction.updateMany({
         where: {
           orderId: updatedItem.orderId,
@@ -2833,19 +2670,25 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
   }
 }
 
-export async function processOrderUncancellationInTx(tx: any, order: any) {
-  // 1. Re-decrement inventory stock for all items
+async function processOrderUncancellationInTx(tx: any, order: any) {
+  // 1. Re-decrement inventory stock for all items with non-negative stock guard
   for (const item of order.items) {
     if (item.variantId) {
-      await tx.productVariant.update({
-        where: { id: item.variantId },
+      const updated = await tx.productVariant.updateMany({
+        where: { id: item.variantId, stock: { gte: item.quantity } },
         data: { stock: { decrement: item.quantity } }
       });
+      if (updated.count === 0) {
+        throw new Error(`Insufficient variant stock to restore order item "${item.product?.name || item.id}".`);
+      }
     } else if (item.productId) {
-      await tx.product.update({
-        where: { id: item.productId },
+      const updated = await tx.product.updateMany({
+        where: { id: item.productId, stock: { gte: item.quantity } },
         data: { stock: { decrement: item.quantity } }
       });
+      if (updated.count === 0) {
+        throw new Error(`Insufficient product stock to restore order item "${item.product?.name || item.id}".`);
+      }
     }
   }
 
@@ -2853,6 +2696,7 @@ export async function processOrderUncancellationInTx(tx: any, order: any) {
   const existingFailedTxs = await tx.artisanTransaction.findMany({
     where: {
       orderId: order.id,
+      type: "SALE",
       status: "FAILED"
     }
   });
@@ -2871,35 +2715,17 @@ export async function processOrderUncancellationInTx(tx: any, order: any) {
       });
     }
   } else {
-    for (const item of order.items) {
-      const product = await tx.product.findUnique({
-        where: { id: item.productId },
-        include: { artisan: true }
-      });
-      if (product?.artisan) {
-        const itemTotal = item.price * item.quantity;
-        const commission = getEffectiveArtisanCommissionRate(product.artisan);
-        const adminShare = itemTotal * commission;
-        const artisanShare = itemTotal - adminShare;
-
-        await tx.artisanTransaction.create({
-          data: {
-            artisanId: product.artisan.id,
-            orderId: order.id,
-            amount: artisanShare,
-            type: "SALE",
-            status: "PENDING",
-            description: `Earnings from "${product.name}" (Qty: ${item.quantity}). Total: ${itemTotal} EGP`
-          }
-        });
-
-        await tx.artisanBalance.upsert({
-          where: { artisanId: product.artisan.id },
-          update: { pending: { increment: artisanShare } },
-          create: { artisanId: product.artisan.id, pending: artisanShare, withdrawable: 0, withdrawn: 0 }
-        });
-      }
-    }
+    await recordArtisanOrderLedgerInTx(tx, {
+      orderId: order.id,
+      couponId: order.couponId,
+      discountApplied: order.discountApplied,
+      items: order.items.map((item: any) => ({
+        productId: item.productId,
+        name: item.product?.name,
+        price: item.price,
+        quantity: item.quantity,
+      })),
+    });
   }
 }
 
@@ -2908,6 +2734,11 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
     const session = await auth();
     if (session?.user?.role !== "ADMIN") {
       return { error: "Unauthorized: Admin privileges required" };
+    }
+
+    const allowedStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
+    if (!allowedStatuses.includes(status)) {
+      return { error: "Invalid order status" };
     }
 
     const order = await prisma.order.findUnique({
@@ -2926,6 +2757,7 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
       return { error: "Order not found" };
     }
 
+    const wasAlreadyDelivered = order.status === "DELIVERED";
     const isUnvoiding = (order.status === "CANCELLED" || order.status === "REFUNDED") && (status !== "CANCELLED" && status !== "REFUNDED");
 
     await prisma.$transaction(async (tx) => {
@@ -2957,7 +2789,7 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
       }
     });
 
-    if (status === "DELIVERED") {
+    if (status === "DELIVERED" && !wasAlreadyDelivered) {
       await prisma.artisanTransaction.updateMany({
         where: {
           orderId,
@@ -2994,7 +2826,7 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
     return { success: true };
   } catch (error: any) {
     console.error("Update order status error:", error);
-    return { error: "Failed to update order status" };
+    return { error: error.message || "Failed to update order status" };
   }
 }
 
@@ -3170,6 +3002,7 @@ export async function updateProduct(productId: string, formData: FormData) {
     revalidatePath("/studio");
     revalidatePath("/");
     revalidatePath("/artisans");
+    revalidateCatalog();
     revalidatePath("/categories");
 
     return { success: true, product: updated };
@@ -3204,16 +3037,39 @@ export async function deleteProduct(productId: string) {
       return { error: "You are not authorized to remove this product" };
     }
 
-    await prisma.product.delete({
-      where: { id: productId }
+    // Protect historical OrderItem rows from onDelete: Cascade data loss
+    const orderItemsCount = await prisma.orderItem.count({
+      where: { productId }
     });
+
+    if (orderItemsCount > 0) {
+      await prisma.$transaction([
+        prisma.product.update({
+          where: { id: productId },
+          data: {
+            status: "DRAFT",
+            stock: 0,
+            isFeatured: false
+          }
+        }),
+        prisma.productVariant.updateMany({
+          where: { productId },
+          data: { stock: 0 }
+        })
+      ]);
+    } else {
+      await prisma.product.delete({
+        where: { id: productId }
+      });
+    }
 
     revalidatePath("/studio");
     revalidatePath("/");
     revalidatePath("/artisans");
+    revalidateCatalog();
     revalidatePath("/categories");
 
-    return { success: true };
+    return { success: true, archived: orderItemsCount > 0 };
   } catch (error) {
     console.error("Delete product error:", error);
     return { error: "Failed to remove product" };
@@ -3434,7 +3290,7 @@ export async function acceptCurrentArtisanAgreement(language: unknown) {
 export async function addReview(data: { productId: string, userId: string, rating: number, comment: string, images?: string[] }) {
   try {
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return { error: "You must be signed in to perform this action" };
     }
 
@@ -3442,32 +3298,55 @@ export async function addReview(data: { productId: string, userId: string, ratin
       return { error: "You are not authorized to submit this review" };
     }
 
+    const safeRating = Math.round(Number(data.rating));
+    if (!Number.isFinite(safeRating) || safeRating < 1 || safeRating > 5) {
+      return { error: "Rating must be between 1 and 5 stars." };
+    }
+
+    const cleanComment = stripEmojis((data.comment || "").trim());
+    if (!cleanComment || cleanComment.length > 2000) {
+      return { error: "Please enter a review comment (up to 2,000 characters)." };
+    }
+
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        productId: data.productId,
+        userId: session.user.id,
+      },
+      select: { id: true },
+    });
+
+    if (existingReview) {
+      return { error: "You have already submitted a review for this product." };
+    }
+
     const processedImages = await Promise.all(
-      (data.images || []).map(img => processImage(img))
+      (data.images || []).slice(0, 5).map(img => processImage(img))
     );
 
     const review = await prisma.review.create({
       data: {
         productId: data.productId,
-        userId: data.userId,
-        rating: data.rating,
-        comment: data.comment,
+        userId: session.user.id,
+        rating: safeRating,
+        comment: cleanComment,
         images: processedImages.filter(Boolean) as string[]
       },
       include: {
-        user: true
+        user: {
+          select: PUBLIC_USER_SELECT
+        }
       }
     });
 
     revalidatePath(`/products/${data.productId}`);
+    revalidateCatalog();
     return { success: true, review };
   } catch (error: any) {
-    console.error("DEBUG Add review error detail:", error);
+    console.error("Add review error detail:", error);
     return { error: `Review failed: ${error.message || "Please check your internet and try again."}` };
   }
 }
-
-import { unstable_cache } from "next/cache";
 
 export async function getAdminStats() {
   try {
@@ -3655,7 +3534,7 @@ export async function getAllOrders() {
       return [];
     }
 
-    return await prisma.order.findMany({
+    const orders = await prisma.order.findMany({
       include: {
         user: true,
         refundRequests: {
@@ -3676,6 +3555,11 @@ export async function getAllOrders() {
       },
       orderBy: { createdAt: 'desc' }
     });
+
+    return orders.map((o) => ({
+      ...o,
+      verifySig: signDeliveryVerifyToken(o.id),
+    }));
   } catch (error) {
     console.error("Get all orders error:", error);
     return [];
@@ -3689,9 +3573,85 @@ export async function deleteUser(userId: string) {
       return { error: "Unauthorized" };
     }
 
-    await prisma.user.delete({
-      where: { id: userId }
+    if (session.user.id === userId) {
+      return { error: "You cannot delete your own administrator account." };
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        _count: { select: { orders: true } },
+        artisanProfile: {
+          select: {
+            id: true,
+            _count: {
+              select: {
+                transactions: true,
+              },
+            },
+          },
+        },
+      },
     });
+
+    if (!targetUser) {
+      return { error: "User not found" };
+    }
+
+    const artisanOrderItems = targetUser.artisanProfile
+      ? await prisma.orderItem.count({
+          where: { product: { artisanId: targetUser.artisanProfile.id } },
+        })
+      : 0;
+
+    // Preserve financial ledger & historical orders by soft-anonymizing accounts with transaction history
+    if (
+      targetUser._count.orders > 0 ||
+      (targetUser.artisanProfile?._count.transactions ?? 0) > 0 ||
+      artisanOrderItems > 0
+    ) {
+      const anonymizedEmail = `deleted+${userId}@deleted.giftisan.local`;
+      await prisma.$transaction([
+        prisma.session.deleteMany({ where: { userId } }),
+        prisma.account.deleteMany({ where: { userId } }),
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            name: "Deleted User",
+            email: anonymizedEmail,
+            emailVerified: null,
+            password: null,
+            image: null,
+            role: "CLIENT",
+          },
+        }),
+        ...(targetUser.artisanProfile
+          ? [
+              prisma.artisanProfile.update({
+                where: { id: targetUser.artisanProfile.id },
+                data: {
+                  status: "REJECTED",
+                  isVerified: false,
+                  phoneNumber: null,
+                  payoutAddress: null,
+                  payoutName: null,
+                  payoutMethod: null,
+                },
+              }),
+              prisma.product.updateMany({
+                where: { artisanId: targetUser.artisanProfile.id },
+                data: { status: "DRAFT", stock: 0, isFeatured: false },
+              }),
+            ]
+          : []),
+      ]);
+    } else {
+      await prisma.user.delete({
+        where: { id: userId },
+      });
+    }
+
     revalidatePath("/admin/users");
     return { success: true };
   } catch (error) {
@@ -3775,6 +3735,7 @@ export async function updateProductStatus(productId: string, status: "PENDING" |
     revalidatePath("/categories");
     revalidatePath("/artisans");
     revalidatePath("/admin/products");
+    revalidateCatalog();
     return { success: true };
   } catch (error) {
     console.error("Update product status error:", error);
@@ -3795,6 +3756,7 @@ export async function toggleProductFeatured(productId: string, isFeatured: boole
     });
     revalidatePath("/");
     revalidatePath("/admin/products");
+    revalidateCatalog();
     return { success: true };
   } catch (error) {
     console.error("Toggle featured error:", error);
@@ -3823,6 +3785,19 @@ export async function toggleArtisanVerification(artisanId: string, isVerified: b
 
 export async function updateUserRole(userId: string, role: "CLIENT" | "ARTISAN" | "ADMIN") {
   try {
+    const session = await auth();
+    if (session?.user?.role !== "ADMIN") {
+      return { error: "Unauthorized: Admin privileges required" };
+    }
+
+    if (!["CLIENT", "ARTISAN", "ADMIN"].includes(role)) {
+      return { error: "Invalid user role" };
+    }
+
+    if (session.user.id === userId && role !== "ADMIN") {
+      return { error: "You cannot remove your own administrator role." };
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: { role }
@@ -3836,7 +3811,7 @@ export async function updateUserRole(userId: string, role: "CLIENT" | "ARTISAN" 
           userId,
           bio: "",
           location: "",
-          avatar: `https://api.dicebear.com/10.x/gaze/svg?seed=${user.name || userId}`
+          avatar: `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(user.name || userId)}`
         },
         update: {} // Do nothing if it already exists
       });
@@ -3856,8 +3831,27 @@ export async function sendMessage(senderId: string, receiverId: string, content:
     return { error: "Messaging between clients and artisans is currently locked." };
   }
 
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "You must be signed in to send messages." };
+  }
+
+  if (session.user.id !== senderId && session.user.role !== "ADMIN") {
+    return { error: "Unauthorized sender." };
+  }
+
   if (!senderId || !receiverId) {
     return { error: "Missing sender or receiver ID" };
+  }
+
+  const rl = checkRateLimit(`msg:${session.user.id}`, 30, 60_000);
+  if (!rl.success) {
+    return { error: "You are sending messages too quickly. Please wait a moment." };
+  }
+
+  const cleanContent = (content || "").trim();
+  if (cleanContent.length > 4000) {
+    return { error: "Message is too long (maximum 4,000 characters)." };
   }
 
   try {
@@ -3867,7 +3861,7 @@ export async function sendMessage(senderId: string, receiverId: string, content:
       data: {
         senderId,
         receiverId,
-        content: content || "",
+        content: cleanContent,
         productId: productId || null,
         attachment: attachmentUrl
       },
@@ -3948,6 +3942,11 @@ export async function sendMessage(senderId: string, receiverId: string, content:
 
 export async function getInbox(userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || (session.user.id !== userId && session.user.role !== "ADMIN")) {
+      return [];
+    }
+
     const rawMessages = await prisma.message.findMany({
       where: {
         OR: [
@@ -4204,6 +4203,7 @@ export async function changeEmailAction({
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
+      omit: { password: false },
       include: {
         accounts: {
           select: { provider: true }
@@ -4273,9 +4273,14 @@ export async function changeEmailAction({
 
 export async function toggleFollowAction(artisanId: string, userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.id !== userId) {
+      return { error: "Unauthorized" };
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { following: true }
+      include: { following: { select: { id: true } } }
     });
 
     if (!user) return { error: "User not found" };
@@ -4313,11 +4318,17 @@ export async function toggleFollowAction(artisanId: string, userId: string) {
 
 export async function checkFollowStatus(artisanId: string, userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.id !== userId) {
+      return false;
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
         following: {
-          where: { id: artisanId }
+          where: { id: artisanId },
+          select: { id: true }
         }
       }
     });
@@ -4330,6 +4341,11 @@ export async function checkFollowStatus(artisanId: string, userId: string) {
 
 export async function getUnreadMessageCount(userId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.id !== userId) {
+      return 0;
+    }
+
     const unreadCount = await prisma.message.count({
       where: {
         receiverId: userId,
@@ -4344,6 +4360,11 @@ export async function getUnreadMessageCount(userId: string) {
 
 export async function markMessagesAsRead(userId: string, senderId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || session.user.id !== userId) {
+      return { success: false };
+    }
+
     await prisma.message.updateMany({
       where: {
         receiverId: userId,
@@ -4648,6 +4669,10 @@ export async function bulkDeleteProducts(ids: string[]) {
       return { error: "You must be signed in to perform this action" };
     }
 
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return { success: true };
+    }
+
     const isAdmin = session.user.role === "ADMIN";
     
     if (!isAdmin) {
@@ -4672,18 +4697,46 @@ export async function bulkDeleteProducts(ids: string[]) {
       }
     }
 
-    await prisma.product.deleteMany({
+    // Archive products with historical order items to prevent cascade deletion of OrderItem records
+    const productsWithOrders = await prisma.product.findMany({
       where: {
-        id: { in: ids }
-      }
+        id: { in: ids },
+        orderItems: { some: {} },
+      },
+      select: { id: true },
     });
+    const archiveIds = productsWithOrders.map((p) => p.id);
+    const hardDeleteIds = ids.filter((id) => !archiveIds.includes(id));
+
+    await prisma.$transaction([
+      ...(archiveIds.length > 0
+        ? [
+            prisma.product.updateMany({
+              where: { id: { in: archiveIds } },
+              data: { status: "DRAFT", stock: 0, isFeatured: false },
+            }),
+            prisma.productVariant.updateMany({
+              where: { productId: { in: archiveIds } },
+              data: { stock: 0 },
+            }),
+          ]
+        : []),
+      ...(hardDeleteIds.length > 0
+        ? [
+            prisma.product.deleteMany({
+              where: { id: { in: hardDeleteIds } },
+            }),
+          ]
+        : []),
+    ]);
 
     revalidatePath("/studio");
     revalidatePath("/");
     revalidatePath("/artisans");
+    revalidateCatalog();
     revalidatePath("/categories");
 
-    return { success: true };
+    return { success: true, archivedCount: archiveIds.length };
   } catch (error) {
     console.error("Bulk delete error:", error);
     return { error: "Failed to remove products" };
@@ -4695,6 +4748,14 @@ export async function bulkUpdateProductStatus(ids: string[], status: "PENDING" |
     const session = await auth();
     if (!session?.user) {
       return { error: "You must be signed in to perform this action" };
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return { success: true };
+    }
+
+    if (!["PENDING", "APPROVED", "REJECTED", "DRAFT"].includes(status)) {
+      return { error: "Invalid product status" };
     }
 
     const isAdmin = session.user.role === "ADMIN";
@@ -4721,10 +4782,8 @@ export async function bulkUpdateProductStatus(ids: string[], status: "PENDING" |
         return { error: "You are not authorized to update some of these products" };
       }
 
-      // If status is REJECTED, only admins can set that
-      if (status === "REJECTED") {
-        targetStatus = "PENDING";
-      }
+      // Non-admin artisans may only move items to DRAFT or submit for review (PENDING)
+      targetStatus = status === "DRAFT" ? "DRAFT" : "PENDING";
     }
 
     await prisma.product.updateMany({
@@ -4741,6 +4800,7 @@ export async function bulkUpdateProductStatus(ids: string[], status: "PENDING" |
     revalidatePath("/categories");
     revalidatePath("/artisans");
     revalidatePath("/admin/products");
+    revalidateCatalog();
     revalidatePath("/studio");
     return { success: true };
   } catch (error) {
@@ -5128,6 +5188,19 @@ export async function updateOrderItemNotes(orderItemId: string, notes: string) {
 
 export async function getArtisanCoupons(artisanId: string) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return [];
+
+    if (session.user.role !== "ADMIN") {
+      const artisan = await prisma.artisanProfile.findUnique({
+        where: { userId: session.user.id },
+        select: { id: true },
+      });
+      if (!artisan || artisan.id !== artisanId) {
+        return [];
+      }
+    }
+
     const coupons = await prisma.coupon.findMany({
       where: { artisanId },
       orderBy: { createdAt: 'desc' }
@@ -5380,6 +5453,10 @@ export async function resolveRefundRequestAction({
     return { error: "Unauthorized" };
   }
 
+  if (!["APPROVE", "REJECT", "REPLACEMENT"].includes(action)) {
+    return { error: "Invalid refund resolution action" };
+  }
+
   try {
     const claim = await prisma.refundRequest.findUnique({
       where: { id: requestId },
@@ -5428,13 +5505,21 @@ export async function resolveRefundRequestAction({
     const newStatus = statusMap[action];
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Update the claim status & admin note
-      const updatedClaim = await tx.refundRequest.update({
-        where: { id: requestId },
+      // 1. Atomically claim the PENDING refund request to prevent concurrent double-refunds
+      const claimed = await tx.refundRequest.updateMany({
+        where: { id: requestId, status: "PENDING" },
         data: {
           status: newStatus,
           adminNote: adminNote || null
         }
+      });
+
+      if (claimed.count === 0) {
+        throw new Error("This refund claim has already been resolved.");
+      }
+
+      const updatedClaim = await tx.refundRequest.findUnique({
+        where: { id: requestId }
       });
 
       // 2. Financial Debit & Status Synchronization on APPROVE
@@ -5493,7 +5578,7 @@ export async function resolveRefundRequestAction({
             const artisan = targetItem.product.artisan;
             const itemTotal = targetItem.price * targetItem.quantity;
             const commission = getEffectiveArtisanCommissionRate(artisan);
-            const artisanShare = itemTotal * (1 - commission);
+            const artisanShare = Math.round(itemTotal * (1 - commission) * 100) / 100;
 
             // Check if there are sale transactions for this order
             const saleTxs = await tx.artisanTransaction.findMany({
@@ -5505,25 +5590,65 @@ export async function resolveRefundRequestAction({
               }
             });
 
-            const hasPendingSale = saleTxs.some(t => t.status === "PENDING");
+            const pendingSaleTx = saleTxs.find(t => t.status === "PENDING");
+            const hasPendingSale = Boolean(pendingSaleTx);
+
+            // Sync this artisan's PENDING SALE transaction so escrow cron never over-clears
+            const remainingArtisanItems = await tx.orderItem.count({
+              where: {
+                orderId: claim.orderId,
+                id: { not: claim.orderItemId },
+                status: { not: "REFUNDED" },
+                product: { artisanId: artisan.id }
+              }
+            });
+
+            if (remainingArtisanItems === 0) {
+              await tx.artisanTransaction.updateMany({
+                where: {
+                  orderId: claim.orderId,
+                  artisanId: artisan.id,
+                  type: "SALE",
+                  status: "PENDING"
+                },
+                data: { status: "FAILED" }
+              });
+            } else if (pendingSaleTx) {
+              const reducedSaleAmount = Math.max(0, Math.round((Math.abs(pendingSaleTx.amount) - artisanShare) * 100) / 100);
+              await tx.artisanTransaction.update({
+                where: { id: pendingSaleTx.id },
+                data: reducedSaleAmount <= 0 ? { status: "FAILED" } : { amount: reducedSaleAmount }
+              });
+            }
+
             const balance = await tx.artisanBalance.findUnique({
               where: { artisanId: artisan.id }
             });
 
             if (balance) {
               if (hasPendingSale) {
-                const newPending = Math.max(0, balance.pending - artisanShare);
+                const newPending = Math.max(0, Math.round((balance.pending - artisanShare) * 100) / 100);
                 await tx.artisanBalance.update({
                   where: { artisanId: artisan.id },
                   data: { pending: newPending }
                 });
               } else {
-                const newWithdrawable = Math.max(0, balance.withdrawable - artisanShare);
+                // Allow withdrawable to go negative on CLEARED post-escrow refunds so future sales recover the debt
+                const newWithdrawable = Math.round((balance.withdrawable - artisanShare) * 100) / 100;
                 await tx.artisanBalance.update({
                   where: { artisanId: artisan.id },
                   data: { withdrawable: newWithdrawable }
                 });
               }
+            } else if (!hasPendingSale && saleTxs.length > 0) {
+              await tx.artisanBalance.create({
+                data: {
+                  artisanId: artisan.id,
+                  pending: 0,
+                  withdrawable: -artisanShare,
+                  withdrawn: 0
+                }
+              });
             }
 
             // Create REFUND_DEBIT transaction log
@@ -5539,101 +5664,13 @@ export async function resolveRefundRequestAction({
             });
           }
         } else {
-          // B. Full-Order Refund (all items)
-          await tx.orderItem.updateMany({
-            where: { orderId: claim.orderId },
-            data: { status: "REFUNDED" }
-          });
-
+          // B. Full-Order Refund (all items via shared atomic service)
           await tx.order.update({
             where: { id: claim.orderId },
             data: { status: "REFUNDED" }
           });
 
-          // Restore stock for all items
-          for (const item of claim.order.items) {
-            if (item.variantId) {
-              await tx.productVariant.update({
-                where: { id: item.variantId },
-                data: { stock: { increment: item.quantity } }
-              });
-            } else if (item.productId) {
-              await tx.product.update({
-                where: { id: item.productId },
-                data: { stock: { increment: item.quantity } }
-              });
-            }
-          }
-
-          // Mark all SALE transactions for this order as FAILED
-          await tx.artisanTransaction.updateMany({
-            where: {
-              orderId: claim.orderId,
-              type: "SALE",
-              status: "PENDING"
-            },
-            data: { status: "FAILED" }
-          });
-
-          // Group items by artisan to debit each artisan accurately
-          const artisanMap = new Map<string, { artisan: any; totalShare: number; productNames: string[] }>();
-
-          for (const item of claim.order.items) {
-            const artisan = item.product?.artisan;
-            if (!artisan) continue;
-
-            const itemTotal = item.price * item.quantity;
-            const commission = getEffectiveArtisanCommissionRate(artisan);
-            const artisanShare = itemTotal * (1 - commission);
-
-            const existing = artisanMap.get(artisan.id) || { artisan, totalShare: 0, productNames: [] };
-            existing.totalShare += artisanShare;
-            existing.productNames.push(item.product.name);
-            artisanMap.set(artisan.id, existing);
-          }
-
-          for (const [artisanId, data] of artisanMap.entries()) {
-            const saleTxs = await tx.artisanTransaction.findMany({
-              where: {
-                orderId: claim.orderId,
-                artisanId,
-                type: "SALE",
-                status: { in: ["PENDING", "CLEARED"] }
-              }
-            });
-
-            const hasPendingSale = saleTxs.some(t => t.status === "PENDING");
-            const balance = await tx.artisanBalance.findUnique({
-              where: { artisanId }
-            });
-
-            if (balance) {
-              if (hasPendingSale) {
-                const newPending = Math.max(0, balance.pending - data.totalShare);
-                await tx.artisanBalance.update({
-                  where: { artisanId },
-                  data: { pending: newPending }
-                });
-              } else {
-                const newWithdrawable = Math.max(0, balance.withdrawable - data.totalShare);
-                await tx.artisanBalance.update({
-                  where: { artisanId },
-                  data: { withdrawable: newWithdrawable }
-                });
-              }
-            }
-
-            await tx.artisanTransaction.create({
-              data: {
-                artisanId,
-                orderId: claim.orderId,
-                amount: -data.totalShare,
-                type: "REFUND_DEBIT",
-                status: "COMPLETED",
-                description: `Full Order Refund debited for dispute #${claim.id} (${data.productNames.join(", ")})`
-              }
-            });
-          }
+          await processOrderRefundInTx(tx, claim.orderId);
         }
       }
 
@@ -6139,6 +6176,7 @@ export async function updateProductStockAction(productId: string, newStock: numb
 
     revalidatePath(`/${lang}/studio`);
     revalidatePath(`/${lang}/products/${product.slug || product.id}`);
+    revalidateCatalog(product.slug || product.id);
     return { success: true, stock: updated.stock };
   } catch (error: any) {
     console.error("updateProductStockAction error:", error);
@@ -6182,7 +6220,6 @@ export async function updateAbandonedCheckoutLead(
   id: string,
   data: { isContacted?: boolean; adminNotes?: string }
 ) {
-  "use server";
   const session = await auth();
   if (session?.user?.role !== "ADMIN") {
     return { error: "Unauthorized" };
@@ -6207,10 +6244,15 @@ export async function getPublicTrackedOrder(
   query: string,
   verificationInput?: string
 ) {
-  "use server";
   try {
-    const cleanQuery = query.trim().replace(/^#/, "");
-    if (!cleanQuery) {
+    const ip = await getClientIp();
+    const rl = checkRateLimit(`track-order:${ip}`, 15, 60_000);
+    if (!rl.success) {
+      return { success: false, error: "Too many tracking requests. Please wait a minute and try again." };
+    }
+
+    const cleanQuery = (query || "").trim().replace(/^#/, "");
+    if (!cleanQuery || cleanQuery.length > 100) {
       return { success: false, error: "Please enter a valid order number or tracking code." };
     }
 
@@ -6262,7 +6304,7 @@ export async function getPublicTrackedOrder(
     const isOwner = Boolean(session?.user?.id && order.userId === session.user.id);
     const isAdmin = session?.user?.role === "ADMIN";
 
-    // Check verification input (phone or email)
+    // Check verification input (full phone or exact email required; 4-digit brute-force bypass removed)
     let isVerified = isOwner || isAdmin;
     if (!isVerified && verificationInput) {
       const vClean = verificationInput.trim().toLowerCase();
@@ -6272,7 +6314,11 @@ export async function getPublicTrackedOrder(
 
       if (vClean && clientEmail && vClean === clientEmail) {
         isVerified = true;
-      } else if (vDigits.length >= 4 && (clientPhoneDigits.endsWith(vDigits) || clientPhoneDigits === vDigits || vDigits.endsWith(clientPhoneDigits))) {
+      } else if (
+        vDigits.length >= 10 &&
+        clientPhoneDigits.length >= 10 &&
+        (clientPhoneDigits === vDigits || clientPhoneDigits.slice(-10) === vDigits.slice(-10))
+      ) {
         isVerified = true;
       }
     }
@@ -6292,6 +6338,7 @@ export async function getPublicTrackedOrder(
     };
 
     const statusUpper = (order.status || "PENDING").toUpperCase();
+    const hideGiftPricing = Boolean(!isVerified && order.isGift);
 
     // Estimate delivery dates based on shipping method and createdAt
     const createdAtDate = new Date(order.createdAt);
@@ -6307,13 +6354,13 @@ export async function getPublicTrackedOrder(
         updatedAt: order.updatedAt.toISOString(),
         status: statusUpper,
         isGift: order.isGift,
-        giftMessage: order.giftMessage,
+        giftMessage: isVerified ? order.giftMessage : null,
         carrier: order.carrier || (order.trackingNumber ? "Bosta" : null),
         trackingNumber: order.trackingNumber,
         shippingMethodName: order.shippingMethod?.name || "Doorstep Courier Delivery",
-        shippingCost: order.shippingCost,
-        totalAmount: order.totalAmount,
-        discountApplied: order.discountApplied || 0,
+        shippingCost: hideGiftPricing ? null : order.shippingCost,
+        totalAmount: hideGiftPricing ? null : order.totalAmount,
+        discountApplied: hideGiftPricing ? 0 : (order.discountApplied || 0),
         estimatedDeliveryMin: estimatedDeliveryMin.toISOString(),
         estimatedDeliveryMax: estimatedDeliveryMax.toISOString(),
         shippingCity: order.shippingCity || "Cairo",
@@ -6326,9 +6373,9 @@ export async function getPublicTrackedOrder(
           name: item.product?.name || "Handcrafted Creation",
           slug: item.product?.slug || item.product?.id,
           image: item.product?.images?.[0] || null,
-          price: item.price,
+          price: hideGiftPricing ? null : item.price,
           quantity: item.quantity,
-          personalization: item.personalization,
+          personalization: isVerified ? item.personalization : null,
           customImage: isVerified ? item.customImage : (item.customImage ? "uploaded" : null),
           variantName: item.variant?.name || null,
           status: item.status,

@@ -4,6 +4,50 @@ import { ArtisanClient } from "@/components/artisan-client";
 import { notFound } from "next/navigation";
 import { cache } from "react";
 import { slugify } from "@/lib/utils";
+import { PUBLIC_USER_SELECT, sanitizePublicArtisan, sanitizePublicProduct } from "@/lib/public-selects";
+
+const ARTISAN_PAGE_INCLUDE = {
+  products: {
+    where: {
+      status: "APPROVED" as const,
+    },
+    include: {
+      reviews: {
+        include: {
+          user: {
+            select: PUBLIC_USER_SELECT,
+          },
+        },
+      },
+      orderItems: {
+        where: {
+          order: {
+            status: {
+              notIn: ["PENDING", "CANCELLED", "REFUNDED"] as string[],
+            },
+          },
+        },
+        select: {
+          quantity: true,
+        },
+      },
+    },
+  },
+  user: {
+    select: PUBLIC_USER_SELECT,
+  },
+};
+
+function sanitizeArtisanWithProducts(artisanProfile: any) {
+  const sanitized = sanitizePublicArtisan(artisanProfile);
+  if (!sanitized) return null;
+  return {
+    ...sanitized,
+    products: Array.isArray(artisanProfile.products)
+      ? artisanProfile.products.map((p: any) => sanitizePublicProduct(p))
+      : [],
+  };
+}
 
 // Cached fetch to deduplicate queries between generateMetadata and page rendering
 const getArtisanBySlug = cache(async (rawSlug: string) => {
@@ -14,95 +58,73 @@ const getArtisanBySlug = cache(async (rawSlug: string) => {
     console.error("Failed to decode artisan slug:", e);
   }
 
-  // Try to find by the new slug field first
+  // Try to find by the indexed slug or id field first
   const artisanBySlug = await prisma.artisanProfile.findFirst({
-    where: { 
+    where: {
       OR: [
         { slug: decodedSlug },
         { slug: rawSlug },
-        { slug: { equals: decodedSlug, mode: "insensitive" } }
+        { id: decodedSlug },
+        { slug: { equals: decodedSlug, mode: "insensitive" } },
       ],
-      status: "APPROVED"
+      status: "APPROVED",
     },
-    include: {
-      products: {
-        where: {
-          status: "APPROVED"
+    include: ARTISAN_PAGE_INCLUDE,
+  });
+
+  if (artisanBySlug) {
+    const safeProfile = sanitizeArtisanWithProducts(artisanBySlug);
+    return {
+      artisanProfile: safeProfile,
+      name: artisanBySlug.studioName || (artisanBySlug as any).user?.name || "Artisan",
+    };
+  }
+
+  // Lightweight fallback: fetch only minimal name/id metadata instead of loading all products & orderItems
+  const candidates = await prisma.artisanProfile.findMany({
+    where: {
+      status: "APPROVED",
+    },
+    select: {
+      id: true,
+      studioName: true,
+      user: {
+        select: {
+          name: true,
         },
-        include: {
-          reviews: true,
-          orderItems: {
-            where: {
-              order: {
-                status: {
-                  notIn: ["PENDING", "CANCELLED", "REFUNDED"]
-                }
-              }
-            }
-          }
-        }
       },
-      user: true
-    }
-  });
-
-  if (artisanBySlug) return { 
-    artisanProfile: artisanBySlug, 
-    name: artisanBySlug.studioName || artisanBySlug.user.name 
-  };
-
-  // Fallback: match by studioName or user name using slugify
-  const users = await prisma.user.findMany({
-    where: { 
-      role: 'ARTISAN',
-      artisanProfile: {
-        status: "APPROVED"
-      }
     },
-    include: {
-      artisanProfile: {
-        include: {
-          products: {
-            where: {
-              status: "APPROVED"
-            },
-            include: {
-              reviews: true,
-              orderItems: {
-                where: {
-                  order: {
-                    status: {
-                      notIn: ["PENDING", "CANCELLED", "REFUNDED"]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          user: true
-        }
-      }
-    }
   });
 
-  const matchingUser = users.find(u => {
-    const userNameSlug = u.name ? slugify(u.name) : "";
-    const studioSlug = u.artisanProfile?.studioName ? slugify(u.artisanProfile.studioName) : "";
+  const matchedCandidate = candidates.find((c) => {
+    const userNameSlug = c.user?.name ? slugify(c.user.name) : "";
+    const studioSlug = c.studioName ? slugify(c.studioName) : "";
     return (
       userNameSlug === decodedSlug ||
       studioSlug === decodedSlug ||
-      u.name?.toLowerCase().replace(/\s+/g, "-") === decodedSlug
+      c.user?.name?.toLowerCase().replace(/\s+/g, "-") === decodedSlug
     );
   });
 
-  return matchingUser ? { 
-    artisanProfile: matchingUser.artisanProfile, 
-    name: matchingUser.artisanProfile?.studioName || matchingUser.name 
-  } : null;
+  if (!matchedCandidate) return null;
+
+  const matchedProfile = await prisma.artisanProfile.findUnique({
+    where: { id: matchedCandidate.id },
+    include: ARTISAN_PAGE_INCLUDE,
+  });
+
+  if (!matchedProfile) return null;
+
+  return {
+    artisanProfile: sanitizeArtisanWithProducts(matchedProfile),
+    name: matchedProfile.studioName || (matchedProfile as any).user?.name || "Artisan",
+  };
 });
 
 import { getDictionary, hasLocale } from "../../dictionaries";
 import { SITE_URL, SITE_NAME } from "@/lib/constants";
+
+export const revalidate = 60; // ISR: Cache artisan profile for 60 seconds with on-demand invalidation
 
 interface Props {
   params: Promise<{ slug: string, lang: string }>;
@@ -132,6 +154,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogImage = getAbsoluteUrl(artisan.avatar || artisan.bannerImage) || `${SITE_URL}/hero.webp`;
 
   return {
+    metadataBase: new URL(SITE_URL),
     title: data.name || "Artisan",
     description: description.slice(0, 160),
     keywords,
@@ -140,6 +163,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         "en-US": `${SITE_URL}/en/artisans/${slug}`,
         "ar-EG": `${SITE_URL}/ar/artisans/${slug}`,
+        "x-default": `${SITE_URL}/en/artisans/${slug}`,
       }
     },
     openGraph: {

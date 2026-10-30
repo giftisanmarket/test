@@ -5,7 +5,7 @@ declare module "next-auth" {
     user: {
       role: string;
       isOAuth?: boolean;
-    } & DefaultSession["user"]
+    } & DefaultSession["user"];
   }
 
   interface User {
@@ -19,11 +19,11 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-
 import bcrypt from "bcryptjs";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma) as any,
+  adapter: PrismaAdapter(prisma as any) as any,
   session: { strategy: "jwt" },
   trustHost: true,
   pages: {
@@ -47,8 +47,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Native Android/iOS Google Sign-In exchange
         if (credentials?.isGoogleNative === "true" && credentials?.idToken) {
           try {
+            const encodedIdToken = encodeURIComponent(String(credentials.idToken));
             const tokenRes = await fetch(
-              `https://oauth2.googleapis.com/tokeninfo?id_token=${credentials.idToken}`
+              `https://oauth2.googleapis.com/tokeninfo?id_token=${encodedIdToken}`,
+              { signal: AbortSignal.timeout(8000) }
             );
             if (!tokenRes.ok) {
               console.error("Google token verification failed:", await tokenRes.text());
@@ -56,10 +58,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
             const payload = await tokenRes.json();
 
+            if (
+              payload.iss !== "https://accounts.google.com" &&
+              payload.iss !== "accounts.google.com"
+            ) {
+              console.error("Google idToken issuer mismatch:", payload.iss);
+              return null;
+            }
+
             const validClientIds = [
               process.env.GOOGLE_CLIENT_ID,
               process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
               process.env.GOOGLE_ANDROID_CLIENT_ID,
+              process.env.GOOGLE_IOS_CLIENT_ID,
               "57073334809-61ac8q40c6furmrmgh441mi7o6b3aalk.apps.googleusercontent.com",
               "57073334809-9f7vkmkudc7asoh655avb870n39aqc01.apps.googleusercontent.com",
             ].filter(Boolean) as string[];
@@ -67,14 +78,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             const isAudMatch = validClientIds.includes(payload.aud);
             const isAzpMatch = payload.azp ? validClientIds.includes(payload.azp) : false;
 
-            if (validClientIds.length > 0 && !isAudMatch && !isAzpMatch) {
-              console.error("Google idToken audience/azp mismatch:", { aud: payload.aud, azp: payload.azp });
+            if (!isAudMatch && !isAzpMatch) {
+              console.error("Google idToken audience/azp mismatch:", {
+                aud: payload.aud,
+                azp: payload.azp,
+              });
               return null;
             }
 
-            if (!payload.email) return null;
+            const isEmailVerified =
+              payload.email_verified === true || payload.email_verified === "true";
+            if (!payload.email || !isEmailVerified) {
+              console.error("Google idToken missing verified email");
+              return null;
+            }
 
-            const normalizedEmail = String(payload.email).toLowerCase();
+            const normalizedEmail = String(payload.email).trim().toLowerCase();
 
             let user = await prisma.user.findUnique({
               where: { email: normalizedEmail },
@@ -124,22 +143,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         if (!credentials?.email || !credentials?.password) return null;
-        
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string }
+
+        const normalizedEmail = String(credentials.email).trim().toLowerCase();
+        const passwordStr = String(credentials.password);
+        if (!normalizedEmail || passwordStr.length > 72) return null;
+
+        const rateCheck = checkRateLimit(`auth-cred:${normalizedEmail}`, 10, 60 * 1000);
+        if (!rateCheck.success) return null;
+
+        let user = await prisma.user.findUnique({
+          where: { email: normalizedEmail },
+          omit: { password: false },
         });
+
+        if (!user) {
+          user = await prisma.user.findFirst({
+            where: { email: { equals: normalizedEmail, mode: "insensitive" } },
+            omit: { password: false },
+          });
+        }
 
         if (!user || !user.password) return null;
 
-        // We allow login without verification, but track it in the session
-
-        const isPasswordCorrect = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
+        const isPasswordCorrect = await bcrypt.compare(passwordStr, user.password);
 
         if (isPasswordCorrect) {
-          return user;
+          const { password: _omittedPassword, ...safeUser } = user;
+          return safeUser;
         }
         return null;
       },
@@ -151,10 +181,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === "google" && user.id) {
         await prisma.user.update({
           where: { id: user.id },
-          data: { emailVerified: new Date() }
+          data: { emailVerified: new Date() },
         });
       }
-    }
+    },
   },
   callbacks: {
     async session({ session, token }) {
@@ -176,90 +206,87 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token.picture && session.user) {
         session.user.image = token.picture as string;
       }
-      
+
       // Safety: Never allow massive images in the session object to prevent RSC serialization crashes
       if (session.user.image && session.user.image.length > 300000) {
         session.user.image = null;
       }
-      
+
       return session;
     },
-    async jwt({ token, user, account, trigger, session }) {
+    async jwt({ token, user, account, trigger }) {
       // On initial login, add the role and verification status to the token
       if (user) {
         token.role = user.role;
         token.name = user.name;
         token.email = user.email;
         // If they use Google/OAuth/OIDC, they are verified by default
-        token.emailVerified = (account && account.provider !== "credentials") ? new Date() : user.emailVerified;
-        token.isOAuth = (account && account.provider !== "credentials") ? true : false;
+        token.emailVerified =
+          account && account.provider !== "credentials" ? new Date() : user.emailVerified;
+        token.isOAuth = account && account.provider !== "credentials" ? true : false;
         if (user.image && !user.image.startsWith("data:") && user.image.length < 500) {
           token.picture = user.image;
         }
       }
 
-      // Handle session updates (e.g. from update() on the client)
-      if (trigger === "update" && session) {
-        if (session.name) token.name = session.name;
-        if (session.email) token.email = session.email;
-        if (session.role) token.role = session.role;
-        if (session.image && !session.image.startsWith("data:") && session.image.length < 500) {
-          token.picture = session.image;
-        }
-        if (session.user?.name) token.name = session.user.name;
-        if (session.user?.email) token.email = session.user.email;
-        if (session.user?.role) token.role = session.user.role;
-        if (session.user?.image && !session.user.image.startsWith("data:") && session.user.image.length < 500) {
-          token.picture = session.user.image;
-        }
+      // Force an authoritative database refresh on client session update() calls;
+      // never copy role/email claims directly from untrusted client session payloads.
+      if (trigger === "update") {
         token.lastChecked = 0;
       }
 
       // Safety: Only scrub base64 image data out of the token to prevent 431 errors.
       // Remote URLs (Google, Cloudinary, etc. < 500 chars) are safe and lightweight in the JWT.
-      if (typeof token.picture === "string" && (token.picture.startsWith("data:") || token.picture.length > 500)) {
+      if (
+        typeof token.picture === "string" &&
+        (token.picture.startsWith("data:") || token.picture.length > 500)
+      ) {
         delete token.picture;
       }
-      
+
       if (!token.sub) return token;
-      
+
       const now = Date.now();
       const lastCheck = (token.lastChecked as number) || 0;
 
-      // Query database if email is unverified, role is missing, 30 seconds passed, or on session update
-      if (!token.role || !token.emailVerified || now - lastCheck > 30000 || trigger === "update") {
+      // Refresh authoritative user state on update trigger, missing role, or every 5 minutes
+      if (!token.role || now - lastCheck > 300000 || trigger === "update") {
         try {
-          // Fetch latest role, name, and image
           const dbUser = await prisma.user.findUnique({
             where: { id: token.sub },
-            select: { 
-              role: true, 
-              name: true, 
+            select: {
+              role: true,
+              name: true,
               email: true,
               emailVerified: true,
               image: true,
               accounts: {
-                select: { provider: true }
-              }
-            } 
+                select: { provider: true },
+              },
+            },
           });
-          
-          if (dbUser) {
-            token.role = dbUser.role;
-            token.name = dbUser.name;
-            if (dbUser.email) token.email = dbUser.email;
-            token.emailVerified = dbUser.emailVerified;
-            token.isOAuth = dbUser.accounts.length > 0;
-            token.lastChecked = now;
-            if (dbUser.image && !dbUser.image.startsWith("data:") && dbUser.image.length < 500) {
-              token.picture = dbUser.image;
-            }
+
+          if (!dbUser) {
+            delete token.sub;
+            delete token.role;
+            delete token.email;
+            return {};
+          }
+
+          token.role = dbUser.role;
+          token.name = dbUser.name;
+          if (dbUser.email) token.email = dbUser.email;
+          token.emailVerified = dbUser.emailVerified;
+          token.isOAuth = dbUser.accounts.length > 0;
+          token.lastChecked = now;
+          if (dbUser.image && !dbUser.image.startsWith("data:") && dbUser.image.length < 500) {
+            token.picture = dbUser.image;
           }
         } catch (error) {
           console.error("JWT database sync error:", error);
         }
       }
       return token;
-    }
-  }
+    },
+  },
 });

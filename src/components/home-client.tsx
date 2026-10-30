@@ -5,7 +5,11 @@ import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/hero";
 import { TrustBar } from "@/components/home/trust-bar";
 import { GiftDiscoveryHub } from "@/components/home/gift-discovery-hub";
-import { NativeHomeView } from "@/components/native/native-home-view";
+import dynamic from "next/dynamic";
+const NativeHomeView = dynamic(
+  () => import("@/components/native/native-home-view").then((mod) => mod.NativeHomeView),
+  { ssr: false }
+);
 import { useIsNative } from "@/lib/native";
 import { ArtisanSpotlightRow } from "@/components/home/artisan-spotlight-row";
 import { ProductShelfRow, ShelfProduct } from "@/components/home/product-shelf-row";

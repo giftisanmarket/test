@@ -10,16 +10,19 @@ const Confetti = dynamic(() => import("react-confetti"), { ssr: false });
 import { cn } from "@/lib/utils";
 import { convertGuestToAccount } from "@/lib/actions";
 import { ShippingAddressDisplay } from "@/lib/location-utils";
+import { useCart } from "@/context/cart-context";
 
 interface SuccessClientProps {
   dict: any;
   lang: string;
   order?: any;
+  accessToken?: string;
   isFailed?: boolean;
   errorMessage?: string;
 }
 
-export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: SuccessClientProps) {
+export function SuccessClient({ dict, lang, order, accessToken, isFailed, errorMessage }: SuccessClientProps) {
+  const { clearCart } = useCart();
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [password, setPassword] = useState("");
   const [isSubmittingAccount, setIsSubmittingAccount] = useState(false);
@@ -30,18 +33,21 @@ export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: Suc
 
   useEffect(() => {
     setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-  }, []);
+    if (!isFailed && order?.id) {
+      clearCart();
+    }
+  }, [isFailed, order?.id, clearCart]);
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!order?.id || !password) return;
-    if (password.length < 6) {
-      setAccountError(isAr ? "كلمة المرور يجب أن تكون 6 أحرف على الأقل." : "Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setAccountError(isAr ? "كلمة المرور يجب أن تكون 8 أحرف على الأقل." : "Password must be at least 8 characters.");
       return;
     }
     setIsSubmittingAccount(true);
     setAccountError("");
-    const res = await convertGuestToAccount({ orderId: order.id, password });
+    const res = await convertGuestToAccount({ orderId: order.id, password, accessToken });
     setIsSubmittingAccount(false);
     if (res.success) {
       setAccountCreated(true);
@@ -234,7 +240,9 @@ export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: Suc
                 {/* Price Summary */}
                 {(() => {
                   const isAr = lang === "ar";
-                  const subtotal = order.totalAmount + (order.discountApplied || 0);
+                  const subtotal = Math.round(
+                    order.items.reduce((sum: number, i: any) => sum + i.price * i.quantity, 0) * 100
+                  ) / 100;
                   return (
                     <div className="bg-cream/20 p-6 rounded-2xl border border-primary/5 space-y-3 h-fit">
                       <div className="flex justify-between text-xs text-charcoal/60 font-medium">
@@ -320,11 +328,12 @@ export function SuccessClient({ dict, lang, order, isFailed, errorMessage }: Suc
                 <form onSubmit={handleCreateAccount} className="flex flex-col sm:flex-row gap-3 pt-2">
                   <input
                     type="password"
-                    placeholder={isAr ? "أنشئ كلمة مرور (6 أحرف على الأقل)" : "Create a password (min 6 chars)"}
+                    placeholder={isAr ? "أنشئ كلمة مرور (8 أحرف على الأقل)" : "Create a password (min 8 chars)"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={8}
+                    maxLength={72}
                     className="flex-1 px-6 py-4 bg-white/10 border border-white/20 rounded-2xl text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-accent-light text-sm font-medium transition-all"
                   />
                   <button

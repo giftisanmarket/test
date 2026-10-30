@@ -1,38 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { getEscrowClearanceThresholdDate } from "@/lib/utils";
+import { safeCompareSecrets } from "@/lib/security";
+import { clearEligibleArtisanEscrow } from "@/lib/services/order-service";
 
 /**
  * AUTOMATED ESCROW CLEARANCE CRON ENDPOINT
- * 
- * This API endpoint can be called by:
- * 1. Vercel Cron (sends x-vercel-cron header or Bearer <CRON_SECRET>)
- * 2. An external scheduler with Authorization: Bearer <CRON_SECRET>
- * 3. An authenticated Admin user session
- * 
+ * Authorized strictly via:
+ * 1. Authorization: Bearer <CRON_SECRET> (Vercel Cron sends this automatically when CRON_SECRET is set)
+ * 2. An authenticated ADMIN user session
+ *
  * Path: GET /api/cron/clear-escrow
  */
 export async function GET(req: NextRequest) {
   try {
-    // 1. Authorization Guard
-    const authHeader = req.headers.get("authorization");
-    const isVercelCron = req.headers.get("x-vercel-cron") === "1" || req.headers.get("user-agent")?.includes("vercel-cron");
+    const authHeader = req.headers.get("authorization") || "";
+    const bearerToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
     const cronSecret = process.env.CRON_SECRET;
-    const isProd = process.env.NODE_ENV === "production";
 
-    let isAuthorized = !isProd; // Allowed in development
+    let isAuthorized = false;
 
-    if (!isAuthorized) {
-      if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    if (cronSecret && safeCompareSecrets(bearerToken, cronSecret)) {
+      isAuthorized = true;
+    } else {
+      const session = await auth();
+      if (session?.user?.role === "ADMIN") {
         isAuthorized = true;
-      } else if (isVercelCron) {
-        isAuthorized = true;
-      } else {
-        const session = await auth();
-        if (session?.user?.role === "ADMIN") {
-          isAuthorized = true;
-        }
       }
     }
 
@@ -40,75 +34,32 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Calendar-day based clearance: orders delivered 7 days ago clear from the start of the 7th day
-    const thresholdDate = getEscrowClearanceThresholdDate(7);
+    const { clearedCount, clearedTransactions } = await clearEligibleArtisanEscrow();
 
-    console.log(`⏳ [Cron Escrow] Scanning for SALE transactions created before: ${thresholdDate.toISOString()}`);
-
-    // 3. Find pending sale transactions older than the threshold
-    const pendingSales = await prisma.artisanTransaction.findMany({
-      where: {
-        type: "SALE",
-        status: "PENDING",
-        createdAt: {
-          lt: thresholdDate
-        },
-        order: {
-          status: "DELIVERED"
-        }
-      }
-    });
-
-    if (pendingSales.length === 0) {
+    if (clearedCount === 0) {
       return NextResponse.json({
         success: true,
-        message: "No pending escrow balances matched the clearance criteria today."
+        clearedCount: 0,
+        message: "No pending escrow balances matched the clearance criteria today.",
       });
     }
 
-    let clearedCount = 0;
-    const clearedTransactionsLog: Array<{ txId: string; artisanId: string; amount: number }> = [];
-
-    // 4. Process each transaction atomically
-    for (const tx of pendingSales) {
-      try {
-        await prisma.$transaction(async (prismaTx) => {
-          // A. Mark transaction as CLEARED
-          await prismaTx.artisanTransaction.update({
-            where: { id: tx.id },
-            data: { status: "CLEARED" }
-          });
-
-          // B. Transfer funds from pending to withdrawable
-          await prismaTx.artisanBalance.update({
-            where: { artisanId: tx.artisanId },
-            data: {
-              pending: { decrement: tx.amount },
-              withdrawable: { increment: tx.amount }
-            }
-          });
-        });
-
-        clearedTransactionsLog.push({ txId: tx.id, artisanId: tx.artisanId, amount: tx.amount });
-        clearedCount++;
-      } catch (err: any) {
-        console.error(`❌ [Cron Escrow] Failed to clear transaction ${tx.id} for artisan ${tx.artisanId}:`, err);
-      }
-    }
-
-    console.log(`🎉 [Cron Escrow] Process completed. Successfully cleared ${clearedCount} transaction(s).`);
+    console.log(
+      `[Cron Escrow] Completed. Cleared ${clearedCount} transaction(s) to withdrawable balances.`
+    );
 
     return NextResponse.json({
       success: true,
       clearedCount,
-      clearedTransactions: clearedTransactionsLog
+      clearedTransactions,
     });
-
   } catch (error: any) {
-    console.error("❌ [Cron Escrow] Unexpected error during execution:", error);
-    return NextResponse.json({ 
-      error: "Internal Server Error", 
-      message: error.message || "An unexpected error occurred." 
-    }, { status: 500 });
+    console.error("[Cron Escrow] Unexpected error during execution:", error);
+    return NextResponse.json(
+      {
+        error: "Internal Server Error",
+      },
+      { status: 500 }
+    );
   }
 }

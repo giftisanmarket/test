@@ -87,10 +87,10 @@ export function TrackClient({
 
     startTransition(async () => {
       const res = await getPublicTrackedOrder(order.id, verificationInput);
-      if (res.success && res.order) {
+      if (res.success && res.order?.isVerified) {
         setOrder(res.order);
         setShowVerifyModal(false);
-        toast.success(isAr ? "تم إثبات الهوية وإظهار التفاصيل كاملة" : "Identity verified. Full address unlocked.");
+        toast.success(isAr ? "تم إثبات الهوية وإظهار التفاصيل كاملة" : "Identity verified. Full details unlocked.");
       } else {
         toast.error(isAr ? "بيانات التحقق غير مطابقة لهذا الطلب" : "Verification details did not match this order.");
       }
@@ -477,7 +477,9 @@ export function TrackClient({
                     <div className="pt-2 border-t border-primary/5">
                       <p className="text-[10px] font-black uppercase tracking-wider text-primary/40">{isAr ? "إجمالي الطلب" : "Total Paid"}</p>
                       <p className="font-mono font-black text-primary text-lg mt-0.5">
-                        {currency} {order.totalAmount}
+                        {order.totalAmount !== null && order.totalAmount !== undefined
+                          ? `${currency} ${order.totalAmount}`
+                          : (isAr ? "مخفي (هدية)" : "Hidden (Gift)")}
                       </p>
                     </div>
                   </div>
@@ -569,12 +571,20 @@ export function TrackClient({
                       </div>
 
                       <div className="sm:text-end shrink-0 w-full sm:w-auto flex sm:flex-col justify-between items-center sm:items-end">
-                        <p className="font-mono font-bold text-primary text-sm md:text-base">
-                          {currency} {item.price * item.quantity}
-                        </p>
-                        <p className="text-xs text-charcoal/50">
-                          {isAr ? "الكمية:" : "Qty:"} {item.quantity} × {currency} {item.price}
-                        </p>
+                        {item.price !== null && item.price !== undefined ? (
+                          <>
+                            <p className="font-mono font-bold text-primary text-sm md:text-base">
+                              {currency} {item.price * item.quantity}
+                            </p>
+                            <p className="text-xs text-charcoal/50">
+                              {isAr ? "الكمية:" : "Qty:"} {item.quantity} × {currency} {item.price}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-xs font-bold text-primary/70">
+                            {isAr ? "الكمية:" : "Qty:"} {item.quantity}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}

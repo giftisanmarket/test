@@ -615,6 +615,7 @@ export function Navbar({ dict }: { dict?: any }) {
                 src="/icon.png"
                 alt="Giftisan Logo"
                 fill
+                priority
                 className="object-cover"
                 sizes="44px"
               />

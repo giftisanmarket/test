@@ -2,107 +2,123 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { sendOrderStatusUpdateEmail } from "@/lib/mail";
+import { safeCompareSecrets } from "@/lib/security";
 
 /**
  * SECURE SHIPPING & LOGISTICS WEBHOOK ENDPOINT
- * 
- * Receives delivery updates from external shipping carriers (Bosta, Mylerz, Aramex, etc.)
  * Path: POST /api/shipping/webhook
  */
 export async function POST(req: Request) {
   try {
-    // 1. Authenticate or parse the JSON request body
+    const configuredSecret =
+      process.env.SHIPPING_WEBHOOK_SECRET || process.env.BOSTA_WEBHOOK_SECRET;
+    if (!configuredSecret) {
+      return NextResponse.json(
+        { error: "Shipping webhook secret is not configured" },
+        { status: 500 }
+      );
+    }
+
+    const authHeader = req.headers.get("authorization") || "";
+    const bearerToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7).trim()
+      : authHeader.trim();
+    const webhookHeader = req.headers.get("x-webhook-secret") || "";
+
+    if (
+      !safeCompareSecrets(bearerToken, configuredSecret) &&
+      !safeCompareSecrets(webhookHeader, configuredSecret)
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json().catch(() => null);
-    
     if (!body) {
       return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
 
     const { event, trackingNumber, orderId, itemId, status, carrier } = body;
 
-    console.log(`\n📬 [Shipping Webhook Received] Event: "${event || "update"}" | Tracking: "${trackingNumber || "N/A"}" | Status: "${status}"`);
+    console.log(
+      `[Shipping Webhook] Event: "${event || "update"}" | Tracking: "${trackingNumber || "N/A"}" | Status: "${status}"`
+    );
 
-    // We proceed if the status is delivered/Delivered/DELIVERED or if the event specifies delivery
-    const isDelivered = 
-      status?.toUpperCase() === "DELIVERED" || 
+    const isDelivered =
+      status?.toUpperCase() === "DELIVERED" ||
       event === "order.delivered" ||
       event === "shipment.delivered";
 
     if (!isDelivered) {
-      console.log(`ℹ️ [Shipping Webhook] Ignored non-delivery status: "${status || event}". No ledger action required.`);
-      return NextResponse.json({ 
-        success: true, 
-        message: "Status update logged. No financial escrow trigger necessary." 
+      return NextResponse.json({
+        success: true,
+        message: "Status update logged. No financial escrow trigger necessary.",
       });
     }
 
-    // 2. Identify target order item using multiple fallback routes (tracking number, item ID, or Order ID)
     let targetItems: any[] = [];
 
     if (trackingNumber) {
       targetItems = await prisma.orderItem.findMany({
-        where: { trackingNumber },
-        include: { product: true, order: { include: { user: true } } }
+        where: { trackingNumber: String(trackingNumber) },
+        include: { product: true, order: { include: { user: true } } },
       });
     } else if (itemId) {
       const singleItem = await prisma.orderItem.findUnique({
-        where: { id: itemId },
-        include: { product: true, order: { include: { user: true } } }
+        where: { id: String(itemId) },
+        include: { product: true, order: { include: { user: true } } },
       });
       if (singleItem) targetItems = [singleItem];
     } else if (orderId) {
       targetItems = await prisma.orderItem.findMany({
-        where: { orderId },
-        include: { product: true, order: { include: { user: true } } }
+        where: { orderId: String(orderId) },
+        include: { product: true, order: { include: { user: true } } },
       });
     }
 
     if (targetItems.length === 0) {
-      console.warn(`⚠️ [Shipping Webhook] Received delivery status but could not find any matching order item in the database.`);
-      return NextResponse.json({ 
-        error: "Resource not found", 
-        details: "Could not map trackingNumber, itemId, or orderId to any database record." 
-      }, { status: 442 });
+      return NextResponse.json(
+        {
+          error: "Resource not found",
+          details: "Could not map trackingNumber, itemId, or orderId to any database record.",
+        },
+        { status: 404 }
+      );
     }
 
     const updatedItemIds: string[] = [];
 
-    // 3. Update database atomically inside a transaction
     await prisma.$transaction(async (tx) => {
       for (const item of targetItems) {
-        // Only update if not already marked DELIVERED to prevent double escrow resetting
-        if (item.status === "DELIVERED") {
-          console.log(`ℹ️ [Shipping Webhook] Item ${item.id} is already marked DELIVERED. Skipping.`);
+        if (
+          item.status === "DELIVERED" ||
+          item.status === "CANCELLED" ||
+          item.status === "REFUNDED"
+        ) {
           continue;
         }
 
-        // Update item status
         await tx.orderItem.update({
           where: { id: item.id },
-          data: { 
+          data: {
             status: "DELIVERED",
-            carrier: carrier || item.carrier || "Carrier Link"
-          }
+            carrier: carrier || item.carrier || "Carrier Link",
+          },
         });
 
         updatedItemIds.push(item.id);
 
-        // Reset the Escrow ledger timestamp to START NOW from the arrival moment
-        const affectedTxs = await tx.artisanTransaction.updateMany({
+        await tx.artisanTransaction.updateMany({
           where: {
             orderId: item.orderId,
             artisanId: item.product.artisanId,
             type: "SALE",
-            status: "PENDING"
+            status: "PENDING",
           },
           data: {
-            createdAt: new Date() // Force holding timer to start from this delivery moment
-          }
+            createdAt: new Date(),
+          },
         });
 
-        console.log(`⚡ [Escrow Security] Reset escrow clock for Order: ${item.orderId} and Artisan: ${item.product.artisanId}. Updated ${affectedTxs.count} transaction(s).`);
-
-        // Send beautiful delivery confirmation email notification to buyer
         const buyerEmail = item.order?.user?.email || item.order?.clientEmail;
         if (buyerEmail) {
           sendOrderStatusUpdateEmail(
@@ -114,50 +130,56 @@ export async function POST(req: Request) {
             item.product.slug || undefined,
             trackingNumber || item.trackingNumber || "Hand Delivered",
             carrier || item.carrier || "Private Runner"
-          ).catch(err => console.error(`[Shipping Webhook] Failed to send delivery email for item ${item.id}:`, err));
+          ).catch((err) =>
+            console.error(
+              `[Shipping Webhook] Failed to send delivery email for item ${item.id}:`,
+              err
+            )
+          );
         }
       }
 
-      // 4. Proactive Parent Order Sync: Check if all other items in this order are delivered
-      for (const item of targetItems) {
+      const uniqueOrderIds = Array.from(new Set(targetItems.map((i) => i.orderId)));
+      for (const oid of uniqueOrderIds) {
         const parentOrder = await tx.order.findUnique({
-          where: { id: item.orderId },
-          include: { items: true }
+          where: { id: oid },
+          include: { items: true },
         });
 
         if (parentOrder && parentOrder.status !== "DELIVERED") {
           const allDelivered = parentOrder.items.every(
             (i) => i.status === "DELIVERED" || updatedItemIds.includes(i.id)
           );
-
           if (allDelivered) {
             await tx.order.update({
               where: { id: parentOrder.id },
-              data: { status: "DELIVERED" }
+              data: { status: "DELIVERED" },
             });
-            console.log(`📦 [Order Status Escalated] Order ${parentOrder.id} is now fully delivered!`);
           }
         }
       }
     });
 
-    // Revalidate paths for real-time display updates
-    revalidatePath("/studio");
-    revalidatePath("/profile");
-    revalidatePath("/admin/orders");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
+    revalidatePath("/en/profile");
+    revalidatePath("/ar/profile");
+    revalidatePath("/en/admin/orders");
+    revalidatePath("/ar/admin/orders");
 
     return NextResponse.json({
       success: true,
       message: "Delivery status verified and escrow clocks initiated successfully.",
       updatedItemsCount: updatedItemIds.length,
-      itemIds: updatedItemIds
+      itemIds: updatedItemIds,
     });
-
   } catch (err: any) {
-    console.error("❌ Webhook processing error:", err);
-    return NextResponse.json({ 
-      error: "Internal Server Error", 
-      message: err.message || "An unexpected error occurred during webhook execution." 
-    }, { status: 500 });
+    console.error("[Shipping Webhook] Processing error:", err);
+    return NextResponse.json(
+      {
+        error: "Internal Server Error",
+      },
+      { status: 500 }
+    );
   }
 }

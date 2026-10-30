@@ -29,12 +29,30 @@ export function calculateTierCommission(options: {
 }): CommissionTierInfo {
   const { createdAt, termsAcceptedAt, manualOverrideRate, referenceDate = new Date() } = options;
 
-  // If an explicit custom rate was set by an admin that is different from default 0,
-  // we can respect it if it was manually overridden, or default to the automatic tiered model.
-  const startDate = termsAcceptedAt
-    ? new Date(termsAcceptedAt)
-    : createdAt
+  if (
+    typeof manualOverrideRate === "number" &&
+    Number.isFinite(manualOverrideRate) &&
+    manualOverrideRate > 0
+  ) {
+    const clampedRate = Math.min(1, Math.max(0, manualOverrideRate));
+    const pct = Math.round(clampedRate * 1000) / 10;
+    return {
+      tier: "STANDARD",
+      rate: clampedRate,
+      percentage: pct,
+      monthsPassed: 0,
+      daysPassed: 0,
+      tierLabelEn: `${pct}% Custom Rate`,
+      tierLabelAr: `${pct}% نسبة مخصصة`,
+    };
+  }
+
+  // Always measure graduated tenure from immutable account/shop creation timestamp first,
+  // preventing terms re-acceptance from resetting the 6-month 0% introductory window.
+  const startDate = createdAt
     ? new Date(createdAt)
+    : termsAcceptedAt
+    ? new Date(termsAcceptedAt)
     : referenceDate;
 
   const diffMs = Math.max(0, referenceDate.getTime() - startDate.getTime());
@@ -100,6 +118,7 @@ export function getEffectiveArtisanCommissionRate(artisan: {
   const tier = calculateTierCommission({
     createdAt: artisan.createdAt,
     termsAcceptedAt: artisan.termsAcceptedAt,
+    manualOverrideRate: artisan.commissionRate,
     referenceDate: atDate,
   });
 

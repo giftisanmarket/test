@@ -7,7 +7,8 @@ import { updateOrderStatus, shipOrderWithBosta, getBostaAWBAction } from "@/lib/
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import QRCode from "react-qr-code";
+import dynamic from "next/dynamic";
+const QRCode = dynamic(() => import("react-qr-code"), { ssr: false });
 import { ShippingAddressDisplay } from "@/lib/location-utils";
 
 interface AdminOrdersClientProps {
@@ -1160,7 +1161,9 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
             <div>
               <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40 mb-4 border-b border-primary/5 pb-2">{dict.admin.ship_to}</h3>
               <div className="space-y-1">
-                <p className="text-lg font-black text-primary">{orderToPrint.user?.name || "Customer"}</p>
+                <p className="text-lg font-black text-primary">
+                  {orderToPrint.user?.name || orderToPrint.orderNotes?.match(/\[Customer:\s*([^\]]+)\]/i)?.[1]?.trim() || "Customer"}
+                </p>
                 <ShippingAddressDisplay 
                   address={orderToPrint.shippingAddress} 
                   city={orderToPrint.shippingCity}
@@ -1173,7 +1176,10 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
             </div>
             <div className="flex flex-col items-end">
               <div className="p-2 bg-white border-2 border-primary rounded-2xl mb-4">
-                <QRCode value={`${window.location.origin}/api/shipping/verify?orderId=${orderToPrint.id}`} size={100} />
+                <QRCode
+                  value={`${window.location.origin}/api/shipping/verify?orderId=${encodeURIComponent(orderToPrint.id)}&sig=${encodeURIComponent(orderToPrint.verifySig || "")}`}
+                  size={100}
+                />
               </div>
               <p className="text-[8px] font-black uppercase tracking-widest text-primary/20">{dict.admin.scan_to_verify}</p>
             </div>
@@ -1217,6 +1223,8 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           {(() => {
             const deliveryNote = (orderToPrint.orderNotes || "")
               .replace(/\[(COD - Cash on Delivery|Paymob Online)\]/gi, "")
+              .replace(/\[Payment:[^\]]*\]/gi, "")
+              .replace(/\[Customer:[^\]]*\]/gi, "")
               .replace(/\[Gift Note:[^\]]*\]/gi, "")
               .trim();
 

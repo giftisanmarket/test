@@ -16,17 +16,20 @@ import Script from "next/script";
 const outfit = Outfit({
   variable: "--font-heading",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const ebGaramond = EB_Garamond({
   variable: "--font-serif",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const ibmPlexArabic = IBM_Plex_Sans_Arabic({
   variable: "--font-arabic",
-  weight: ["400", "700"],
+  weight: ["400", "500", "600", "700"],
   subsets: ["arabic"],
+  display: "swap",
 });
 
 import { SITE_URL, SITE_DESCRIPTION, SITE_NAME } from "@/lib/constants";

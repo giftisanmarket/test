@@ -15,6 +15,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ lang:
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
+    omit: { password: false },
     include: {
       accounts: {
         select: { provider: true }

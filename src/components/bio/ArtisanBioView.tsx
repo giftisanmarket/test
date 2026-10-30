@@ -68,8 +68,8 @@ interface ArtisanBioViewProps {
     facebook: string | null;
     tiktok: string | null;
     pinterest?: string | null;
-    phoneNumber: string | null;
-    user: {
+    phoneNumber?: string | null;
+    user?: {
       name: string | null;
     };
     bioLinks: BioLinkItem[];
@@ -84,7 +84,7 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
   const { addToCart } = useCart();
 
   const isRtl = lang === "ar";
-  const name = artisan.studioName || artisan.user.name || "Artisan";
+  const name = artisan.studioName || artisan.user?.name || "Artisan";
   const brandColor = artisan.brandColor?.trim() || "#064E3B";
   const bioUrl = typeof window !== "undefined" 
     ? `${window.location.origin}/bio/${artisan.slug || artisan.id}`
@@ -206,7 +206,7 @@ export function ArtisanBioView({ artisan, lang }: ArtisanBioViewProps) {
 
     if (avgRating >= 4.5 && reviewCount > 0) {
       return {
-        label: `${avgRating.toFixed(1)} ★ (${reviewCount})`,
+        label: `${avgRating.toFixed(1)} (${reviewCount})`,
         icon: "star",
         bg: "bg-gradient-to-r from-amber-500 to-amber-600",
       };

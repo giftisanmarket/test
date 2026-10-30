@@ -31,17 +31,25 @@ if (typeof setInterval !== "undefined") {
 export async function getClientIp(): Promise<string> {
   try {
     const headersList = await headers();
-    const forwardedFor = headersList.get("x-forwarded-for");
-    if (forwardedFor) {
-      return forwardedFor.split(",")[0].trim();
+    // Prefer platform-verified proxy headers that clients cannot spoof on Vercel / Cloudflare
+    const vercelIp = headersList.get("x-vercel-forwarded-for");
+    if (vercelIp) {
+      return vercelIp.split(",")[0].trim();
+    }
+    const cfConnectingIp = headersList.get("cf-connecting-ip");
+    if (cfConnectingIp) {
+      return cfConnectingIp.trim();
     }
     const realIp = headersList.get("x-real-ip");
     if (realIp) {
       return realIp.trim();
     }
-    const cfConnectingIp = headersList.get("cf-connecting-ip");
-    if (cfConnectingIp) {
-      return cfConnectingIp.trim();
+    const forwardedFor = headersList.get("x-forwarded-for");
+    if (forwardedFor) {
+      const parts = forwardedFor.split(",").map((p) => p.trim()).filter(Boolean);
+      if (parts.length > 0) {
+        return parts[parts.length - 1];
+      }
     }
   } catch {
     // If called outside of a request context, return fallback

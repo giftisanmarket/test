@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
-import { Heart, SlidersHorizontal, ArrowUpDown, CheckCircle2, ChevronDown, Sparkles, Star, RotateCcw, X } from "lucide-react";
+import { Heart, SlidersHorizontal, ArrowUpDown, CheckCircle2, ChevronDown, Sparkles, Star, RotateCcw, X, Check } from "lucide-react";
 import { useFavorites } from "@/context/favorites-context";
 import { cn } from "@/lib/utils";
 import { GiftsHubClient } from "@/components/gifts-hub-client";
@@ -817,7 +817,7 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
                         "w-5 h-5 rounded-full border flex items-center justify-center text-xs transition-colors",
                         showVerifiedOnly ? "bg-accent border-accent text-white" : "border-primary/20"
                       )}>
-                        {showVerifiedOnly && "✓"}
+                        {showVerifiedOnly && <Check className="w-3 h-3 stroke-[3]" />}
                       </span>
                     </button>
 
@@ -841,7 +841,7 @@ function CategoryDetailView({ slug, initialProducts, dict }: CategoryClientProps
                         "w-5 h-5 rounded-full border flex items-center justify-center text-xs transition-colors",
                         showCustomizableOnly ? "bg-accent border-accent text-white" : "border-primary/20"
                       )}>
-                        {showCustomizableOnly && "✓"}
+                        {showCustomizableOnly && <Check className="w-3 h-3 stroke-[3]" />}
                       </span>
                     </button>
                   </div>

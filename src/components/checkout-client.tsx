@@ -296,9 +296,8 @@ export function CheckoutClient({ dict }: { dict: any }) {
       } catch (e) {
         // Ignore storage error
       }
-      setIsRedirecting(true);
-      clearCart();
       if (res.paymentUrl && paymentMethod === 'paymob') {
+        setIsRedirecting(true);
         if (isNativePlatform()) {
           const { Browser } = await import("@capacitor/browser");
           // Reset loading state if the user manually dismisses the in-app payment sheet without completing payment
@@ -313,15 +312,18 @@ export function CheckoutClient({ dict }: { dict: any }) {
             toolbarColor: "#064E3B",
           });
         } else {
-          // Paymob: redirect to payment gateway on web
+          // Paymob: redirect to payment gateway on web (cart clears on verified success page)
           window.location.href = res.paymentUrl;
         }
       } else if (res.orderId) {
-        // COD: order already created, go to success page
-        router.push(`/${lang}/checkout/success?orderId=${res.orderId}`);
+        // COD: order already created, clear cart and go to verified success page
+        setIsRedirecting(true);
+        clearCart();
+        const tokenParam = res.accessToken ? `&token=${encodeURIComponent(res.accessToken)}` : "";
+        router.push(`/${lang}/checkout/success?orderId=${encodeURIComponent(res.orderId)}${tokenParam}`);
       } else {
-        // Fallback: go to success page without orderId
-        router.push(`/${lang}/checkout/success`);
+        setError(isAr ? "تعذر تهيئة عملية الدفع. يرجى المحاولة مرة أخرى." : "Unable to initialize checkout. Please try again.");
+        setIsProcessing(false);
       }
     } else {
       setError(res.error || (isAr ? "حدث خطأ أثناء معالجة الطلب." : "An error occurred during checkout."));

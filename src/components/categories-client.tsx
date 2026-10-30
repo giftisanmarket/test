@@ -12,7 +12,11 @@ import { motion } from "framer-motion";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useIsNative } from "@/lib/native";
-import { NativeCategoriesView } from "@/components/native/native-categories-view";
+import dynamic from "next/dynamic";
+const NativeCategoriesView = dynamic(
+  () => import("@/components/native/native-categories-view").then((mod) => mod.NativeCategoriesView),
+  { ssr: false }
+);
 
 interface DepartmentData {
   name: string;

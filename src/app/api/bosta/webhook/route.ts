@@ -1,211 +1,251 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { sendOrderStatusUpdateEmail } from "@/lib/mail";
 import { revalidatePath } from "next/cache";
+import { safeCompareSecrets } from "@/lib/security";
 
-// Bosta statuses that represent delivery completed
 const BOSTA_DELIVERED_STATUSES = ["Delivered", "DELIVERED", "delivered"];
+
+function isWebhookAuthorized(req: NextRequest): boolean {
+  const configuredSecret =
+    process.env.BOSTA_WEBHOOK_SECRET || process.env.SHIPPING_WEBHOOK_SECRET;
+  if (!configuredSecret) return false;
+
+  const authHeader = req.headers.get("authorization") || "";
+  const bearerToken = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : authHeader.trim();
+  const customHeader =
+    req.headers.get("x-bosta-secret") || req.headers.get("x-webhook-secret") || "";
+
+  return (
+    safeCompareSecrets(bearerToken, configuredSecret) ||
+    safeCompareSecrets(customHeader, configuredSecret)
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const data = await req.json();
-    console.log("[Bosta Webhook] Received payload:", JSON.stringify(data));
+    if (!isWebhookAuthorized(req)) {
+      return NextResponse.json({ error: "Unauthorized webhook request" }, { status: 401 });
+    }
 
-    // Bosta webhook payload usually has state name, e.g. data.state or data.status or data.event
-    // Standard Bosta webhook structure: { event: "delivery.delivered", trackingNumber: "..." }
-    const trackingNumber = data.trackingNumber || data.data?.trackingNumber || data.data?.trackingId || data._id;
+    const data = await req.json();
+
+    const trackingNumber =
+      data.trackingNumber || data.data?.trackingNumber || data.data?.trackingId || data._id;
     const businessReference = data.businessReference || data.data?.businessReference;
-    const rawStatus = data.status || data.state?.value || data.state || data.data?.status || data.data?.state?.value || data.data?.state || data.event;
+    const rawStatus =
+      data.status ||
+      data.state?.value ||
+      data.state ||
+      data.data?.status ||
+      data.data?.state?.value ||
+      data.data?.state ||
+      data.event;
 
     if (!trackingNumber && !businessReference) {
-      return NextResponse.json({ error: "Missing trackingNumber or businessReference in payload" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Missing trackingNumber or businessReference in payload" },
+        { status: 400 }
+      );
     }
 
-    const isDelivered = BOSTA_DELIVERED_STATUSES.includes(rawStatus) || 
-                        (typeof rawStatus === "string" && rawStatus.toLowerCase().includes("deliver"));
+    const isDelivered =
+      BOSTA_DELIVERED_STATUSES.includes(rawStatus) ||
+      (typeof rawStatus === "string" && rawStatus.toLowerCase().includes("deliver"));
 
     if (isDelivered) {
-      const updated = await markItemAsDelivered(trackingNumber, businessReference);
+      const updated = await markItemsAsDelivered(
+        trackingNumber ? String(trackingNumber) : undefined,
+        businessReference ? String(businessReference) : undefined
+      );
       if (updated) {
-        return NextResponse.json({ success: true, message: "Order item successfully updated to DELIVERED and escrow timer initiated." });
+        return NextResponse.json({
+          success: true,
+          message: "Order items updated to DELIVERED and escrow countdown initiated.",
+        });
       }
     }
 
-    return NextResponse.json({ success: true, message: `Received state '${rawStatus}', no delivery update needed.` });
+    return NextResponse.json({
+      success: true,
+      message: `Received state '${rawStatus}', no delivery update needed.`,
+    });
   } catch (error: any) {
     console.error("[Bosta Webhook Error]:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
-// Backup GET sync route: Visiting /api/bosta/webhook?trackingId=21344 will fetch Bosta's API and sync!
+// Admin-only live Bosta tracking sync endpoint
 export async function GET(req: NextRequest) {
   try {
+    const session = await auth();
+    if (session?.user?.role !== "ADMIN" && !isWebhookAuthorized(req)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
-    const trackingId = searchParams.get("trackingId") || searchParams.get("trackingNumber");
+    const trackingId =
+      searchParams.get("trackingId") || searchParams.get("trackingNumber");
     const orderId = searchParams.get("orderId");
 
-    if (!trackingId && !orderId) {
-      return NextResponse.json({ error: "Missing trackingId or orderId query parameter" }, { status: 400 });
+    if (!trackingId) {
+      return NextResponse.json(
+        { error: "Missing trackingId query parameter for live Bosta verification" },
+        { status: 400 }
+      );
     }
 
-    if (trackingId) {
-      console.log(`[Bosta Sync] Fetching public tracking for ID: ${trackingId}`);
-      
-      // Call Bosta's public tracking endpoint
-      const response = await fetch(`https://api.bosta.co/shipments/track/${trackingId}`, {
-        headers: {
-          "Accept": "application/json"
-        }
+    const response = await fetch(
+      `https://api.bosta.co/shipments/track/${encodeURIComponent(trackingId)}`,
+      {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+
+    if (!response.ok) {
+      return NextResponse.json({
+        success: false,
+        error: "Tracking record not found on Bosta's servers",
       });
-
-      if (!response.ok) {
-        console.warn(`[Bosta Sync] Public tracking API returned status ${response.status}.`);
-        return NextResponse.json({ success: false, error: "Tracking record not found on Bosta's servers" });
-      }
-
-      const data = await response.json();
-      console.log("[Bosta Sync] API Response:", JSON.stringify(data));
-
-      // Bosta tracking response standard status lies in data.state.value or data.state or data.status
-      const rawState = data.state?.value || data.state || data.status;
-      const isDelivered = BOSTA_DELIVERED_STATUSES.includes(rawState) || 
-                          (typeof rawState === "string" && rawState.toLowerCase().includes("deliver"));
-
-      if (isDelivered) {
-        const updated = await markItemAsDelivered(trackingId, orderId || undefined);
-        if (updated) {
-          return NextResponse.json({ success: true, status: "DELIVERED", synced: true });
-        }
-      }
-
-      return NextResponse.json({ success: true, status: rawState || "SHIPPED", synced: false });
-    } else if (orderId) {
-      // Force trigger mark delivery by orderId
-      const updated = await markItemAsDelivered("", orderId);
-      return NextResponse.json({ success: !!updated, status: updated ? "DELIVERED" : "UNCHANGED" });
     }
 
-    return NextResponse.json({ success: false, error: "Invalid request parameters" }, { status: 400 });
+    const data = await response.json();
+    const rawState = data.state?.value || data.state || data.status;
+    const isDelivered =
+      BOSTA_DELIVERED_STATUSES.includes(rawState) ||
+      (typeof rawState === "string" && rawState.toLowerCase().includes("deliver"));
+
+    if (isDelivered) {
+      const updated = await markItemsAsDelivered(trackingId, orderId || undefined);
+      if (updated) {
+        return NextResponse.json({ success: true, status: "DELIVERED", synced: true });
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      status: rawState || "SHIPPED",
+      synced: false,
+    });
   } catch (error: any) {
     console.error("[Bosta GET Sync Error]:", error);
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
-async function markItemAsDelivered(trackingNumber?: string, businessReference?: string) {
-  // 1. Find OrderItem by trackingNumber
-  let orderItem = trackingNumber ? await prisma.orderItem.findFirst({
-    where: { 
-      trackingNumber: trackingNumber,
-    },
-    include: {
-      order: {
+async function markItemsAsDelivered(trackingNumber?: string, businessReference?: string) {
+  let matchingItems = trackingNumber
+    ? await prisma.orderItem.findMany({
+        where: { trackingNumber },
         include: {
-          user: true
-        }
-      },
-      product: true
-    }
-  }) : null;
+          order: { include: { user: true } },
+          product: true,
+        },
+      })
+    : [];
 
-  // 2. If not found by OrderItem trackingNumber, try finding by parent Order.trackingNumber or Order.id
-  if (!orderItem) {
+  if (matchingItems.length === 0) {
     const parentOrder = await prisma.order.findFirst({
       where: {
         OR: [
-          ...(trackingNumber ? [{ trackingNumber: trackingNumber }] : []),
-          ...(businessReference ? [{ id: businessReference }] : [])
-        ]
-      }
+          ...(trackingNumber ? [{ trackingNumber }] : []),
+          ...(businessReference ? [{ id: businessReference }] : []),
+        ],
+      },
     });
 
     if (parentOrder) {
-      orderItem = await prisma.orderItem.findFirst({
+      matchingItems = await prisma.orderItem.findMany({
         where: { orderId: parentOrder.id },
         include: {
-          order: {
-            include: {
-              user: true
-            }
-          },
-          product: true
-        }
+          order: { include: { user: true } },
+          product: true,
+        },
       });
     }
   }
 
-  if (!orderItem) {
-    console.log(`[Bosta Automation] No matching OrderItem found for tracking: ${trackingNumber} / ref: ${businessReference}`);
+  if (matchingItems.length === 0) {
     return false;
   }
 
-  const orderId = orderItem.orderId;
-  const itemId = orderItem.id;
+  const undeliveredItems = matchingItems.filter(
+    (item) =>
+      item.status !== "DELIVERED" &&
+      item.status !== "CANCELLED" &&
+      item.status !== "REFUNDED"
+  );
 
-  // 1. Update OrderItem status to DELIVERED
-  const updatedItem = await prisma.orderItem.update({
-    where: { id: itemId },
-    data: { status: "DELIVERED" },
-    include: {
-      order: {
-        include: {
-          user: true
-        }
-      },
-      product: true
-    }
-  });
-
-  console.log(`[Bosta Automation] Successfully marked Item ${itemId} as DELIVERED via tracking auto-sync.`);
-
-  // 2. Fetch all other items to see if entire order is DELIVERED
-  const allOrderItems = await prisma.orderItem.findMany({
-    where: { orderId: orderId }
-  });
-
-  const allDelivered = allOrderItems.every(item => item.status === "DELIVERED");
-
-  if (allDelivered && updatedItem.order.status !== "DELIVERED") {
-    await prisma.order.update({
-      where: { id: orderId },
-      data: { status: "DELIVERED" }
-    });
-    console.log(`[Bosta Automation] Updated parent Order ${orderId} status to "DELIVERED" since all items are fulfilled.`);
+  if (undeliveredItems.length === 0) {
+    return false;
   }
 
-  // 3. Reset the transaction escrow holding period to start NOW (from physical delivery confirmation)
-  await prisma.artisanTransaction.updateMany({
-    where: {
-      orderId: orderId,
-      artisanId: orderItem.product.artisanId,
-      type: "SALE",
-      status: "PENDING"
-    },
-    data: {
-      createdAt: new Date()
+  const orderId = undeliveredItems[0].orderId;
+  const affectedArtisanIds = new Set<string>();
+
+  await prisma.$transaction(async (tx) => {
+    for (const item of undeliveredItems) {
+      await tx.orderItem.update({
+        where: { id: item.id },
+        data: { status: "DELIVERED" },
+      });
+      affectedArtisanIds.add(item.product.artisanId);
+    }
+
+    for (const artisanId of affectedArtisanIds) {
+      await tx.artisanTransaction.updateMany({
+        where: {
+          orderId,
+          artisanId,
+          type: "SALE",
+          status: "PENDING",
+        },
+        data: {
+          createdAt: new Date(),
+        },
+      });
+    }
+
+    const allOrderItems = await tx.orderItem.findMany({
+      where: { orderId },
+      select: { status: true },
+    });
+    const allDelivered = allOrderItems.every((i) => i.status === "DELIVERED");
+    if (allDelivered) {
+      await tx.order.update({
+        where: { id: orderId },
+        data: { status: "DELIVERED" },
+      });
     }
   });
-  console.log(`[Bosta Automation] Escrow countdown triggered starting now for order ${orderId}.`);
 
-  const recipientEmail = updatedItem.order.user?.email || updatedItem.order.clientEmail;
-  const recipientName = updatedItem.order.user?.name || "Customer";
+  const sampleItem = undeliveredItems[0];
+  const recipientEmail = sampleItem.order.user?.email || sampleItem.order.clientEmail;
+  const recipientName = sampleItem.order.user?.name || "Customer";
 
-  // 4. Send beautiful delivery confirmation email notification to buyer
   if (recipientEmail) {
     sendOrderStatusUpdateEmail(
       recipientEmail,
       recipientName,
-      updatedItem.order.id,
+      orderId,
       "DELIVERED",
-      updatedItem.product.name,
-      updatedItem.product.slug || undefined,
-      trackingNumber,
-      updatedItem.carrier || "Bosta"
-    ).catch(err => console.error("[Bosta Automation] Failed to send delivery email:", err));
+      sampleItem.product.name,
+      sampleItem.product.slug || undefined,
+      trackingNumber || sampleItem.trackingNumber || undefined,
+      sampleItem.carrier || "Bosta"
+    ).catch((err) =>
+      console.error("[Bosta Automation] Failed to send delivery email:", err)
+    );
   }
 
-  revalidatePath("/profile");
-  revalidatePath("/studio");
+  revalidatePath("/en/profile");
+  revalidatePath("/ar/profile");
+  revalidatePath("/en/studio");
+  revalidatePath("/ar/studio");
   return true;
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { trackTikTokEvent } from "@/lib/tiktok-pixel";
+
 import { useCart } from "@/context/cart-context";
 import Image from "next/image";
 import Link from "next/link";
@@ -47,6 +49,22 @@ export function CheckoutClient({ dict }: { dict: any }) {
   const APPLY_COUPON_DISCOUNTS = true;
 
   const { cart, totalPrice, clearCart } = useCart();
+
+  useEffect(() => {
+    if (cart.length > 0) {
+      trackTikTokEvent("InitiateCheckout", {
+        contents: cart.map((item) => ({
+          content_id: String(item.id),
+          content_type: "product",
+          content_name: item.name || item.title,
+          quantity: item.quantity,
+          price: Number(item.price || 0),
+        })),
+        value: Number(totalPrice || 0),
+        currency: "EGP",
+      });
+    }
+  }, []);
   const { data: session } = useSession();
 
   const [isProcessing, setIsProcessing] = useState(false);

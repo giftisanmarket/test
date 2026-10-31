@@ -1,5 +1,7 @@
 "use client";
 
+import { trackTikTokEvent } from "@/lib/tiktok-pixel";
+
 import { useState, useEffect, useRef } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
@@ -347,6 +349,9 @@ export default function BecomeArtisanClient({ dict, initialUser }: BecomeArtisan
 
       if (res.success) {
         localStorage.removeItem("giftisan_artisan_wizard_draft");
+        trackTikTokEvent("CompleteRegistration", {
+          content_name: "artisan_shop_created",
+        });
         toast.success(
           isAr
             ? "تهانينا! متجرك جاهز الآن. أهلاً بك في عائلة صناع جيفتيزان!"

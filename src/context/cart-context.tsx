@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product } from '@/lib/data';
 import toast from 'react-hot-toast';
 import { triggerHaptic } from '@/lib/native';
+import { trackTikTokEvent } from '@/lib/tiktok-pixel';
 
 interface CartItem extends Product {
   quantity: number;
@@ -152,6 +153,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       ];
     });
     triggerHaptic("medium");
+    trackTikTokEvent('AddToCart', {
+      content_id: String(product.id),
+      content_type: 'product',
+      content_name: product.name || product.title,
+      quantity: 1,
+      price: Number(product.price || 0),
+      value: Number(product.price || 0),
+      currency: 'EGP',
+    });
     if (!skipOpen) setIsCartOpen(true);
   };
 

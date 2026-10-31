@@ -1,5 +1,7 @@
 "use client";
 
+import { trackTikTokEvent } from "@/lib/tiktok-pixel";
+
 import { Navbar } from "@/components/navbar";
 import Link from "next/link";
 import { CheckCircle2, Package, ArrowRight, MessageSquare, CreditCard, Lock, Sparkles, UserCheck, Phone, AlertTriangle, XCircle, RefreshCcw, Truck } from "lucide-react";
@@ -35,6 +37,16 @@ export function SuccessClient({ dict, lang, order, accessToken, isFailed, errorM
     setWindowSize({ width: window.innerWidth, height: window.innerHeight });
     if (!isFailed && order?.id) {
       clearCart();
+      trackTikTokEvent("PlaceAnOrder", {
+        content_id: String(order.id),
+        value: Number(order.totalAmount || order.total || 0),
+        currency: "EGP",
+      });
+      trackTikTokEvent("CompletePayment", {
+        content_id: String(order.id),
+        value: Number(order.totalAmount || order.total || 0),
+        currency: "EGP",
+      });
     }
   }, [isFailed, order?.id, clearCart]);
 

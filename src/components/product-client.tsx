@@ -17,6 +17,7 @@ import { BespokeImage } from "./bespoke-image";
 import { ContactArtisanButton } from "./contact-artisan-button";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
+import { trackTikTokEvent } from "@/lib/tiktok-pixel";
 
 export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, isOwner }: { product: any, relatedProducts: any[], dict: any, lang: string, isAdmin?: boolean, isOwner?: boolean }) {
   const router = useRouter();
@@ -137,6 +138,14 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
   useEffect(() => {
     if (product.id) {
       trackProductView(product.id);
+      trackTikTokEvent("ViewContent", {
+        content_id: String(product.id),
+        content_type: "product",
+        content_name: product.name || product.title,
+        price: Number(displayPrice || product.price || 0),
+        value: Number(displayPrice || product.price || 0),
+        currency: "EGP",
+      });
     }
   }, [product.id]);
   

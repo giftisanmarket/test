@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Heart } from "lucide-react";
+import { Heart, Video } from "lucide-react";
 import { BespokeImage } from "@/components/bespoke-image";
 import { useFavorites } from "@/context/favorites-context";
 import { triggerHaptic } from "@/lib/native";
-import { cn } from "@/lib/utils";
+import { cn, isVideoUrl } from "@/lib/utils";
 
 interface ProductCardProps {
   product: {
@@ -32,6 +32,7 @@ export function ProductCard({ product, dict }: ProductCardProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const slugOrId = (product.slug || product.id).trim();
   const productUrl = `/products/${encodeURI(slugOrId)}`;
+  const hasVideoCover = isVideoUrl(product.images?.[0]);
 
   return (
     <div className="group cursor-pointer block">
@@ -46,6 +47,15 @@ export function ProductCard({ product, dict }: ProductCardProps) {
             className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           />
+
+          {/* Video Badge Indicator */}
+          {hasVideoCover && (
+            <div className="absolute top-2 start-2 z-10 pointer-events-none">
+              <span className="p-1 md:p-1.5 rounded-full bg-charcoal/70 text-white backdrop-blur-md shadow-xs flex items-center justify-center">
+                <Video className="w-3 h-3 text-white" />
+              </span>
+            </div>
+          )}
 
           {/* Wishlist Button */}
           <div className="absolute top-2 end-2 z-10 flex flex-col gap-2">

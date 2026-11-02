@@ -2,10 +2,10 @@
 
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Heart, ArrowRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, ArrowRight, Video } from "lucide-react";
 import { BespokeImage } from "@/components/bespoke-image";
 import { useFavorites } from "@/context/favorites-context";
-import { cn } from "@/lib/utils";
+import { cn, isVideoUrl } from "@/lib/utils";
 
 export interface ShelfProduct {
   id: string;
@@ -190,6 +190,16 @@ export function ProductShelfRow({
                       sizes="(max-width: 640px) 160px, (max-width: 1024px) 220px, (max-width: 1800px) 260px, 290px"
                     />
                   </Link>
+
+                  {/* Video Badge */}
+                  {isVideoUrl(product.images[0]) && (
+                    <span className={cn(
+                      "absolute z-10 p-1 md:p-1.5 rounded-full bg-charcoal/70 text-white backdrop-blur-md shadow-xs pointer-events-none flex items-center justify-center",
+                      hasBadge ? "top-8 start-2" : "top-2 start-2"
+                    )}>
+                      <Video className="w-3 h-3 text-white" />
+                    </span>
+                  )}
 
                   {/* Badges in Giftisan Colors */}
                   {hasBadge ? (

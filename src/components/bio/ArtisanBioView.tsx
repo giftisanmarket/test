@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Image from "next/image";
+import { BespokeImage } from "@/components/bespoke-image";
 import Link from "next/link";
 import QRCode from "react-qr-code";
 import { 

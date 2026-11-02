@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Footer } from "@/components/footer";
 import { 
   Heart, 
+  Video, 
   Search, 
   SlidersHorizontal, 
   ArrowUpDown, 
@@ -19,7 +20,7 @@ import {
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useFavorites } from "@/context/favorites-context";
-import { cn } from "@/lib/utils";
+import { cn, isVideoUrl } from "@/lib/utils";
 import { useParams } from "next/navigation";
 import { BespokeImage } from "./bespoke-image";
 import { createPortal } from "react-dom";
@@ -814,6 +815,13 @@ export function SearchClient({ query, initialProducts, dict }: SearchClientProps
                           className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         />
+                        {isVideoUrl(product.images[0]) && (
+                          <div className="absolute top-2 start-2 z-10 pointer-events-none">
+                            <span className="p-1 md:p-1.5 rounded-full bg-charcoal/70 text-white backdrop-blur-md shadow-xs flex items-center justify-center">
+                              <Video className="w-3 h-3 text-white" />
+                            </span>
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {

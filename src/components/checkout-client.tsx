@@ -4,6 +4,7 @@ import { trackTikTokEvent } from "@/lib/tiktok-pixel";
 
 import { useCart } from "@/context/cart-context";
 import Image from "next/image";
+import { BespokeImage } from "./bespoke-image";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { 
@@ -463,7 +464,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
                 {cart.map((item) => (
                   <div key={item.id + (item.personalization || "")} className="flex items-center gap-3">
                     <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-primary/10 bg-white">
-                      <Image src={item.image || item.images[0]} alt={item.name} fill className="object-cover" />
+                      <BespokeImage src={item.image || item.images[0]} alt={item.name} fill className="object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-[#222222] truncate">{item.name}</p>
@@ -969,7 +970,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
                   <div key={item.id + (item.personalization || "")} className="space-y-1">
                     <div className="flex gap-3 items-center">
                       <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-primary/10 bg-cream">
-                        <Image src={item.image || item.images[0]} alt={item.name} fill className="object-cover" />
+                        <BespokeImage src={item.image || item.images[0]} alt={item.name} fill className="object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs sm:text-sm font-medium text-[#222222] line-clamp-1">{item.name}</h4>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image, { ImageProps } from "next/image";
 import { Skeleton } from "./skeleton";
-import { cn, getOptimizedImageUrl } from "@/lib/utils";
+import { cn, getOptimizedImageUrl, isVideoUrl, getVideoPosterUrl } from "@/lib/utils";
 
 interface BespokeImageProps extends ImageProps {
   containerClassName?: string;
@@ -26,6 +26,13 @@ export function BespokeImage({
   // Resolve image source: prefer direct source; fallback to internal endpoint only if src is absent
   const rawSrc = typeof src === "string" ? src.trim() : "";
   const resolvedSrc = rawSrc || (type && id ? `/api/image/${type}/${id}` : "/icon.png");
+
+  useEffect(() => {
+    setIsLoading(true);
+  }, [resolvedSrc]);
+
+  const isVideo = isVideoUrl(resolvedSrc);
+  const posterUrl = isVideo ? getVideoPosterUrl(resolvedSrc) : undefined;
 
   // Dynamic Edge CDN loader for Cloudinary and Unsplash
   const cdnLoader = ({ src: lSrc, width, quality }: { src: string; width: number; quality?: number }) => {
@@ -51,21 +58,50 @@ export function BespokeImage({
       containerClassName
     )}>
       {isLoading && <Skeleton className="absolute inset-0 z-10" />}
-      <Image
-        loader={props.loader || (isCdnEligible ? cdnLoader : undefined)}
-        src={resolvedSrc}
-        alt={alt}
-        className={cn(
-          "transition-all duration-700",
-          isLoading ? "scale-105 blur-lg grayscale" : "scale-100 blur-0 grayscale-0",
-          className
-        )}
-        onLoad={() => setIsLoading(false)}
-        sizes={props.sizes || (isFill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
-        {...props}
-      />
+      {isVideo ? (
+        <video
+          ref={(el) => {
+            if (el) {
+              el.muted = true;
+              el.play().catch(() => {});
+            }
+          }}
+          src={resolvedSrc}
+          poster={posterUrl}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          className={cn(
+            "transition-all duration-700 w-full h-full object-cover",
+            isLoading ? "scale-105 blur-lg grayscale" : "scale-100 blur-0 grayscale-0",
+            className
+          )}
+          onLoadedData={() => setIsLoading(false)}
+          onCanPlay={() => setIsLoading(false)}
+          onError={() => setIsLoading(false)}
+          style={props.style}
+          onClick={props.onClick as any}
+          aria-label={alt || "Product media"}
+          title={alt}
+        />
+      ) : (
+        <Image
+          loader={props.loader || (isCdnEligible ? cdnLoader : undefined)}
+          src={resolvedSrc}
+          alt={alt}
+          className={cn(
+            "transition-all duration-700",
+            isLoading ? "scale-105 blur-lg grayscale" : "scale-100 blur-0 grayscale-0",
+            className
+          )}
+          onLoad={() => setIsLoading(false)}
+          onError={() => setIsLoading(false)}
+          sizes={props.sizes || (isFill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
+          {...props}
+        />
+      )}
     </div>
   );
 }
-
-

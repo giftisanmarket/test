@@ -11,6 +11,7 @@ import { useIsNative, triggerHaptic, performSignOut, shareNativeContent } from "
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { BespokeImage } from "./bespoke-image";
 import { useSession, signOut } from "next-auth/react";
 import { searchProducts } from "@/lib/actions";
 import { PreLaunchBanner } from "./pre-launch-banner";
@@ -292,7 +293,7 @@ export function Navbar({ dict }: { dict?: any }) {
                           className="flex items-center gap-3 p-2 hover:bg-primary/5 rounded-2xl transition-all group/item border border-transparent hover:border-primary/5"
                         >
                           <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-xl overflow-hidden shrink-0 border border-primary/5">
-                            <Image src={p.images[0]} alt={p.name} fill className="object-cover" sizes="48px" />
+                            <BespokeImage src={p.images[0]} alt={p.name} fill className="object-cover" sizes="48px" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start gap-2">

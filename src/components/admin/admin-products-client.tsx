@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
+import { BespokeImage } from "@/components/bespoke-image";
 import Link from "next/link";
 import { 
   Search, 
@@ -648,7 +649,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                 {/* Header: Product Info & Image */}
                 <div className="flex items-start gap-3.5">
                   <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-primary/5 shadow-sm shrink-0 bg-cream">
-                    <Image src={p.images[0]} alt={p.name} fill className="object-cover" />
+                    <BespokeImage src={p.images[0]} alt={p.name} fill className="object-cover" />
                     {p.isFeatured && (
                       <div className="absolute top-1 start-1 w-5 h-5 rounded-full bg-accent text-white flex items-center justify-center shadow">
                         <Star className="w-3 h-3 fill-white" />
@@ -776,7 +777,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                       <td className="px-6 md:px-8 py-4 md:py-6">
                         <div className="flex items-center gap-4">
                           <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border border-primary/5 shadow-sm shrink-0 bg-cream">
-                            <Image src={p.images[0]} alt={p.name} fill className="object-cover" />
+                            <BespokeImage src={p.images[0]} alt={p.name} fill className="object-cover" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">

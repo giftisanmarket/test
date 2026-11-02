@@ -29,12 +29,54 @@ export function slugify(text: string) {
     .replace(/-+$/, '');                      // Trim - from end
 }
 
+export function isVideoUrl(url?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  return (
+    url.includes("/video/upload") ||
+    url.includes("/video/") ||
+    /\.(mp4|webm|ogg|mov|quicktime|m4v)($|\?)/i.test(url) ||
+    url.startsWith("data:video")
+  );
+}
+
+export function getVideoPosterUrl(
+  url?: string | null,
+  options: { width?: number; height?: number; quality?: string | number } = {}
+): string | undefined {
+  if (!url || typeof url !== "string") return undefined;
+  if (!url.includes("res.cloudinary.com") || !url.includes("/video/upload/")) {
+    return undefined;
+  }
+  const { width, height, quality = "auto" } = options;
+  const transforms: string[] = ["so_0", "f_auto", `q_${quality}`];
+  if (width) transforms.push(`w_${Math.round(width)}`);
+  if (height) transforms.push(`h_${Math.round(height)}`);
+  if (width || height) transforms.push("c_limit");
+
+  const transformString = transforms.join(",");
+  const match = url.match(/\/video\/upload\/(?:(?:[a-z]{1,3}_[^/]+,?[^/]*)\/)?/i);
+  if (match) {
+    return url
+      .replace(match[0], `/video/upload/${transformString}/`)
+      .replace(/\.[a-zA-Z0-9]+($|\?)/, ".jpg$1");
+  }
+  return url
+    .replace("/video/upload/", `/video/upload/${transformString}/`)
+    .replace(/\.[a-zA-Z0-9]+($|\?)/, ".jpg$1");
+}
+
 export function getOptimizedImageUrl(
   url?: string | null,
   options: { width?: number; height?: number; quality?: string | number; crop?: string } = {}
 ): string {
   if (!url || typeof url !== "string") return "/icon.png";
   if (!url.includes("res.cloudinary.com")) return url;
+
+  // If a Cloudinary video is passed to an image optimizer, convert it to a video poster frame snapshot
+  if (url.includes("/video/upload/")) {
+    const poster = getVideoPosterUrl(url, options);
+    if (poster) return poster;
+  }
 
   const { width, height, quality = "auto", crop } = options;
   const transforms: string[] = ["f_auto", `q_${quality}`];

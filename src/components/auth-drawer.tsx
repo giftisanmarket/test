@@ -11,6 +11,7 @@ import { FcGoogle } from "react-icons/fc";
 import { isNativePlatform, performGoogleSignIn, triggerHaptic, registerNativeBackHandler } from "@/lib/native";
 import toast from "react-hot-toast";
 import Image from "next/image";
+import { hasEmoji, stripEmojis } from "@/lib/utils";
 
 interface AuthDrawerProps {
   dict?: any;
@@ -75,6 +76,22 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
       return;
     }
 
+    if (hasEmoji(name)) {
+      toast.error(
+        isArabic
+          ? "لا يُسمح باستخدام الرموز التعبيرية في حقل الاسم"
+          : "Emojis are not allowed in the name field.",
+        { id: "auth-modal-error" }
+      );
+      return;
+    }
+
+    const cleanName = stripEmojis(name).trim();
+    if (!cleanName) {
+      toast.error(isArabic ? "يرجى إدخال اسم صحيح" : "Please enter a valid name.", { id: "auth-modal-error" });
+      return;
+    }
+
     if (password.length < 8) {
       toast.error(isArabic ? "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل" : "Password must be at least 8 characters.");
       return;
@@ -82,7 +99,7 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
 
     setIsLoading(true);
     try {
-      const res = await signUp({ name, email, password }, "CLIENT");
+      const res = await signUp({ name: cleanName, email, password }, "CLIENT");
       if (res?.error) {
         toast.error(res.error, { id: "auth-modal-error" });
       } else if (res?.success) {
@@ -266,7 +283,18 @@ export function AuthDrawer({ dict, lang = "en" }: AuthDrawerProps) {
                     <input
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (hasEmoji(val)) {
+                          toast.error(
+                            isArabic
+                              ? "لا يُسمح باستخدام الرموز التعبيرية في حقل الاسم"
+                              : "Emojis are not allowed in the name field.",
+                            { id: "auth-name-emoji-error" }
+                          );
+                        }
+                        setName(stripEmojis(val));
+                      }}
                       placeholder={isArabic ? "مثال: هازم ياسر" : "e.g. Amina Mahmoud"}
                       className="w-full py-3.5 ps-11 pe-4 rounded-xl bg-white border border-primary/15 focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent text-primary text-sm font-medium shadow-xs"
                       required

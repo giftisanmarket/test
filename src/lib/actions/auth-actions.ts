@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signIn, auth } from "@/auth";
 import { AuthError, CredentialsSignin } from "next-auth";
-import { slugify } from "@/lib/utils";
+import { slugify, hasEmoji, stripEmojis } from "@/lib/utils";
 import { generateVerificationToken, generatePasswordResetToken } from "@/lib/tokens";
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/mail";
 import { getClientIp, checkRateLimit } from "@/lib/rate-limit";
@@ -26,6 +26,15 @@ export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
 
   if (!rawName || !normalizedEmail || !passwordStr) {
     return { error: "Missing required fields" };
+  }
+
+  if (hasEmoji(rawName)) {
+    return { error: "Emojis are not allowed in the name field." };
+  }
+
+  const cleanName = stripEmojis(rawName).trim();
+  if (!cleanName) {
+    return { error: "Please enter a valid name without emojis." };
   }
 
   if (!EMAIL_REGEX.test(normalizedEmail)) {
@@ -52,7 +61,7 @@ export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
 
     const user = await prisma.user.create({
       data: {
-        name: rawName,
+        name: cleanName,
         email: normalizedEmail,
         password: hashedPassword,
         role: safeRole,
@@ -60,7 +69,7 @@ export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
     });
 
     if (safeRole === "ARTISAN") {
-      const baseSlug = slugify(rawName);
+      const baseSlug = slugify(cleanName);
       const artisanSlug = baseSlug
         ? `${baseSlug}-${user.id.slice(-4)}`
         : `artisan-${user.id.slice(-4)}`;
@@ -70,7 +79,7 @@ export async function signUp(formData: any, role: "CLIENT" | "ARTISAN") {
           slug: artisanSlug,
           bio: "",
           location: "",
-          avatar: `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(rawName)}`,
+          avatar: `https://api.dicebear.com/10.x/gaze/svg?seed=${encodeURIComponent(cleanName)}`,
         },
       });
     }
@@ -429,7 +438,8 @@ export async function convertGuestToAccount({
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const clientName = (order as any).clientName || email.split("@")[0];
+    const rawClientName = (order as any).clientName || email.split("@")[0];
+    const clientName = stripEmojis(rawClientName).trim() || email.split("@")[0];
 
     const user = await prisma.user.create({
       data: {

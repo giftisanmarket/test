@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { signIn, auth } from "@/auth";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { AuthError, CredentialsSignin } from "next-auth";
-import { slugify, stripEmojis } from "@/lib/utils";
+import { slugify, stripEmojis, hasEmoji } from "@/lib/utils";
 import cloudinary from "@/lib/cloudinary";
 import sharp from "sharp";
 import { sendWelcomeEmail, sendOrderNotification, sendMessageNotification, sendVerificationEmail, sendOrderStatusUpdateEmail, sendPasswordResetEmail, sendInquiryNotification, sendArtisanApprovalEmail, sendArtisanOutreachEmail, sendCustomEmail, sendProductStatusUpdateEmail, sendPayoutRequestEmail, sendPayoutApprovedEmail, sendPayoutDeclinedEmail, sendRefundRequestSubmittedEmail, sendRefundResolvedEmail, sendAbandonedCheckoutNotification, sendBuyerOrderReceiptEmail } from "@/lib/mail";
@@ -4136,7 +4136,11 @@ export async function updateUser(userId: string, formData: FormData) {
       return { error: "Unauthorized" };
     }
 
-    const name = formData.get("name") as string;
+    const rawName = formData.get("name") as string;
+    if (typeof rawName === "string" && hasEmoji(rawName)) {
+      return { error: "Emojis are not allowed in the name field." };
+    }
+    const name = typeof rawName === "string" ? stripEmojis(rawName).trim() : rawName;
     const email = formData.get("email") as string;
     const image = formData.get("image") as string;
     const imageUrl = await processImage(image);

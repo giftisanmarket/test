@@ -872,6 +872,8 @@
     "signup_onboarding_desc": "Fill in your information to complete the onboarding.",
     "signup_full_name": "Full Name",
     "signup_name_placeholder": "e.g. Ahmed Hassan",
+    "signup_name_no_emojis": "Emojis are not allowed in the name field.",
+    "signup_name_required": "Please enter your name.",
     "signup_creating": "Creating Your Presence...",
     "signup_create_presence": "Create My Presence",
     "signup_already_member": "Already a member of the Circle?",

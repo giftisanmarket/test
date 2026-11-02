@@ -9,15 +9,12 @@ export function cn(...inputs: ClassValue[]) {
 export function stripEmojis(str: string): string {
   if (!str) return "";
   return str
-    .replace(/\p{Extended_Pictographic}/gu, "")
-    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, "")  // flag sequences
-    .replace(/[\u200D\uFE0F]/gu, "")          // zero-width joiners & variation selectors
-    .replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]/g, ""); // surrogate pairs
+    .replace(/\p{Extended_Pictographic}|[\u{1F1E0}-\u{1F1FF}]|[\u{1F3FB}-\u{1F3FF}]|[\u{E0020}-\u{E007F}]|[\u200D\uFE0F]/gu, "");
 }
 
 export function hasEmoji(str: string): boolean {
   if (!str) return false;
-  return /\p{Extended_Pictographic}|[\u{1F1E0}-\u{1F1FF}]|[\uD83C-\uDBFF\uDC00-\uDFFF]/u.test(str);
+  return /\p{Extended_Pictographic}|[\u{1F1E0}-\u{1F1FF}]|[\u{1F3FB}-\u{1F3FF}]|[\u{E0020}-\u{E007F}]/u.test(str);
 }
 
 export function slugify(text: string) {

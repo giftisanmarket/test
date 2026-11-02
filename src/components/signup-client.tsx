@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Paintbrush, ShoppingBag, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, hasEmoji, stripEmojis } from "@/lib/utils";
 import { signUp } from "@/lib/actions";
 import { useRouter, useParams } from "next/navigation";
 import { FcGoogle } from "react-icons/fc";
@@ -27,9 +27,20 @@ export function SignupClient({ dict }: { dict: any }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (hasEmoji(formData.name)) {
+      setError(dict.auth?.signup_name_no_emojis || "Emojis are not allowed in the name field.");
+      return;
+    }
+
+    const cleanName = stripEmojis(formData.name).trim();
+    if (!cleanName) {
+      setError(dict.auth?.signup_name_required || "Please enter your name.");
+      return;
+    }
     setIsLoading(true);
 
-    const res = await signUp(formData, role);
+    const res = await signUp({ ...formData, name: cleanName }, role);
     setIsLoading(false);
 
     if (res.error) {
@@ -153,7 +164,15 @@ export function SignupClient({ dict }: { dict: any }) {
                   placeholder={dict.auth.signup_name_placeholder}
                   className="w-full py-4 px-6 rounded-2xl bg-cream/30 border border-primary/10 focus:outline-none focus:ring-4 focus:ring-accent/5 focus:border-accent transition-all font-medium text-primary shadow-inner text-sm md:text-base"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (hasEmoji(val)) {
+                      setError(dict.auth?.signup_name_no_emojis || "Emojis are not allowed in the name field.");
+                    } else if (error === (dict.auth?.signup_name_no_emojis || "Emojis are not allowed in the name field.")) {
+                      setError("");
+                    }
+                    setFormData({ ...formData, name: stripEmojis(val) });
+                  }}
                   required
                 />
               </div>

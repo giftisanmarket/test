@@ -11,6 +11,7 @@ import { toast } from "react-hot-toast";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { hasEmoji, stripEmojis } from "@/lib/utils";
 
 export function SettingsClient({ user, dict, lang = "en" }: { user: any; dict: any; lang?: string }) {
   const router = useRouter();
@@ -271,7 +272,13 @@ export function SettingsClient({ user, dict, lang = "en" }: { user: any; dict: a
                 <input 
                   type="text" 
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (hasEmoji(val)) {
+                      toast.error(dict.auth?.signup_name_no_emojis || "Emojis are not allowed in the name field.", { id: "settings-name-emoji-error" });
+                    }
+                    setName(stripEmojis(val));
+                  }}
                   className="w-full h-14 md:h-16 px-6 md:px-8 bg-cream/30 border border-primary/5 rounded-xl md:rounded-2xl focus:outline-none focus:border-accent transition-all font-bold text-primary placeholder:text-primary/40 text-sm md:text-base active:scale-[0.99]"
                   placeholder={dict.auth.signup_name_placeholder}
                 />

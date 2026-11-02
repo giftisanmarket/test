@@ -874,6 +874,8 @@
     "signup_onboarding_desc": "املأ معلوماتك لإكمال عملية الانضمام.",
     "signup_full_name": "الاسم الكامل",
     "signup_name_placeholder": "مثال: أحمد حسن",
+    "signup_name_no_emojis": "لا يُسمح باستخدام الرموز التعبيرية في حقل الاسم.",
+    "signup_name_required": "يرجى إدخال الاسم.",
     "signup_creating": "جاري إنشاء وجودك...",
     "signup_create_presence": "إنشاء وجودي",
     "signup_already_member": "عضو بالفعل في الدائرة؟",

@@ -32,7 +32,11 @@ export function ProductCard({ product, dict }: ProductCardProps) {
   const { toggleFavorite, isFavorite } = useFavorites();
   const slugOrId = (product.slug || product.id).trim();
   const productUrl = `/products/${encodeURI(slugOrId)}`;
-  const hasVideoCover = isVideoUrl(product.images?.[0]);
+  
+  // Etsy-Style: Pick an actual uploaded photo as the static card cover, and the video to play on hover
+  const coverImage = product.images?.find((img) => img && !isVideoUrl(img)) || product.images?.[0] || "/placeholder.jpg";
+  const videoUrl = product.images?.find(isVideoUrl);
+  const hasVideo = !!videoUrl;
 
   return (
     <div className="group cursor-pointer block">
@@ -41,16 +45,18 @@ export function ProductCard({ product, dict }: ProductCardProps) {
           <BespokeImage
             type="product"
             id={product.id}
-            src={product.images[0]}
+            src={coverImage}
+            images={product.images}
+            videoUrl={videoUrl}
             alt={product.name}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
           />
 
-          {/* Video Badge Indicator */}
-          {hasVideoCover && (
-            <div className="absolute top-2 start-2 z-10 pointer-events-none">
+          {/* Etsy-Style Video Badge: Visible at rest, gracefully fades out on hover during video playback */}
+          {hasVideo && (
+            <div className="absolute top-2 start-2 z-10 pointer-events-none transition-opacity duration-300 group-hover:opacity-0">
               <span className="p-1 md:p-1.5 rounded-full bg-charcoal/70 text-white backdrop-blur-md shadow-xs flex items-center justify-center">
                 <Video className="w-3 h-3 text-white" />
               </span>

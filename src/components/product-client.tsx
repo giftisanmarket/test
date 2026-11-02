@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { useRouter } from "next/navigation";
-import { Heart, Share2, Star, Truck, ShieldCheck, Clock, MapPin, ArrowRight, ArrowLeft, ChevronRight, CheckCircle2, Sparkles, Camera, ImagePlus, X, Video, Radio, MessageSquare, XCircle, ShoppingBag } from "lucide-react";
+import { Heart, Share2, Star, Truck, ShieldCheck, Clock, MapPin, ArrowRight, ArrowLeft, ChevronRight, CheckCircle2, Sparkles, Camera, ImagePlus, X, Video, Radio, MessageSquare, XCircle, ShoppingBag, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,9 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
   const [personalizationError, setPersonalizationError] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+  const [isMainVideoMuted, setIsMainVideoMuted] = useState(true);
+  const [isMainVideoPlaying, setIsMainVideoPlaying] = useState(true);
+  const mainVideoRef = useRef<HTMLVideoElement>(null);
   const personalizationRef = useRef<HTMLTextAreaElement>(null);
   const customImageRef = useRef<HTMLDivElement>(null);
 

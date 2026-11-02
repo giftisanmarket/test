@@ -192,9 +192,9 @@ export function ProductShelfRow({
                   </Link>
 
                   {/* Video Badge */}
-                  {isVideoUrl(product.images[0]) && (
+                  {product.images?.some(isVideoUrl) && (
                     <span className={cn(
-                      "absolute z-10 p-1 md:p-1.5 rounded-full bg-charcoal/70 text-white backdrop-blur-md shadow-xs pointer-events-none flex items-center justify-center",
+                      "absolute z-10 p-1 md:p-1.5 rounded-full bg-charcoal/70 text-white backdrop-blur-md shadow-xs pointer-events-none flex items-center justify-center transition-opacity duration-300 group-hover/card:opacity-0",
                       hasBadge ? "top-8 start-2" : "top-2 start-2"
                     )}>
                       <Video className="w-3 h-3 text-white" />

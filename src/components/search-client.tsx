@@ -809,14 +809,16 @@ export function SearchClient({ query, initialProducts, dict }: SearchClientProps
                     >
                       <div className="relative aspect-square rounded-xl md:rounded-2xl overflow-hidden mb-2 bg-cream/20 border border-primary/5 shadow-xs hover:shadow-md transition-shadow">
                         <BespokeImage
-                          src={product.images[0]}
+                          src={product.images?.find((img: string) => img && !isVideoUrl(img)) || product.images?.[0] || "/placeholder.jpg"}
+                          images={product.images}
+                          videoUrl={product.images?.find(isVideoUrl)}
                           alt={product.name}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         />
-                        {isVideoUrl(product.images[0]) && (
-                          <div className="absolute top-2 start-2 z-10 pointer-events-none">
+                        {product.images?.some(isVideoUrl) && (
+                          <div className="absolute top-2 start-2 z-10 pointer-events-none transition-opacity duration-300 group-hover:opacity-0">
                             <span className="p-1 md:p-1.5 rounded-full bg-charcoal/70 text-white backdrop-blur-md shadow-xs flex items-center justify-center">
                               <Video className="w-3 h-3 text-white" />
                             </span>

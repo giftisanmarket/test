@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { BespokeImage } from "@/components/bespoke-image";
 import Link from "next/link";
@@ -40,6 +40,15 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState("");
+  const [products, setProducts] = useState(initialProducts);
+
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
+
+  const handleProductDeleted = (deletedId: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== deletedId));
+  };
 
   // Persist admin products filtering state across navigations
   useFilterPersistence({
@@ -77,22 +86,22 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
   // Extract unique categories for filtering (alphabetical)
   const categories = useMemo(() => {
     const set = new Set<string>();
-    initialProducts.forEach(p => {
+    products.forEach(p => {
       if (p.category) set.add(p.category);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [initialProducts]);
+  }, [products]);
 
   // Product counts by category
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    initialProducts.forEach(p => {
+    products.forEach(p => {
       if (p.category) {
         counts[p.category] = (counts[p.category] || 0) + 1;
       }
     });
     return counts;
-  }, [initialProducts]);
+  }, [products]);
 
   // Filtered categories within the dropdown search
   const filteredCategoryList = useMemo(() => {
@@ -103,12 +112,12 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
 
   // KPI Metrics
   const stats = useMemo(() => {
-    const total = initialProducts.length;
-    const pending = initialProducts.filter(p => p.status === "PENDING").length;
-    const approved = initialProducts.filter(p => p.status === "APPROVED").length;
-    const lowStock = initialProducts.filter(p => p.stock <= 5).length;
+    const total = products.length;
+    const pending = products.filter(p => p.status === "PENDING").length;
+    const approved = products.filter(p => p.status === "APPROVED").length;
+    const lowStock = products.filter(p => p.stock <= 5).length;
     return { total, pending, approved, lowStock };
-  }, [initialProducts]);
+  }, [products]);
 
   const sortOptions = [
     { key: "NEWEST", label: isAr ? "الأحدث إضافتاً" : "Newest Products" },
@@ -123,7 +132,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
 
   // Filtered & Sorted Products
   const filteredProducts = useMemo(() => {
-    return initialProducts.filter((product) => {
+    return products.filter((product) => {
       // 1. Search Query Filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
@@ -160,7 +169,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
       if (sortBy === "FEATURED") return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
       return 0;
     });
-  }, [initialProducts, searchQuery, statusFilter, stockFilter, categoryFilter, sortBy]);
+  }, [products, searchQuery, statusFilter, stockFilter, categoryFilter, sortBy]);
 
   return (
     <div className="space-y-8 md:space-y-12" dir={isAr ? "rtl" : "ltr"}>
@@ -711,10 +720,12 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
 
                   <ProductModerationActions 
                     productId={p.id} 
+                    productName={p.name}
                     initialStatus={p.status} 
                     isFeatured={p.isFeatured}
                     slug={p.slug}
                     dict={dict}
+                    onDeleted={handleProductDeleted}
                   />
                 </div>
               </div>
@@ -840,10 +851,12 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                       <td className="px-6 md:px-8 py-4 md:py-6 text-end">
                         <ProductModerationActions 
                           productId={p.id} 
+                          productName={p.name}
                           initialStatus={p.status} 
                           isFeatured={p.isFeatured}
                           slug={p.slug}
                           dict={dict}
+                          onDeleted={handleProductDeleted}
                         />
                       </td>
                     </tr>

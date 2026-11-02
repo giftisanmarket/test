@@ -51,19 +51,26 @@ export function BespokeImage({
     resolvedSrc.includes("res.cloudinary.com") || resolvedSrc.includes("images.unsplash.com")
   );
 
+  const handleVideoReady = () => {
+    setIsLoading(false);
+  };
+
   return (
     <div className={cn(
       "relative overflow-hidden", 
       isFill && "h-full w-full",
       containerClassName
     )}>
-      {isLoading && <Skeleton className="absolute inset-0 z-10" />}
+      {isLoading && <Skeleton className="absolute inset-0 z-10 pointer-events-none" />}
       {isVideo ? (
         <video
           ref={(el) => {
             if (el) {
               el.muted = true;
               el.play().catch(() => {});
+              if (el.readyState >= 2 || el.currentTime > 0) {
+                setIsLoading(false);
+              }
             }
           }}
           src={resolvedSrc}
@@ -74,13 +81,16 @@ export function BespokeImage({
           playsInline
           preload="metadata"
           className={cn(
-            "transition-all duration-700 w-full h-full object-cover",
-            isLoading ? "scale-105 blur-lg grayscale" : "scale-100 blur-0 grayscale-0",
+            "w-full h-full object-cover",
             className
           )}
-          onLoadedData={() => setIsLoading(false)}
-          onCanPlay={() => setIsLoading(false)}
-          onError={() => setIsLoading(false)}
+          onPlay={handleVideoReady}
+          onPlaying={handleVideoReady}
+          onTimeUpdate={handleVideoReady}
+          onLoadedMetadata={handleVideoReady}
+          onLoadedData={handleVideoReady}
+          onCanPlay={handleVideoReady}
+          onError={handleVideoReady}
           style={props.style}
           onClick={props.onClick as any}
           aria-label={alt || "Product media"}

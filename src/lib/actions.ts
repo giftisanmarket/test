@@ -3063,6 +3063,7 @@ export async function deleteProduct(productId: string) {
       });
     }
 
+    revalidatePath("/admin/products");
     revalidatePath("/studio");
     revalidatePath("/");
     revalidatePath("/artisans");
@@ -3073,6 +3074,66 @@ export async function deleteProduct(productId: string) {
   } catch (error) {
     console.error("Delete product error:", error);
     return { error: "Failed to remove product" };
+  }
+}
+
+export async function adminDeleteProduct(productId: string, force: boolean = false) {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== "ADMIN") {
+      return { error: "Unauthorized: Admin privileges required" };
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { orderItems: true } }
+      }
+    });
+
+    if (!product) {
+      return { error: "Product not found" };
+    }
+
+    const orderCount = product._count.orderItems;
+    if (orderCount > 0 && !force) {
+      return {
+        hasOrders: true,
+        orderCount,
+        error: `This product is linked to ${orderCount} historical order(s).`
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete associated favorites
+      await tx.favorite.deleteMany({ where: { productId } });
+      // 2. Delete associated reviews
+      await tx.review.deleteMany({ where: { productId } });
+      // 3. Unlink associated messages
+      await tx.message.updateMany({ where: { productId }, data: { productId: null } });
+      // 4. Delete product variants
+      await tx.productVariant.deleteMany({ where: { productId } });
+      // 5. If force is requested and order items exist, remove them
+      if (orderCount > 0 && force) {
+        await tx.orderItem.deleteMany({ where: { productId } });
+      }
+      // 6. Delete product from database
+      await tx.product.delete({ where: { id: productId } });
+    });
+
+    revalidatePath("/admin/products");
+    revalidatePath("/studio");
+    revalidatePath("/");
+    revalidatePath("/artisans");
+    revalidateCatalog();
+    revalidatePath("/categories");
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Admin delete product error:", error);
+    return { error: error.message || "Failed to delete product from database" };
   }
 }
 

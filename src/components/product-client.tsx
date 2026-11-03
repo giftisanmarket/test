@@ -38,6 +38,11 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [personalizationError, setPersonalizationError] = useState(false);
+  const isPersonalizationMandatory = Boolean(product.canPersonalize && product.personalizationRequired);
+  const isImageMandatory = Boolean(product.requiresClientImage && product.clientImageRequired);
+  const isAnyCustomizationRequired = isPersonalizationMandatory || isImageMandatory;
+  const hasCustomization = Boolean(product.canPersonalize || product.requiresClientImage);
+  const [wantsPersonalization, setWantsPersonalization] = useState(isAnyCustomizationRequired);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [isMainVideoMuted, setIsMainVideoMuted] = useState(true);
@@ -252,22 +257,31 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
       );
       return false;
     }
-    if (product.canPersonalize && !personalization.trim()) {
-      setPersonalizationError(true);
-      personalizationRef.current?.focus();
-      toast.error(lang === 'ar' ? "يرجى إدخال تفاصيل التخصيص أولاً" : "Please provide personalization details first");
-      return false;
+    if (isPersonalizationMandatory) {
+      if (!wantsPersonalization || !personalization.trim()) {
+        setWantsPersonalization(true);
+        setPersonalizationError(true);
+        personalizationRef.current?.focus();
+        toast.error(lang === 'ar' ? "يرجى إدخال تفاصيل التخصيص المطلوبة أولاً" : "Please provide the required personalization details first");
+        return false;
+      }
     }
-    if (product.requiresClientImage && !customImage) {
-      setCustomImageError(true);
-      customImageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      toast.error(dict.product.image_upload_required_err || (lang === 'ar' ? "يرجى رفع الصورة المطلوبة قبل الشراء" : "Please upload the required photo before purchasing"));
-      return false;
+    if (isImageMandatory) {
+      if (!wantsPersonalization || !customImage) {
+        setWantsPersonalization(true);
+        setCustomImageError(true);
+        customImageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        toast.error(dict.product.image_upload_required_err || (lang === 'ar' ? "يرجى رفع الصورة المطلوبة قبل الشراء" : "Please upload the required photo before purchasing"));
+        return false;
+      }
     }
     if (options.length > 0 && !selectedVariant) {
        toast.error("Please select a variation first");
        return false;
     }
+    
+    const effectivePersonalization = wantsPersonalization ? personalization.trim() : "";
+    const effectiveCustomImage = wantsPersonalization ? (customImage || undefined) : undefined;
     
     const productToCart = {
       ...product,
@@ -276,9 +290,9 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
       stock: displayStock,
       variantId: selectedVariant?.id || null,
       variantName: selectedVariant?.name || null,
-      customImage: customImage || undefined
+      customImage: effectiveCustomImage
     };
-    addToCart(productToCart, personalization.trim(), skipOpen, customImage || undefined);
+    addToCart(productToCart, effectivePersonalization, skipOpen, effectiveCustomImage);
     triggerHaptic("medium");
     return true;
   };
@@ -654,125 +668,242 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
               )}
             </div>
 
-            {product.canPersonalize && (
-              <motion.div 
-                animate={personalizationError ? { x: [-5, 5, -5, 5, 0] } : {}}
-                className={cn(
-                  "bg-white/50 border rounded-2xl p-6 mb-8 transition-colors",
-                  personalizationError ? "border-red-400 bg-red-50/30" : "border-primary/10"
-                )}
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-5 h-5 text-accent" />
-                  <h3 className="font-heading font-bold text-primary">
-                    {dict.product.personalize_treasure}
-                  </h3>
-                </div>
-                <p className="text-xs text-charcoal/50 mb-4">{product.personalizationPrompt || dict.product.personalization_desc || "Our artisans will hand-emboss your text onto this piece."}</p>
-                <textarea
-                  ref={personalizationRef}
-                  placeholder={dict.product.personalize_placeholder}
-                  className={cn(
-                    "w-full bg-white border rounded-xl p-4 text-sm font-medium text-primary focus:outline-none focus:ring-2 focus:border-accent min-h-[100px] resize-none transition-all placeholder:text-primary/40 shadow-inner",
-                    personalizationError ? "border-red-400 focus:ring-red-200" : "border-primary/20 focus:ring-accent/20"
-                  )}
-                  value={personalization}
-                  onChange={(e) => {
-                    setPersonalization(e.target.value);
-                    if (personalizationError) setPersonalizationError(false);
-                  }}
-                  required
-                />
-              </motion.div>
-            )}
-
-            {product.requiresClientImage && (
+            {hasCustomization && (
               <motion.div 
                 ref={customImageRef}
-                animate={customImageError ? { x: [-5, 5, -5, 5, 0] } : {}}
+                animate={(personalizationError || customImageError) ? { x: [-5, 5, -5, 5, 0] } : {}}
                 className={cn(
-                  "bg-white/50 border rounded-2xl p-6 mb-8 transition-colors",
-                  customImageError ? "border-red-400 bg-red-50/30" : "border-primary/10"
+                  "bg-white/80 backdrop-blur-xs border rounded-2xl p-5 sm:p-6 mb-8 transition-all shadow-xs",
+                  (personalizationError || customImageError) 
+                    ? "border-red-400 bg-red-50/20 ring-2 ring-red-400/20" 
+                    : "border-primary/10 hover:border-primary/20"
                 )}
               >
-                <div className="flex items-center gap-2 mb-4">
-                  <Camera className="w-5 h-5 text-accent" />
-                  <h3 className="font-heading font-bold text-primary">
-                    {dict.product.upload_client_image_title || "Upload Custom Image / Photo"}
-                  </h3>
-                </div>
-                <p className="text-xs text-charcoal/50 mb-4 font-medium">
-                  {product.clientImagePrompt || dict.product.client_image_upload_prompt || "Upload your custom photo for this piece"}
-                </p>
-
-                {customImage ? (
-                  <div className="relative w-full aspect-video max-h-48 rounded-xl overflow-hidden border border-primary/20 bg-cream/40 flex items-center justify-center group">
-                    <img src={customImage} alt="Custom upload" className="w-full h-full object-contain" />
-                    <button
-                      type="button"
-                      onClick={() => setCustomImage("")}
-                      className="absolute top-3 end-3 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-all"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-2 start-2 px-3 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[10px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
-                      {dict.product.custom_image_attached || "Photo attached"}
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-bold text-primary text-sm sm:text-base leading-tight">
+                        {dict.product?.customization_title || dict.product?.personalize_treasure || "Customization & Personalization"}
+                      </h3>
+                      {!isAnyCustomizationRequired && (
+                        <p className="text-[11px] text-charcoal/50 mt-0.5">
+                          {dict.product?.add_personalization_toggle || (lang === "ar" ? "إضافة تخصيص أو طلب خاص" : "Add personalization or custom request")}
+                        </p>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <label className={cn(
-                    "relative flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-all hover:bg-accent/5",
-                    customImageError ? "border-red-400 bg-red-50/20" : "border-primary/20 bg-white"
-                  )}>
-                    <input 
-                      type="file" 
-                      accept="image/jpeg,image/png,image/webp" 
-                      className="hidden" 
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        if (file.size > 5 * 1024 * 1024) {
-                          toast.error(dict.home.upload_rules?.image_size_error || "Image must be less than 5MB");
-                          return;
-                        }
-                        setIsCompressingCustomImage(true);
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          const img = new (window as any).Image();
-                          img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            let width = img.width;
-                            let height = img.height;
-                            const MAX_RES = 1280;
-                            if (width > height) { if (width > MAX_RES) { height *= MAX_RES / width; width = MAX_RES; } }
-                            else { if (height > MAX_RES) { width *= MAX_RES / height; height = MAX_RES; } }
-                            canvas.width = width; canvas.height = height;
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) { ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, width, height); }
-                            setCustomImage(canvas.toDataURL('image/jpeg', 0.85));
-                            setCustomImageError(false);
-                            setIsCompressingCustomImage(false);
-                          };
-                          img.src = reader.result as string;
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                    />
-                    {isCompressingCustomImage ? (
-                      <div className="flex items-center gap-2 py-4 text-primary">
-                        <Camera className="w-6 h-6 animate-pulse text-accent" />
-                        <span className="text-xs font-bold">{dict.home?.compressing || "Processing image..."}</span>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-center">
-                        <ImagePlus className="w-8 h-8 text-accent" />
-                        <span className="text-xs font-bold text-primary">{dict.product.upload_image_btn || "Upload Image"}</span>
-                        <span className="text-[10px] text-charcoal/40 font-medium">JPG, PNG, WebP (Max 5MB)</span>
-                      </div>
+
+                  <div className="flex items-center gap-2.5 shrink-0">
+                    <span className={cn(
+                      "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                      isAnyCustomizationRequired 
+                        ? "bg-accent/15 text-accent border border-accent/30" 
+                        : "bg-primary/5 text-primary/70 border border-primary/10"
+                    )}>
+                      {isAnyCustomizationRequired 
+                        ? (dict.product?.personalization_required || (lang === 'ar' ? "إجباري" : "Required"))
+                        : (dict.product?.personalization_optional || (lang === 'ar' ? "اختياري" : "Optional"))}
+                    </span>
+
+                    {!isAnyCustomizationRequired && (
+                      <label className="relative inline-flex items-center cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={wantsPersonalization}
+                          onChange={(e) => {
+                            triggerHaptic("light");
+                            setWantsPersonalization(e.target.checked);
+                            if (!e.target.checked) {
+                              setPersonalizationError(false);
+                              setCustomImageError(false);
+                            }
+                          }}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-charcoal/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-charcoal/20 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"></div>
+                      </label>
                     )}
-                  </label>
+                  </div>
+                </div>
+
+                {/* Collapsed Optional Helper */}
+                {!isAnyCustomizationRequired && !wantsPersonalization && (
+                  <p className="text-xs text-charcoal/50 ps-10 font-medium">
+                    {dict.product?.personalization_optional_hint || (lang === "ar" ? "اترك هذا الخيار غير محدد إذا كنت ترغب في استلام القطعة تماماً كما في الصور." : "Leave unchecked to order the standard design pictured above.")}
+                  </p>
                 )}
+
+                {/* Expanded Customization Form */}
+                <AnimatePresence>
+                  {(isAnyCustomizationRequired || wantsPersonalization) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-4 pt-3 border-t border-primary/5 mt-3 overflow-hidden"
+                    >
+                      {/* Artisan Note Prompt */}
+                      {(product.personalizationPrompt || dict.product?.personalization_desc) && product.canPersonalize && (
+                        <div className="p-3 bg-accent/5 border border-accent/15 rounded-xl flex items-start gap-2.5 text-xs text-charcoal/70 leading-relaxed">
+                          <Sparkles className="w-3.5 h-3.5 text-accent shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-bold text-primary block mb-0.5 text-[11px]">
+                              {lang === "ar" ? "ملاحظات الحرفي:" : "Artisan's notes:"}
+                            </span>
+                            {product.personalizationPrompt || dict.product?.personalization_desc}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Text Personalization Input */}
+                      {product.canPersonalize && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                              <span>{dict.product?.personalize_treasure || "Custom Message or Specifications"}</span>
+                              {isPersonalizationMandatory ? (
+                                <span className="text-red-500 font-semibold">({dict.product?.personalization_required || "Required"})</span>
+                              ) : (
+                                <span className="text-charcoal/40 font-normal">({dict.product?.personalization_optional || "Optional"})</span>
+                              )}
+                            </label>
+                            <span className="text-[10px] font-mono text-charcoal/40">
+                              {personalization.length}/300 {dict.product?.personalization_char_count || "chars"}
+                            </span>
+                          </div>
+                          <textarea
+                            ref={personalizationRef}
+                            maxLength={300}
+                            placeholder={dict.product?.personalize_placeholder || (lang === 'ar' ? "اكتب تفاصيل التخصيص أو المقاسات المطلوبة هنا..." : "Add your custom message or request...")}
+                            className={cn(
+                              "w-full bg-white border rounded-xl p-3.5 text-sm font-medium text-primary focus:outline-none focus:ring-2 min-h-[90px] resize-none transition-all placeholder:text-primary/30 shadow-2xs",
+                              personalizationError ? "border-red-400 focus:ring-red-200 bg-red-50/20" : "border-primary/20 focus:ring-accent/20 focus:border-accent"
+                            )}
+                            value={personalization}
+                            onChange={(e) => {
+                              setPersonalization(e.target.value);
+                              if (personalizationError) setPersonalizationError(false);
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Client Image Upload */}
+                      {product.requiresClientImage && (
+                        <div className="space-y-2 pt-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                              <Camera className="w-3.5 h-3.5 text-accent" />
+                              <span>{dict.product?.upload_client_image_title || "Reference Image / Photo"}</span>
+                              {isImageMandatory ? (
+                                <span className="text-red-500 font-semibold">({dict.product?.personalization_required || "Required"})</span>
+                              ) : (
+                                <span className="text-charcoal/40 font-normal">({dict.product?.personalization_optional || "Optional"})</span>
+                              )}
+                            </label>
+                          </div>
+
+                          {product.clientImagePrompt && (
+                            <p className="text-[11px] text-charcoal/60 font-medium">
+                              {product.clientImagePrompt}
+                            </p>
+                          )}
+
+                          {customImage ? (
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-primary/15 shadow-2xs">
+                              <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-primary/10 bg-cream/40">
+                                <img src={customImage} alt="Custom upload" className="w-full h-full object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-primary flex items-center gap-1.5 truncate">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  {dict.product?.custom_image_attached || "Photo attached"}
+                                </p>
+                                <p className="text-[10px] text-charcoal/40 font-medium">JPG, PNG, WebP</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomImage("");
+                                  if (customImageError) setCustomImageError(false);
+                                }}
+                                className="p-2 text-charcoal/50 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title={dict.product?.remove_photo || "Remove photo"}
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className={cn(
+                              "flex items-center gap-3 p-3.5 bg-white border-2 border-dashed rounded-xl cursor-pointer transition-all hover:bg-accent/5 hover:border-accent/40 group",
+                              customImageError ? "border-red-400 bg-red-50/20" : "border-primary/20"
+                            )}>
+                              <input 
+                                type="file" 
+                                accept="image/jpeg,image/png,image/webp" 
+                                className="hidden" 
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    toast.error(dict.home?.upload_rules?.image_size_error || "Image must be less than 5MB");
+                                    return;
+                                  }
+                                  setIsCompressingCustomImage(true);
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const img = new (window as any).Image();
+                                    img.onload = () => {
+                                      const canvas = document.createElement('canvas');
+                                      let width = img.width;
+                                      let height = img.height;
+                                      const MAX_RES = 1280;
+                                      if (width > height) { if (width > MAX_RES) { height *= MAX_RES / width; width = MAX_RES; } } 
+                                      else { if (height > MAX_RES) { width *= MAX_RES / height; height = MAX_RES; } }
+                                      canvas.width = width; canvas.height = height;
+                                      const ctx = canvas.getContext('2d');
+                                      if (ctx) { ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, width, height); }
+                                      setCustomImage(canvas.toDataURL('image/jpeg', 0.85));
+                                      setCustomImageError(false);
+                                      setIsCompressingCustomImage(false);
+                                    };
+                                    img.src = reader.result as string;
+                                  };
+                                  reader.readAsDataURL(file);
+                                }}
+                              />
+                              {isCompressingCustomImage ? (
+                                <div className="flex items-center gap-2 py-1 text-primary">
+                                  <Camera className="w-5 h-5 animate-pulse text-accent" />
+                                  <span className="text-xs font-bold">{dict.home?.compressing || "Processing image..."}</span>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent group-hover:scale-105 transition-transform shrink-0">
+                                    <ImagePlus className="w-5 h-5" />
+                                  </div>
+                                  <div className="flex-1 min-w-0 text-start">
+                                    <p className="text-xs font-bold text-primary group-hover:text-accent transition-colors">
+                                      {dict.product?.attach_reference_image || dict.product?.upload_image_btn || "Attach reference photo or shape"}
+                                    </p>
+                                    <p className="text-[10px] text-charcoal/40 font-medium">
+                                      JPG, PNG, WebP (Max 5MB)
+                                    </p>
+                                  </div>
+                                </>
+                              )}
+                            </label>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
 

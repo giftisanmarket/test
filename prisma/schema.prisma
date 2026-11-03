@@ -230,8 +230,10 @@ model Product {
   tags                  String[]
   canPersonalize        Boolean       @default(false)
   personalizationPrompt String? // Instruction for the buyer (e.g. "Enter name for engraving")
+  personalizationRequired Boolean     @default(false)
   requiresClientImage   Boolean       @default(false)
   clientImagePrompt     String?       // Instruction for client image upload (e.g. "Upload photo to print")
+  clientImageRequired   Boolean       @default(false)
   badge                 String?
   stock                 Int           @default(1)
   status                ProductStatus @default(PENDING)

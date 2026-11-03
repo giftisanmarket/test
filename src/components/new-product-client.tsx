@@ -48,8 +48,10 @@ interface ProductInitialData {
   images: string[];
   canPersonalize: boolean;
   personalizationPrompt?: string | null;
+  personalizationRequired?: boolean;
   requiresClientImage: boolean;
   clientImagePrompt?: string | null;
+  clientImageRequired?: boolean;
   stock: number;
   variants: ProductVariantData[];
 }
@@ -791,8 +793,10 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
     images: initialData ? padImages(initialData.images) : ["", "", "", "", "", "", "", "", "", ""],
     canPersonalize: initialData?.canPersonalize ?? false,
     personalizationPrompt: initialData?.personalizationPrompt ?? "",
+    personalizationRequired: initialData?.personalizationRequired ?? false,
     requiresClientImage: initialData?.requiresClientImage ?? false,
     clientImagePrompt: initialData?.clientImagePrompt ?? "",
+    clientImageRequired: initialData?.clientImageRequired ?? false,
     badge: "",
     stock: initialData ? String(initialData.stock) : "1"
   });
@@ -1085,8 +1089,10 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
     form.append("category", formData.category);
     form.append("canPersonalize", formData.canPersonalize.toString());
     form.append("personalizationPrompt", formData.personalizationPrompt);
+    form.append("personalizationRequired", formData.personalizationRequired.toString());
     form.append("requiresClientImage", formData.requiresClientImage.toString());
     form.append("clientImagePrompt", formData.clientImagePrompt);
+    form.append("clientImageRequired", formData.clientImageRequired.toString());
     form.append("badge", "");
     form.append("stock", formData.stock.trim());
 
@@ -1579,6 +1585,25 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
                         placeholder={dict.new_product.personalization_prompt_placeholder}
                         className="w-full h-24 p-4 bg-white border border-accent/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-primary/30 text-primary font-medium resize-none text-sm text-start"
                       />
+                      <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl border border-accent/20">
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-bold text-primary">
+                            {dict.new_product?.personalization_is_required || (isAr ? "مطلوب لإتمام الشراء" : "Required for purchase")}
+                          </p>
+                          <p className="text-[10px] text-charcoal/50">
+                            {dict.new_product?.personalization_is_required_desc || (isAr ? "يجب على المشتري إدخال التخصيص قبل إضافة المنتج للسلة" : "Customers must provide personalization details to purchase.")}
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.personalizationRequired}
+                            onChange={(e) => setFormData((prev: any) => ({ ...prev, personalizationRequired: e.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-charcoal/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-charcoal/20 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"></div>
+                        </label>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1639,6 +1664,25 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
                         placeholder={dict.new_product.client_image_prompt_placeholder || (isAr ? "ما هي الصورة المطلوبة من المشتري؟ (مثال: ارفع صورة شخصية واضحة للطباعة)" : "What photo should the buyer upload?")}
                         className="w-full h-24 p-4 bg-white border border-accent/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all placeholder:text-primary/30 text-primary font-medium resize-none text-sm text-start"
                       />
+                      <div className="flex items-center justify-between p-3 bg-white/70 rounded-xl border border-accent/20">
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-bold text-primary">
+                            {dict.new_product?.client_image_is_required || (isAr ? "مطلوب لإتمام الشراء" : "Required for purchase")}
+                          </p>
+                          <p className="text-[10px] text-charcoal/50">
+                            {dict.new_product?.client_image_is_required_desc || (isAr ? "يجب على المشتري رفع صورة قبل إضافة المنتج للسلة" : "Customers must upload an image to purchase.")}
+                          </p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                          <input
+                            type="checkbox"
+                            checked={formData.clientImageRequired}
+                            onChange={(e) => setFormData((prev: any) => ({ ...prev, clientImageRequired: e.target.checked }))}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-charcoal/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-charcoal/20 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-accent"></div>
+                        </label>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

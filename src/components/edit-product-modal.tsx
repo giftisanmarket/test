@@ -315,7 +315,7 @@ const MediaSlot = memo(({ idx, img, resolution, isCompressing, onImageChange, re
 
 MediaSlot.displayName = "MediaSlot";
 
-const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, requiresClientImage, clientImagePrompt, setTextData, readOnly, dict }: any) => (
+const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, personalizationRequired, requiresClientImage, clientImagePrompt, clientImageRequired, setTextData, readOnly, dict }: any) => (
   <section className="space-y-4 sm:space-y-6 pb-2 sm:pb-4">
     <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3 border-b-2 border-primary/5">
       <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-accent shrink-0" />
@@ -365,6 +365,16 @@ const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, req
                 readOnly && "bg-cream/20 cursor-default"
               )}
             />
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={personalizationRequired}
+                disabled={readOnly}
+                onChange={(e) => !readOnly && setTextData((prev: any) => ({ ...prev, personalizationRequired: e.target.checked }))}
+                className="w-3.5 h-3.5 rounded text-accent focus:ring-accent"
+              />
+              <span className="text-[11px] font-bold text-primary/70">{dict.new_product?.personalization_is_required || "Required for purchase"}</span>
+            </label>
           </div>
         )}
       </div>
@@ -397,6 +407,16 @@ const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, req
                 readOnly && "bg-cream/20 cursor-default"
               )}
             />
+            <label className="flex items-center gap-2 cursor-pointer select-none pt-1">
+              <input
+                type="checkbox"
+                checked={clientImageRequired}
+                disabled={readOnly}
+                onChange={(e) => !readOnly && setTextData((prev: any) => ({ ...prev, clientImageRequired: e.target.checked }))}
+                className="w-3.5 h-3.5 rounded text-accent focus:ring-accent"
+              />
+              <span className="text-[11px] font-bold text-primary/70">{dict.new_product?.client_image_is_required || "Required for purchase"}</span>
+            </label>
           </div>
         )}
       </div>
@@ -1049,8 +1069,10 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
     category: product.category,
     canPersonalize: product.canPersonalize || false,
     personalizationPrompt: product.personalizationPrompt || "",
+    personalizationRequired: product.personalizationRequired || false,
     requiresClientImage: product.requiresClientImage || false,
     clientImagePrompt: product.clientImagePrompt || "",
+    clientImageRequired: product.clientImageRequired || false,
     badge: "",
     stock: (product.stock || 0).toString()
   });
@@ -1295,8 +1317,10 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
     form.append("category", textData.category);
     form.append("canPersonalize", textData.canPersonalize ? "true" : "false");
     form.append("personalizationPrompt", textData.personalizationPrompt || "");
+    form.append("personalizationRequired", textData.personalizationRequired ? "true" : "false");
     form.append("requiresClientImage", textData.requiresClientImage ? "true" : "false");
     form.append("clientImagePrompt", textData.clientImagePrompt || "");
+    form.append("clientImageRequired", textData.clientImageRequired ? "true" : "false");
     form.append("badge", "");
     form.append("stock", String(textData.stock).trim());
     
@@ -1481,8 +1505,10 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
                   stock={textData.stock}
                   canPersonalize={textData.canPersonalize}
                   personalizationPrompt={textData.personalizationPrompt}
+                  personalizationRequired={textData.personalizationRequired}
                   requiresClientImage={textData.requiresClientImage}
                   clientImagePrompt={textData.clientImagePrompt}
+                  clientImageRequired={textData.clientImageRequired}
                   setTextData={setTextData} 
                   readOnly={readOnly} 
                   dict={dict} 

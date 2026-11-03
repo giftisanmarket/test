@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, memo, useMemo, useCallback } from "react";
-import { X, Sparkles, DollarSign, Tag, Type, Image as ImageIcon, CheckCircle2, Save, ChevronDown, Video, Loader2, ShieldCheck, Trash2, Upload, Plus, Check } from "lucide-react";
+import { X, Sparkles, DollarSign, Tag, Type, Image as ImageIcon, CheckCircle2, Save, ChevronDown, Video, Loader2, ShieldCheck, Trash2, Upload, Plus, Check, Star, Clock, ExternalLink, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { updateProduct } from "@/lib/actions";
+import { updateProduct, updateProductStatus, toggleProductFeatured } from "@/lib/actions";
 import { cn, stripEmojis } from "@/lib/utils";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { EtsyCategoryPicker } from "@/components/studio/etsy-category-picker";
@@ -16,6 +17,8 @@ interface EditProductModalProps {
   onClose: () => void;
   readOnly?: boolean;
   dict: any;
+  lang?: string;
+  onProductModerated?: (productId: string, updates: { status?: string; rejectionReason?: string | null; isFeatured?: boolean }) => void;
 }
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -25,14 +28,14 @@ const MAX_VIDEO_DURATION = 30; // 30 seconds
 // --- Memoized Sub-Components for Performance ---
 
 const EssentialsSection = memo(({ name, price, category, description, setTextData, readOnly, dict }: any) => (
-  <section className="space-y-6">
-    <div className="flex items-center gap-3 pb-3 border-b-2 border-primary/5">
-      <Sparkles className="w-5 h-5 text-accent" />
+  <section className="space-y-4 sm:space-y-6">
+    <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3 border-b-2 border-primary/5">
+      <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent shrink-0" />
       <h3 className="text-xs md:text-sm font-black uppercase tracking-widest text-primary/40">{dict.edit_product.core_details}</h3>
     </div>
 
-    <div className="space-y-4">
-      <div className="space-y-2">
+    <div className="space-y-3.5 sm:space-y-4">
+      <div className="space-y-1.5 sm:space-y-2">
         <div className="flex justify-between items-center">
           <label className="text-[10px] font-black text-primary/40 uppercase tracking-widest">{dict.new_product.product_title_label}</label>
           <span className={cn("text-[10px] font-mono font-bold", (name || "").length > 90 ? "text-amber-500" : "text-primary/30")}>
@@ -47,14 +50,14 @@ const EssentialsSection = memo(({ name, price, category, description, setTextDat
           onChange={(e) => setTextData((prev: any) => ({...prev, name: stripEmojis(e.target.value)}))}
           disabled={readOnly}
           className={cn(
-            "w-full py-3 px-5 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-bold text-primary shadow-sm text-sm",
+            "w-full py-2.5 sm:py-3 px-4 sm:px-5 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-bold text-primary shadow-sm text-sm",
             readOnly && "bg-cream/20 cursor-default"
           )}
         />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4 md:gap-6">
-        <div className="space-y-2">
+      <div className="grid sm:grid-cols-2 gap-3.5 sm:gap-4 md:gap-6">
+        <div className="space-y-1.5 sm:space-y-2">
           <label className="text-[10px] font-black text-primary/40 uppercase tracking-widest">{dict.new_product.price_label}</label>
           <div className="relative flex items-center">
             <input 
@@ -66,7 +69,7 @@ const EssentialsSection = memo(({ name, price, category, description, setTextDat
               onChange={(e) => setTextData((prev: any) => ({...prev, price: e.target.value}))}
               disabled={readOnly}
               className={cn(
-                "w-full py-3 px-5 pe-14 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-bold text-primary shadow-sm text-sm",
+                "w-full py-2.5 sm:py-3 px-4 sm:px-5 pe-14 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-bold text-primary shadow-sm text-sm",
                 readOnly && "bg-cream/20 cursor-default"
               )}
             />
@@ -75,7 +78,7 @@ const EssentialsSection = memo(({ name, price, category, description, setTextDat
             </div>
           </div>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           <label className="text-[10px] font-black text-primary/40 uppercase tracking-widest">{dict.new_product.category_label}</label>
           <CategoryDropdown 
               value={category} 
@@ -86,7 +89,7 @@ const EssentialsSection = memo(({ name, price, category, description, setTextDat
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5 sm:space-y-2">
         <div className="flex justify-between items-center">
           <label className="text-[10px] font-black text-primary/40 uppercase tracking-widest">{dict.new_product.description_label}</label>
           <span className={cn("text-[10px] font-mono font-bold", (description || "").length > 1400 ? "text-amber-500" : "text-primary/30")}>
@@ -100,7 +103,7 @@ const EssentialsSection = memo(({ name, price, category, description, setTextDat
           onChange={(e) => setTextData((prev: any) => ({...prev, description: stripEmojis(e.target.value)}))}
           disabled={readOnly}
           className={cn(
-            "w-full h-28 md:h-32 p-4 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-medium text-primary resize-none shadow-sm text-sm",
+            "w-full h-24 sm:h-28 md:h-32 p-3.5 sm:p-4 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-medium text-primary resize-none shadow-sm text-xs sm:text-sm",
             readOnly && "bg-cream/20 cursor-default"
           )}
         />
@@ -111,50 +114,65 @@ const EssentialsSection = memo(({ name, price, category, description, setTextDat
 
 EssentialsSection.displayName = "EssentialsSection";
 
-const MediaSection = memo(({ images, resolutions, isCompressing, onImageChange, readOnly, dict }: any) => (
-  <section className="space-y-8">
-    <div className="flex items-center gap-3 pb-3 border-b-2 border-primary/5">
-      <ImageIcon className="w-5 h-5 text-accent" />
-      <h3 className="text-sm font-black uppercase tracking-widest text-primary/40">{dict.new_product.media_gallery}</h3>
-    </div>
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <p className="text-xs text-charcoal/40 italic">{dict.new_product.media_desc}</p>
-      <div className="flex items-center gap-2 px-3 py-1 bg-accent/5 border border-accent/10 rounded-full">
-         <Sparkles className="w-3 h-3 text-accent" />
-         <span className="text-[9px] font-black uppercase tracking-widest text-accent">{dict.new_product.optimal_size}</span>
+const MediaSection = memo(({ images, resolutions, isCompressing, onImageChange, readOnly, dict }: any) => {
+  const isAr = dict?.common?.home === "الرئيسية" || dict?.new_product?.the_essentials === "الأساسيات";
+  const allSlots = images.map((img: string, idx: number) => ({ img, idx }));
+  const displayedSlots = readOnly ? allSlots.filter((s: any) => Boolean(s.img)) : allSlots;
+
+  return (
+    <section className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b-2 border-primary/5">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 text-accent shrink-0" />
+          <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-primary/40 truncate">{dict.new_product.media_gallery}</h3>
+        </div>
+        {readOnly && (
+          <span className="px-2.5 py-1 bg-primary/5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-primary/60 shrink-0">
+            {displayedSlots.length} {isAr ? "وسائط" : (displayedSlots.length === 1 ? "Media" : "Media")}
+          </span>
+        )}
       </div>
-    </div>
-    
-    <div className="flex items-center gap-3 px-5 py-3 bg-red-50/50 border border-red-100 rounded-2xl">
-      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-        <ShieldCheck className="w-4 h-4 text-red-500" />
+      {!readOnly && (
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <p className="text-xs text-charcoal/40 italic">{dict.new_product.media_desc}</p>
+          <div className="flex items-center gap-2 px-3 py-1 bg-accent/5 border border-accent/10 rounded-full w-fit">
+             <Sparkles className="w-3 h-3 text-accent" />
+             <span className="text-[9px] font-black uppercase tracking-widest text-accent">{dict.new_product.optimal_size}</span>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 px-3.5 py-2.5 sm:px-5 sm:py-3 bg-red-50/50 border border-red-100 rounded-xl sm:rounded-2xl">
+        <div className="w-7 h-7 sm:w-8 sm:h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] md:text-xs font-bold text-red-600 uppercase tracking-wide leading-snug">
+            {dict.home.upload_rules.no_logos_note}
+          </p>
+          <p className="text-[9px] md:text-[10px] text-red-400 font-medium leading-snug mt-0.5">
+            {dict.home.upload_rules.clean_media_note}
+          </p>
+        </div>
       </div>
-      <div>
-        <p className="text-[10px] md:text-xs font-bold text-red-600 uppercase tracking-wide">
-          {dict.home.upload_rules.no_logos_note}
-        </p>
-        <p className="text-[9px] md:text-[10px] text-red-400 font-medium">
-          {dict.home.upload_rules.clean_media_note}
-        </p>
+      
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
+        {displayedSlots.map(({ img, idx }: { img: string; idx: number }) => (
+          <MediaSlot 
+            key={idx} 
+            idx={idx} 
+            img={img} 
+            resolution={resolutions[idx]} 
+            isCompressing={isCompressing[idx]} 
+            onImageChange={onImageChange} 
+            readOnly={readOnly} 
+            dict={dict} 
+          />
+        ))}
       </div>
-    </div>
-    
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-      {images.map((img: string, idx: number) => (
-        <MediaSlot 
-          key={idx} 
-          idx={idx} 
-          img={img} 
-          resolution={resolutions[idx]} 
-          isCompressing={isCompressing[idx]} 
-          onImageChange={onImageChange} 
-          readOnly={readOnly} 
-          dict={dict} 
-        />
-      ))}
-    </div>
-  </section>
-));
+    </section>
+  );
+});
 
 MediaSection.displayName = "MediaSection";
 
@@ -200,13 +218,27 @@ const MediaSlot = memo(({ idx, img, resolution, isCompressing, onImageChange, re
             <video 
               src={img} 
               className="w-full h-full object-cover rounded-2xl" 
-              muted 
+              muted={!readOnly}
+              controls={readOnly}
               loop 
-              onMouseOver={e => e.currentTarget.play()}
-              onMouseOut={e => e.currentTarget.pause()}
+              onMouseOver={e => !readOnly && e.currentTarget.play()}
+              onMouseOut={e => !readOnly && e.currentTarget.pause()}
             />
           ) : (
-            <Image src={img} alt="Preview" fill className="object-cover rounded-2xl" />
+            <>
+              <Image src={img} alt="Preview" fill sizes="(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 180px" className="object-cover rounded-2xl" />
+              {readOnly && (
+                <a
+                  href={img}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open full image"
+                  className="absolute top-2 end-2 z-30 p-1.5 bg-black/60 hover:bg-accent text-white rounded-lg backdrop-blur-md transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </>
           )
         ) : (
           <label className="w-full h-full flex flex-col items-center justify-center p-3 cursor-pointer group/upload rounded-2xl">
@@ -284,15 +316,15 @@ const MediaSlot = memo(({ idx, img, resolution, isCompressing, onImageChange, re
 MediaSlot.displayName = "MediaSlot";
 
 const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, requiresClientImage, clientImagePrompt, setTextData, readOnly, dict }: any) => (
-  <section className="space-y-8 pb-10">
-    <div className="flex items-center gap-3 pb-3 border-b-2 border-primary/5">
-      <CheckCircle2 className="w-5 h-5 text-accent" />
-      <h3 className="text-sm font-black uppercase tracking-widest text-primary/40">{dict.new_product.special_details}</h3>
+  <section className="space-y-4 sm:space-y-6 pb-2 sm:pb-4">
+    <div className="flex items-center gap-2.5 sm:gap-3 pb-2.5 sm:pb-3 border-b-2 border-primary/5">
+      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-accent shrink-0" />
+      <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-primary/40">{dict.new_product.special_details}</h3>
     </div>
 
-    <div className="grid md:grid-cols-2 gap-8">
-      <div className="space-y-4">
-        <div className="space-y-2">
+    <div className="grid md:grid-cols-2 gap-3.5 sm:gap-5 md:gap-8">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-1.5 sm:space-y-2">
           <label className="text-[10px] font-black text-primary/40 uppercase tracking-widest">{dict.new_product.initial_stock_label}</label>
           <input 
             type="number" 
@@ -300,13 +332,13 @@ const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, req
             onChange={(e) => setTextData((prev: any) => ({...prev, stock: e.target.value}))}
             disabled={readOnly}
             className={cn(
-              "w-full py-3 px-8 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-bold text-primary shadow-sm",
+              "w-full py-2.5 sm:py-3 px-4 sm:px-5 bg-white border border-primary/10 rounded-xl focus:outline-none focus:border-accent transition-all font-bold text-primary shadow-sm text-sm",
               readOnly && "bg-cream/20 cursor-default"
             )}
           />
         </div>
 
-        <div className="flex items-center gap-3 p-4 bg-cream/10 rounded-xl border border-primary/5">
+        <div className="flex items-center gap-3 p-3.5 sm:p-4 bg-cream/10 rounded-xl border border-primary/5">
           <input 
             type="checkbox" 
             id="edit-personalize"
@@ -337,8 +369,8 @@ const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, req
         )}
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center gap-3 p-4 bg-cream/10 rounded-xl border border-primary/5">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex items-center gap-3 p-3.5 sm:p-4 bg-cream/10 rounded-xl border border-primary/5">
           <input 
             type="checkbox" 
             id="edit-require-client-image"
@@ -374,7 +406,7 @@ const DetailsSection = memo(({ stock, canPersonalize, personalizationPrompt, req
 
 DetailsSection.displayName = "DetailsSection";
 
-const VariantRow = memo(({ v, i, variants, setVariants, dict }: any) => (
+const VariantRow = memo(({ v, i, variants, setVariants, readOnly, dict }: any) => (
   <tr className="hover:bg-cream/20 transition-colors group">
     <td className="px-4 py-3">
       <div className="relative w-10 h-10 bg-cream rounded-lg overflow-hidden border border-primary/5 flex items-center justify-center group/img">
@@ -383,37 +415,39 @@ const VariantRow = memo(({ v, i, variants, setVariants, dict }: any) => (
         ) : (
           <ImageIcon className="w-4 h-4 text-primary/20" />
         )}
-        <input 
-          type="file" 
-          accept="image/*"
-          className="absolute inset-0 opacity-0 cursor-pointer"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const img = new (window as any).Image();
-                img.onload = () => {
-                  const canvas = document.createElement('canvas');
-                  let width = img.width;
-                  let height = img.height;
-                  const MAX_RES = 1080;
-                  if (width > height) { if (width > MAX_RES) { height *= MAX_RES / width; width = MAX_RES; } }
-                  else { if (height > MAX_RES) { width *= MAX_RES / height; height = MAX_RES; } }
-                  canvas.width = width; canvas.height = height;
-                  const ctx = canvas.getContext('2d');
-                  if (ctx) { ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, width, height); }
-                  
-                  const newVariants = [...variants];
-                  newVariants[i] = { ...newVariants[i], image: canvas.toDataURL('image/webp', 0.75) };
-                  setVariants(newVariants);
+        {!readOnly && (
+          <input 
+            type="file" 
+            accept="image/*"
+            className="absolute inset-0 opacity-0 cursor-pointer"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  const img = new (window as any).Image();
+                  img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_RES = 1080;
+                    if (width > height) { if (width > MAX_RES) { height *= MAX_RES / width; width = MAX_RES; } }
+                    else { if (height > MAX_RES) { width *= MAX_RES / height; height = MAX_RES; } }
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) { ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, width, height); }
+                    
+                    const newVariants = [...variants];
+                    newVariants[i] = { ...newVariants[i], image: canvas.toDataURL('image/webp', 0.75) };
+                    setVariants(newVariants);
+                  };
+                  img.src = reader.result as string;
                 };
-                img.src = reader.result as string;
-              };
-              reader.readAsDataURL(file);
-            }
-          }}
-        />
+                reader.readAsDataURL(file);
+              }
+            }}
+          />
+        )}
       </div>
     </td>
     <td className="px-4 py-3 font-bold text-primary">{v.name}</td>
@@ -421,12 +455,17 @@ const VariantRow = memo(({ v, i, variants, setVariants, dict }: any) => (
       <input 
         type="number" 
         value={v.price}
+        disabled={readOnly}
         onChange={(e) => {
+          if (readOnly) return;
           const newVariants = [...variants];
           newVariants[i] = { ...newVariants[i], price: e.target.value };
           setVariants(newVariants);
         }}
-        className="w-24 h-10 bg-white border border-primary/20 rounded-xl px-3 focus:outline-none focus:border-accent font-bold"
+        className={cn(
+          "w-24 h-10 bg-white border border-primary/20 rounded-xl px-3 focus:outline-none focus:border-accent font-bold",
+          readOnly && "bg-cream/20 cursor-default"
+        )}
       />
     </td>
     <td className="px-4 py-3">
@@ -435,14 +474,17 @@ const VariantRow = memo(({ v, i, variants, setVariants, dict }: any) => (
           type="number" 
           min="1"
           value={v.stock}
+          disabled={readOnly}
           onChange={(e) => {
+            if (readOnly) return;
             const newVariants = [...variants];
             newVariants[i] = { ...newVariants[i], stock: e.target.value };
             setVariants(newVariants);
           }}
           className={cn(
             "w-20 h-10 bg-white border rounded-xl px-3 focus:outline-none font-bold",
-            parseInt(v.stock) <= 0 ? "border-orange-300 focus:border-orange-500" : "border-primary/20 focus:border-accent"
+            parseInt(v.stock) <= 0 ? "border-orange-300 focus:border-orange-500" : "border-primary/20 focus:border-accent",
+            readOnly && "bg-cream/20 cursor-default"
           )}
         />
         {parseInt(v.stock) <= 0 && (
@@ -452,22 +494,24 @@ const VariantRow = memo(({ v, i, variants, setVariants, dict }: any) => (
     </td>
 
 
-    <td className="px-4 py-3 text-end">
-      <button 
-        type="button"
-        onClick={() => setVariants(variants.filter((_: any, idx: number) => idx !== i))}
-        className="text-red-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-lg active:scale-95"
-        title="Delete variant"
-      >
-        <Trash2 className="w-5 h-5" />
-      </button>
-    </td>
+    {!readOnly && (
+      <td className="px-4 py-3 text-end">
+        <button 
+          type="button"
+          onClick={() => setVariants(variants.filter((_: any, idx: number) => idx !== i))}
+          className="text-red-400 hover:text-red-600 transition-colors p-2 hover:bg-red-50 rounded-lg active:scale-95"
+          title="Delete variant"
+        >
+          <Trash2 className="w-5 h-5" />
+        </button>
+      </td>
+    )}
   </tr>
 ));
 
 VariantRow.displayName = "VariantRow";
 
-const VariantCard = memo(({ v, i, variants, setVariants, dict }: any) => {
+const VariantCard = memo(({ v, i, variants, setVariants, readOnly, dict }: any) => {
   const isAr = dict?.common?.home === "الرئيسية" || dict?.new_product?.the_essentials === "الأساسيات";
 
   return (
@@ -480,41 +524,43 @@ const VariantCard = memo(({ v, i, variants, setVariants, dict }: any) => {
             ) : (
               <div className="flex flex-col items-center justify-center text-primary/30 group-hover/img:text-accent transition-colors">
                 <ImageIcon className="w-5 h-5" />
-                <span className="text-[7px] font-bold uppercase mt-0.5 opacity-70">+ Photo</span>
+                {!readOnly && <span className="text-[7px] font-bold uppercase mt-0.5 opacity-70">+ Photo</span>}
               </div>
             )}
-            <input 
-              type="file" 
-              accept="image/*"
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              title={dict.edit_product?.upload_image || "Upload variant image"}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    const img = new (window as any).Image();
-                    img.onload = () => {
-                      const canvas = document.createElement('canvas');
-                      let width = img.width;
-                      let height = img.height;
-                      const MAX_RES = 1080;
-                      if (width > height) { if (width > MAX_RES) { height *= MAX_RES / width; width = MAX_RES; } }
-                      else { if (height > MAX_RES) { width *= MAX_RES / height; height = MAX_RES; } }
-                      canvas.width = width; canvas.height = height;
-                      const ctx = canvas.getContext('2d');
-                      if (ctx) { ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, width, height); }
-                      
-                      const newVariants = [...variants];
-                      newVariants[i] = { ...newVariants[i], image: canvas.toDataURL('image/webp', 0.75) };
-                      setVariants(newVariants);
+            {!readOnly && (
+              <input 
+                type="file" 
+                accept="image/*"
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                title={dict.edit_product?.upload_image || "Upload variant image"}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      const img = new (window as any).Image();
+                      img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const MAX_RES = 1080;
+                        if (width > height) { if (width > MAX_RES) { height *= MAX_RES / width; width = MAX_RES; } }
+                        else { if (height > MAX_RES) { width *= MAX_RES / height; height = MAX_RES; } }
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) { ctx.imageSmoothingQuality = 'high'; ctx.drawImage(img, 0, 0, width, height); }
+                        
+                        const newVariants = [...variants];
+                        newVariants[i] = { ...newVariants[i], image: canvas.toDataURL('image/webp', 0.75) };
+                        setVariants(newVariants);
+                      };
+                      img.src = reader.result as string;
                     };
-                    img.src = reader.result as string;
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-            />
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-bold text-sm sm:text-base text-primary truncate" title={v.name}>{v.name}</p>
@@ -524,18 +570,20 @@ const VariantCard = memo(({ v, i, variants, setVariants, dict }: any) => {
           </div>
         </div>
 
-        <button 
-          type="button"
-          onClick={() => {
-            setVariants(variants.filter((_: any, idx: number) => idx !== i));
-            toast.success(dict.edit_product?.removed_option || (isAr ? "تم حذف التشكيلة" : "Variant removed"));
-          }}
-          className="p-2 sm:px-2.5 sm:py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 shrink-0"
-          title={dict.common?.remove || (isAr ? "حذف التشكيلة" : "Delete Variant")}
-        >
-          <Trash2 className="w-4 h-4" />
-          <span className="hidden sm:inline">{dict.common?.remove || (isAr ? "حذف" : "Delete")}</span>
-        </button>
+        {!readOnly && (
+          <button 
+            type="button"
+            onClick={() => {
+              setVariants(variants.filter((_: any, idx: number) => idx !== i));
+              toast.success(dict.edit_product?.removed_option || (isAr ? "تم حذف التشكيلة" : "Variant removed"));
+            }}
+            className="p-2 sm:px-2.5 sm:py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 shrink-0"
+            title={dict.common?.remove || (isAr ? "حذف التشكيلة" : "Delete Variant")}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="hidden sm:inline">{dict.common?.remove || (isAr ? "حذف" : "Delete")}</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
@@ -550,12 +598,17 @@ const VariantCard = memo(({ v, i, variants, setVariants, dict }: any) => {
             min="0"
             placeholder="0.00"
             value={v.price ?? ""}
+            disabled={readOnly}
             onChange={(e) => {
+              if (readOnly) return;
               const newVariants = [...variants];
               newVariants[i] = { ...newVariants[i], price: e.target.value };
               setVariants(newVariants);
             }}
-            className="w-full h-10 bg-cream/40 border border-primary/15 rounded-xl px-3 font-bold text-sm text-primary placeholder:text-primary/30 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/10 outline-none transition-all shadow-xs"
+            className={cn(
+              "w-full h-10 bg-cream/40 border border-primary/15 rounded-xl px-3 font-bold text-sm text-primary placeholder:text-primary/30 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/10 outline-none transition-all shadow-xs",
+              readOnly && "bg-cream/20 cursor-default"
+            )}
           />
         </div>
         <div className="space-y-1.5">
@@ -568,14 +621,17 @@ const VariantCard = memo(({ v, i, variants, setVariants, dict }: any) => {
             min="0"
             placeholder="1"
             value={v.stock ?? ""}
+            disabled={readOnly}
             onChange={(e) => {
+              if (readOnly) return;
               const newVariants = [...variants];
               newVariants[i] = { ...newVariants[i], stock: e.target.value };
               setVariants(newVariants);
             }}
             className={cn(
               "w-full h-10 bg-cream/40 border rounded-xl px-3 font-bold text-sm text-primary placeholder:text-primary/30 focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/10 outline-none transition-all shadow-xs",
-              parseInt(v.stock) <= 0 ? "border-orange-300 focus:border-orange-500" : "border-primary/15"
+              parseInt(v.stock) <= 0 ? "border-orange-300 focus:border-orange-500" : "border-primary/15",
+              readOnly && "bg-cream/20 cursor-default"
             )}
           />
           {parseInt(v.stock) <= 0 && (
@@ -655,7 +711,8 @@ const OptionValueInput = memo(({ optIdx, onAddValue, dict }: { optIdx: number; o
 
 OptionValueInput.displayName = "OptionValueInput";
 
-const VariationsSection = memo(({ options, setOptions, variants, setVariants, basePrice, dict }: any) => {
+const VariationsSection = memo(({ options, setOptions, variants, setVariants, basePrice, readOnly, dict }: any) => {
+  const isAr = dict?.common?.home === "الرئيسية" || dict?.new_product?.the_essentials === "الأساسيات";
   const [newOptionName, setNewOptionName] = useState("");
   const [showBulkStockModal, setShowBulkStockModal] = useState(false);
   const [bulkStockVal, setBulkStockVal] = useState("5");
@@ -717,35 +774,43 @@ const VariationsSection = memo(({ options, setOptions, variants, setVariants, ba
       </div>
 
       <div className="space-y-5 sm:space-y-6">
-        <div className="space-y-1.5">
-          <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4">
-            <input 
-              type="text" 
-              placeholder={dict.edit_product.option_name_placeholder}
-              value={newOptionName}
-              onChange={(e) => setNewOptionName(e.target.value)}
-              className="flex-1 py-3 sm:py-3.5 px-4 sm:px-6 bg-white border border-primary/20 rounded-xl sm:rounded-2xl focus:outline-none focus:border-accent font-bold text-sm sm:text-base shadow-xs"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.keyCode === 13 || e.which === 13) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  addOption();
-                }
-              }}
-            />
-            <button 
-              type="button" 
-              onClick={addOption}
-              className="h-12 sm:h-auto py-3 px-6 sm:px-8 bg-primary text-white font-bold rounded-xl sm:rounded-2xl hover:bg-primary-light transition-all shadow-md active:scale-95 whitespace-nowrap flex items-center justify-center gap-2 text-sm sm:text-base shrink-0"
-            >
-              <Plus className="w-4 h-4 text-accent" />
-              <span>{dict.edit_product.add_option}</span>
-            </button>
+        {readOnly && options.length === 0 && variants.length === 0 && (
+          <div className="p-4 bg-cream/30 rounded-2xl border border-primary/5 text-xs font-bold text-primary/50">
+            {isAr ? "قطعة قياسية بدون تشكيلات أو خيارات إضافية" : "Standard single listing (no variations configured)"}
           </div>
-          <p className="text-[10px] font-bold text-accent/60 uppercase tracking-widest px-2">
-            {dict.edit_product.enter_to_add}
-          </p>
-        </div>
+        )}
+
+        {!readOnly && (
+          <div className="space-y-1.5">
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4">
+              <input 
+                type="text" 
+                placeholder={dict.edit_product.option_name_placeholder}
+                value={newOptionName}
+                onChange={(e) => setNewOptionName(e.target.value)}
+                className="flex-1 py-3 sm:py-3.5 px-4 sm:px-6 bg-white border border-primary/20 rounded-xl sm:rounded-2xl focus:outline-none focus:border-accent font-bold text-sm sm:text-base shadow-xs"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.keyCode === 13 || e.which === 13) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addOption();
+                  }
+                }}
+              />
+              <button 
+                type="button" 
+                onClick={addOption}
+                className="h-12 sm:h-auto py-3 px-6 sm:px-8 bg-primary text-white font-bold rounded-xl sm:rounded-2xl hover:bg-primary-light transition-all shadow-md active:scale-95 whitespace-nowrap flex items-center justify-center gap-2 text-sm sm:text-base shrink-0"
+              >
+                <Plus className="w-4 h-4 text-accent" />
+                <span>{dict.edit_product.add_option}</span>
+              </button>
+            </div>
+            <p className="text-[10px] font-bold text-accent/60 uppercase tracking-widest px-2">
+              {dict.edit_product.enter_to_add}
+            </p>
+          </div>
+        )}
 
         <div className="space-y-3 sm:space-y-4">
           {options.map((opt: any, optIdx: number) => (
@@ -755,36 +820,42 @@ const VariationsSection = memo(({ options, setOptions, variants, setVariants, ba
                   <Tag className="w-3.5 h-3.5 text-accent shrink-0" />
                   <span className="truncate">{opt.name}</span>
                 </h4>
-                <button 
-                  type="button" 
-                  onClick={() => setOptions(options.filter((_: any, i: number) => i !== optIdx))}
-                  className="px-2.5 sm:px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 shadow-xs shrink-0"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{dict.edit_product?.delete_option || dict.common?.remove || "Delete"}</span>
-                </button>
+                {!readOnly && (
+                  <button 
+                    type="button" 
+                    onClick={() => setOptions(options.filter((_: any, i: number) => i !== optIdx))}
+                    className="px-2.5 sm:px-3 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1 active:scale-95 shadow-xs shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{dict.edit_product?.delete_option || dict.common?.remove || "Delete"}</span>
+                  </button>
+                )}
               </div>
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                   {opt.values.map((val: string, valIdx: number) => (
                     <span key={valIdx} className="px-3 py-1 bg-white border border-primary/10 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xs max-w-[160px] truncate animate-in zoom-in-50">
                       <span className="truncate">{val}</span>
-                      <button type="button" onClick={() => removeValue(optIdx, valIdx)} className="text-red-400 hover:text-red-500 transition-colors shrink-0">
-                        <X className="w-3 h-3" />
-                      </button>
+                      {!readOnly && (
+                        <button type="button" onClick={() => removeValue(optIdx, valIdx)} className="text-red-400 hover:text-red-500 transition-colors shrink-0">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </span>
                   ))}
-                  <OptionValueInput optIdx={optIdx} onAddValue={addValue} dict={dict} />
+                  {!readOnly && <OptionValueInput optIdx={optIdx} onAddValue={addValue} dict={dict} />}
                 </div>
-                <p className="text-[9px] sm:text-[10px] font-bold text-accent/50 uppercase tracking-wider px-1">
-                  {dict.edit_product.enter_to_add}
-                </p>
+                {!readOnly && (
+                  <p className="text-[9px] sm:text-[10px] font-bold text-accent/50 uppercase tracking-wider px-1">
+                    {dict.edit_product.enter_to_add}
+                  </p>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {options.length > 0 && (
+        {!readOnly && options.length > 0 && (
           <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4">
             <button 
               type="button"
@@ -837,12 +908,12 @@ const VariationsSection = memo(({ options, setOptions, variants, setVariants, ba
                     <th className="px-4 py-3 text-start">{dict.edit_product.variant_name}</th>
                     <th className="px-4 py-3 text-start">{dict.new_product.price_label}</th>
                     <th className="px-4 py-3 text-start">{dict.new_product.initial_stock_label}</th>
-                    <th className="px-4 py-3 text-end"></th>
+                    {!readOnly && <th className="px-4 py-3 text-end"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-primary/5">
                   {variants.map((v: any, i: number) => (
-                    <VariantRow key={i} v={v} i={i} variants={variants} setVariants={setVariants} dict={dict} />
+                    <VariantRow key={i} v={v} i={i} variants={variants} setVariants={setVariants} readOnly={readOnly} dict={dict} />
                   ))}
                 </tbody>
               </table>
@@ -851,7 +922,7 @@ const VariationsSection = memo(({ options, setOptions, variants, setVariants, ba
             {/* Mobile Card View */}
             <div className="md:hidden space-y-3 sm:space-y-4">
               {variants.map((v: any, i: number) => (
-                <VariantCard key={i} v={v} i={i} variants={variants} setVariants={setVariants} dict={dict} />
+                <VariantCard key={i} v={v} i={i} variants={variants} setVariants={setVariants} readOnly={readOnly} dict={dict} />
               ))}
             </div>
           </div>
@@ -960,10 +1031,16 @@ const VariationsSection = memo(({ options, setOptions, variants, setVariants, ba
 
 VariationsSection.displayName = "VariationsSection";
 
-export function EditProductModal({ product, isOpen, onClose, readOnly = false, dict }: EditProductModalProps) {
+export function EditProductModal({ product, isOpen, onClose, readOnly = false, dict, lang, onProductModerated }: EditProductModalProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isCompressing, setIsCompressing] = useState<Record<number, boolean>>({});
+  const [currentStatus, setCurrentStatus] = useState<string>(product.status || "PENDING");
+  const [currentRejectionReason, setCurrentRejectionReason] = useState<string>(product.rejectionReason || "");
+  const [isFeatured, setIsFeatured] = useState<boolean>(Boolean(product.isFeatured));
+  const [isModerating, setIsModerating] = useState<boolean>(false);
+  const [showRejectBox, setShowRejectBox] = useState<boolean>(false);
+  const [rejectReasonInput, setRejectReasonInput] = useState<string>(product.rejectionReason || "");
   
   const [textData, setTextData] = useState({
     name: product.name,
@@ -1005,6 +1082,93 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
 
   const [resolutions, setResolutions] = useState<Record<number, string>>({});
   const isRTL = typeof document !== 'undefined' && (document.dir === 'rtl' || document.documentElement.dir === 'rtl');
+  const isAr = lang === "ar" || isRTL || dict?.common?.home === "الرئيسية";
+  const resolvedLang = lang || (isAr ? "ar" : "en");
+
+  useEffect(() => {
+    setCurrentStatus(product.status || "PENDING");
+    setCurrentRejectionReason(product.rejectionReason || "");
+    setIsFeatured(Boolean(product.isFeatured));
+    setRejectReasonInput(product.rejectionReason || "");
+    setShowRejectBox(false);
+  }, [product.id, product.status, product.rejectionReason, product.isFeatured]);
+
+  const handleModerateStatus = async (newStatus: "APPROVED" | "PENDING" | "REJECTED", reason?: string) => {
+    const cleanedReason = reason?.trim() || "";
+    if (newStatus === "REJECTED" && !cleanedReason) {
+      toast.error(isAr ? "يرجى كتابة سبب الرفض لمساعدة الحرفي على تعديل المنتج" : "Please provide feedback so the artisan knows what to fix", {
+        style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" }
+      });
+      return;
+    }
+
+    setIsModerating(true);
+    try {
+      const res = await updateProductStatus(product.id, newStatus, newStatus === "REJECTED" ? cleanedReason : undefined);
+      if (res.success) {
+        const nextReason = newStatus === "REJECTED" ? cleanedReason : null;
+        setCurrentStatus(newStatus);
+        setCurrentRejectionReason(nextReason || "");
+        setShowRejectBox(false);
+        onProductModerated?.(product.id, { status: newStatus, rejectionReason: nextReason });
+
+        const statusMsg =
+          newStatus === "APPROVED"
+            ? (isAr ? "تمت الموافقة على المنتج ونشره" : "Product approved and published")
+            : newStatus === "REJECTED"
+              ? (isAr ? "تم رفض المنتج وإرسال الملاحظات للحرفي" : "Product rejected and feedback sent")
+              : (isAr ? "تم إرجاع المنتج لقائمة المراجعة" : "Product moved back to pending review");
+
+        toast.success(statusMsg, {
+          style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" }
+        });
+        router.refresh();
+
+        if (newStatus === "APPROVED" || newStatus === "REJECTED") {
+          onClose();
+        }
+      } else {
+        toast.error(res.error || (isAr ? "فشل تحديث حالة المنتج" : "Failed to update product status"), {
+          style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" }
+        });
+      }
+    } catch (err: any) {
+      toast.error(err?.message || (isAr ? "حدث خطأ في الاتصال" : "Connection error occurred"), {
+        style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" }
+      });
+    } finally {
+      setIsModerating(false);
+    }
+  };
+
+  const handleToggleFeatured = async () => {
+    setIsModerating(true);
+    const nextFeatured = !isFeatured;
+    try {
+      const res = await toggleProductFeatured(product.id, nextFeatured);
+      if (res.success) {
+        setIsFeatured(nextFeatured);
+        onProductModerated?.(product.id, { isFeatured: nextFeatured });
+        toast.success(
+          nextFeatured
+            ? (isAr ? "تمت إضافته للمميزة في الرئيسية" : "Featured on Home")
+            : (isAr ? "تمت إزالته من الرئيسية" : "Removed from Home"),
+          { style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" } }
+        );
+        router.refresh();
+      } else {
+        toast.error(res.error || (isAr ? "فشل التحديث" : "Update failed"), {
+          style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" }
+        });
+      }
+    } catch (err: any) {
+      toast.error(err?.message || (isAr ? "حدث خطأ في الاتصال" : "Connection error occurred"), {
+        style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" }
+      });
+    } finally {
+      setIsModerating(false);
+    }
+  };
 
   useEffect(() => {
     images.forEach((img, idx) => {
@@ -1163,7 +1327,7 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
@@ -1173,47 +1337,117 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
           />
           
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.98, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className="relative w-full max-w-3xl md:max-w-4xl max-h-[88vh] md:max-h-[85vh] bg-cream rounded-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            exit={{ opacity: 0, scale: 0.98, y: 20 }}
+            className="relative w-full max-w-3xl md:max-w-4xl max-h-[92dvh] sm:max-h-[86vh] bg-cream rounded-t-[1.75rem] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
+            {/* Mobile Sheet Handle */}
+            <div className="sm:hidden flex justify-center pt-2.5 pb-0.5 bg-white shrink-0">
+              <div className="w-10 h-1 rounded-full bg-primary/15" />
+            </div>
+
             {/* Header */}
-            <div className="px-6 py-4 md:px-8 md:py-5 border-b border-primary/5 flex justify-between items-center bg-white shrink-0">
-              <div>
-                <h2 className={cn("text-lg md:text-2xl font-heading font-bold text-primary", isRTL && "font-black")}>
-                  {dict.edit_product.edit_treasure} <span className="serif italic font-normal text-accent">{dict.edit_product.treasure_accent || "Product"}</span>
-                </h2>
-                <p className="text-charcoal/40 text-[10px] md:text-xs mt-0.5">{dict.edit_product.refine_details}</p>
+            <div className="px-4 py-2.5 sm:px-6 sm:py-4 md:px-8 md:py-5 border-b border-primary/5 flex justify-between items-center gap-2 sm:gap-4 bg-white shrink-0">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+                  <h2 className={cn("text-base sm:text-xl md:text-2xl font-heading font-bold text-primary leading-tight", isAr && "font-black")}>
+                    {readOnly ? (
+                      <>
+                        {isAr ? "مراجعة" : "Review"}{" "}
+                        <span className="serif italic font-normal text-accent">
+                          {isAr ? "المنتج" : "Product"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        {dict.edit_product.edit_treasure}{" "}
+                        <span className="serif italic font-normal text-accent">
+                          {dict.edit_product.treasure_accent || "Product"}
+                        </span>
+                      </>
+                    )}
+                  </h2>
+
+                  {readOnly && (
+                    <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                      <span className={cn(
+                        "px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-widest border",
+                        currentStatus === "APPROVED" ? "bg-green-50 text-green-700 border-green-200" :
+                        currentStatus === "REJECTED" ? "bg-red-50 text-red-700 border-red-200" :
+                        currentStatus === "DRAFT"    ? "bg-slate-100 text-slate-600 border-slate-200" :
+                                                       "bg-amber-50 text-amber-700 border-amber-200"
+                      )}>
+                        {currentStatus === "APPROVED" ? (dict.admin?.treasure_approved || (isAr ? "مقبول" : "Approved")) :
+                         currentStatus === "REJECTED" ? (dict.admin?.treasure_rejected || (isAr ? "مرفوض" : "Rejected")) :
+                         currentStatus === "DRAFT"    ? (dict.admin?.treasure_draft || (isAr ? "مسودة" : "Draft")) :
+                                                        (dict.admin?.treasure_pending || (isAr ? "قيد المراجعة" : "Pending"))}
+                      </span>
+
+                      {isFeatured && (
+                        <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-widest bg-accent/10 text-accent border border-accent/20 flex items-center gap-1">
+                          <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-accent" />
+                          <span className="hidden xs:inline sm:inline">{isAr ? "مميز" : "Featured"}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <p className="hidden sm:block text-charcoal/40 text-[10px] md:text-xs mt-0.5 truncate">
+                  {readOnly
+                    ? (isAr ? "افحص التفاصيل والوسائط والتشكيلات لاتخاذ قرار الاعتماد أو الرفض" : "Inspect product details, media, and settings to approve or reject this listing")
+                    : dict.edit_product.refine_details}
+                </p>
               </div>
-              <button onClick={onClose} className="p-2 hover:bg-primary/5 rounded-full transition-colors">
-                <X className="w-5 h-5 text-primary" />
-              </button>
+
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {readOnly && (
+                  <Link
+                    href={`/${resolvedLang}/products/${product.slug || product.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={isAr ? "عرض صفحة المنتج بالمتجر" : "Open Storefront Page"}
+                    className="w-8 h-8 sm:w-auto sm:h-9 sm:px-3 rounded-full bg-cream/60 hover:bg-primary hover:text-white text-primary text-xs font-bold border border-primary/10 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{isAr ? "عرض بالمتجر" : "Store Page"}</span>
+                  </Link>
+                )}
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-primary/5 rounded-full transition-colors"
+                  aria-label={isAr ? "إغلاق" : "Close"}
+                >
+                  <X className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                </button>
+              </div>
             </div>
 
             {/* Form Content */}
-            <div className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10 space-y-6 md:space-y-8 custom-scrollbar">
-              {product.status === "REJECTED" && product.rejectionReason && (
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 lg:p-10 space-y-5 sm:space-y-6 md:space-y-8 custom-scrollbar">
+              {currentStatus === "REJECTED" && currentRejectionReason && (
                 <motion.div 
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-4 md:p-6 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-4 mb-6"
+                  className="p-3.5 sm:p-5 md:p-6 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6"
                 >
-                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm border border-red-100">
-                    <X className="w-4 h-4 text-red-500" />
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm border border-red-100">
+                    <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-500" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-heading font-bold text-red-900 mb-1">{dict.edit_product.feedback_title}</h3>
-                    <p className="text-red-700/80 text-xs italic font-medium leading-relaxed">"{product.rejectionReason}"</p>
-                    <p className="text-red-900/40 text-[10px] font-black uppercase tracking-widest mt-3 flex items-center gap-2">
-                       <CheckCircle2 className="w-3 h-3" /> {dict.edit_product.feedback_desc}
-                    </p>
+                  <div className="min-w-0">
+                    <h3 className="text-sm sm:text-base font-heading font-bold text-red-900 mb-0.5 sm:mb-1">{dict.edit_product.feedback_title}</h3>
+                    <p className="text-red-700/80 text-xs italic font-medium leading-relaxed break-words">"{currentRejectionReason}"</p>
+                    {!readOnly && (
+                      <p className="text-red-900/40 text-[10px] font-black uppercase tracking-widest mt-2.5 sm:mt-3 flex items-center gap-2">
+                        <CheckCircle2 className="w-3 h-3" /> {dict.edit_product.feedback_desc}
+                      </p>
+                    )}
                   </div>
                 </motion.div>
               )}
               
-              <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10">
+              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8 md:space-y-10">
                 <EssentialsSection 
                   name={textData.name}
                   price={textData.price}
@@ -1239,6 +1473,7 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
                   variants={variants}
                   setVariants={setVariants}
                   basePrice={textData.price}
+                  readOnly={readOnly}
                   dict={dict}
                 />
 
@@ -1255,40 +1490,187 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
               </form>
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 md:px-8 md:py-5 bg-white/90 backdrop-blur-xl border-t border-primary/5 flex flex-col-reverse sm:flex-row justify-end gap-3 shrink-0">
-              <button 
-                type="button"
-                onClick={onClose}
-                className="px-6 h-11 text-primary font-bold hover:bg-primary/5 rounded-full transition-all text-xs md:text-sm"
-              >
-                {dict.common.cancel}
-              </button>
-              {readOnly ? (
-                <button 
-                  onClick={onClose}
-                  className="px-8 h-11 bg-primary text-white font-bold rounded-full hover:bg-primary-light transition-all shadow-xl shadow-primary/20 text-xs md:text-sm"
+            {/* Inline Admin Rejection Reason Drawer */}
+            <AnimatePresence>
+              {readOnly && showRejectBox && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-red-50/95 border-t border-red-200 px-4 py-3 sm:px-6 sm:py-4 md:px-8 shrink-0 overflow-hidden"
                 >
-                  {dict.common.done || "Done Reviewing"}
+                  <div className="space-y-2.5 sm:space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-red-900 flex items-center gap-1.5 min-w-0">
+                        <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600 shrink-0" />
+                        <span className="truncate">{isAr ? "سبب الرفض وملاحظات التعديل" : "Rejection Feedback for Artisan"}</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectBox(false)}
+                        className="text-xs font-bold text-red-700/70 hover:text-red-900 transition-colors shrink-0"
+                      >
+                        {dict.common?.cancel || (isAr ? "إلغاء" : "Cancel")}
+                      </button>
+                    </div>
+                    <textarea
+                      value={rejectReasonInput}
+                      onChange={(e) => setRejectReasonInput(stripEmojis(e.target.value))}
+                      placeholder={isAr ? "مثال: يرجى رفع صور بدون علامة مائية أو توضيح الخامة..." : "e.g., Please upload clean photos without watermarks or clarify dimensions..."}
+                      className="w-full h-16 sm:h-20 p-3 sm:p-3.5 bg-white rounded-xl border border-red-200 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-200 resize-none text-xs md:text-sm font-medium text-primary"
+                      autoFocus
+                    />
+                    <div className="grid grid-cols-2 sm:flex sm:justify-end gap-2 sm:gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectBox(false)}
+                        className="px-4 h-9 rounded-full border border-red-200 bg-white text-red-800 font-bold text-xs hover:bg-red-100/50 transition-all"
+                      >
+                        {dict.common?.cancel || (isAr ? "إلغاء" : "Cancel")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isModerating}
+                        onClick={() => handleModerateStatus("REJECTED", rejectReasonInput)}
+                        className="px-4 sm:px-5 h-9 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        {isModerating ? <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
+                        <span className="truncate">{isAr ? "تأكيد الرفض" : "Confirm Reject"}</span>
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Footer */}
+            {readOnly ? (
+              <div className="px-3.5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4 md:px-8 md:py-5 bg-white/95 backdrop-blur-xl border-t border-primary/5 flex items-center justify-between gap-2 sm:gap-3 shrink-0">
+                {/* Secondary Admin Controls (Icon-only on mobile, labeled pills on >= sm) */}
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <button
+                    type="button"
+                    disabled={isModerating}
+                    onClick={handleToggleFeatured}
+                    aria-label={isFeatured ? (isAr ? "مميز بالرئيسية" : "Featured") : (isAr ? "تمييز بالرئيسية" : "Feature")}
+                    className={cn(
+                      "w-10 h-10 sm:w-auto sm:px-4 rounded-full text-xs font-bold border transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50",
+                      isFeatured
+                        ? "bg-accent/10 text-accent border-accent/30 hover:bg-accent/15"
+                        : "bg-cream/50 text-primary/70 border-primary/10 hover:bg-cream hover:text-primary"
+                    )}
+                    title={isAr ? "عرض أو إخفاء المنتج في الصفحة الرئيسية" : "Toggle Featured on Home"}
+                  >
+                    <Star className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0", isFeatured && "fill-accent text-accent")} />
+                    <span className="hidden sm:inline">{isFeatured ? (isAr ? "مميز بالرئيسية" : "Featured") : (isAr ? "تمييز بالرئيسية" : "Feature")}</span>
+                  </button>
+
+                  {currentStatus !== "PENDING" && (
+                    <button
+                      type="button"
+                      disabled={isModerating}
+                      onClick={() => handleModerateStatus("PENDING")}
+                      aria-label={dict.admin?.pending || (isAr ? "قيد المراجعة" : "Set Pending")}
+                      className="w-10 h-10 sm:w-auto sm:px-4 rounded-full text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50"
+                      title={isAr ? "إرجاع المنتج لحالة قيد المراجعة" : "Move back to Pending Review"}
+                    >
+                      <Clock className="w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0" />
+                      <span className="hidden sm:inline">{dict.admin?.pending || (isAr ? "قيد المراجعة" : "Set Pending")}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Primary Admin Decisions (Balanced 2-column stretch on mobile, right-aligned pills on >= sm) */}
+                <div className="flex-1 sm:flex-initial grid grid-cols-2 sm:flex items-center justify-end gap-2 sm:gap-2.5 min-w-0">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="hidden sm:inline-flex items-center justify-center px-4 h-10 text-primary/70 font-bold hover:bg-primary/5 hover:text-primary rounded-full transition-all text-xs md:text-sm"
+                  >
+                    {isAr ? "إغلاق" : "Close"}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isModerating}
+                    onClick={() => setShowRejectBox(prev => !prev)}
+                    className={cn(
+                      "w-full sm:w-auto px-3 sm:px-5 h-10 rounded-full font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1.5 active:scale-95 border disabled:opacity-50 min-w-0",
+                      showRejectBox || currentStatus === "REJECTED"
+                        ? "bg-red-600 text-white border-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20"
+                        : "bg-red-50 text-red-600 border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600"
+                    )}
+                  >
+                    <XCircle className="w-4 h-4 shrink-0" />
+                    <span className="truncate sm:hidden">
+                      {currentStatus === "REJECTED"
+                        ? (isAr ? "مرفوض" : "Rejected")
+                        : (dict.admin?.reject || (isAr ? "رفض" : "Reject"))}
+                    </span>
+                    <span className="hidden sm:inline whitespace-nowrap">
+                      {currentStatus === "REJECTED"
+                        ? (isAr ? "تعديل سبب الرفض" : "Edit Rejection")
+                        : (dict.admin?.reject || (isAr ? "رفض" : "Reject"))}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isModerating || currentStatus === "APPROVED"}
+                    onClick={() => handleModerateStatus("APPROVED")}
+                    className={cn(
+                      "w-full sm:w-auto px-3 sm:px-6 h-10 rounded-full font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-60 min-w-0",
+                      currentStatus === "APPROVED"
+                        ? "bg-green-100 text-green-700 border border-green-200 cursor-default"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-600/20"
+                    )}
+                  >
+                    {isModerating && !showRejectBox ? (
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    )}
+                    <span className="truncate sm:hidden">
+                      {currentStatus === "APPROVED"
+                        ? (dict.admin?.approved || (isAr ? "مقبول" : "Approved"))
+                        : (dict.admin?.approve || (isAr ? "قبول" : "Approve"))}
+                    </span>
+                    <span className="hidden sm:inline whitespace-nowrap">
+                      {currentStatus === "APPROVED"
+                        ? (dict.admin?.approved || (isAr ? "معتمد بالفعل" : "Approved"))
+                        : (dict.admin?.approve || (isAr ? "قبول واعتماد" : "Approve"))}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4 md:px-8 md:py-5 bg-white/90 backdrop-blur-xl border-t border-primary/5 grid grid-cols-2 sm:flex sm:flex-row justify-end gap-2.5 sm:gap-3 shrink-0">
+                <button 
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 sm:px-6 h-10 sm:h-11 text-primary font-bold bg-cream/60 sm:bg-transparent hover:bg-primary/5 rounded-full transition-all text-xs md:text-sm"
+                >
+                  {dict.common.cancel}
                 </button>
-              ) : (
                 <button 
                   onClick={handleSubmit}
                   disabled={isLoading}
                   className={cn(
-                    "px-8 h-11 font-bold rounded-full transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 text-xs md:text-sm",
+                    "px-5 sm:px-8 h-10 sm:h-11 font-bold rounded-full transition-all shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 text-xs md:text-sm",
                     product.status === "REJECTED" 
                       ? "bg-accent text-white hover:bg-accent-light shadow-accent/20" 
                       : "bg-primary text-white hover:bg-primary-light shadow-primary/20"
                   )}
                 >
-                  {isLoading 
-                    ? dict.edit_product.saving_changes 
-                    : (product.status === "REJECTED" ? dict.edit_product.resolve_and_resubmit : dict.profile.save_changes)}
-                  <Save className="w-4 h-4" />
+                  <span className="truncate">
+                    {isLoading 
+                      ? dict.edit_product.saving_changes 
+                      : (product.status === "REJECTED" ? dict.edit_product.resolve_and_resubmit : dict.profile.save_changes)}
+                  </span>
+                  <Save className="w-4 h-4 shrink-0" />
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

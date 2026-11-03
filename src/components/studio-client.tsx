@@ -44,12 +44,16 @@ import {
   Calendar,
   Printer,
   MapPin,
-  Link2
+  Link2,
+  Check,
+  ExternalLink,
+  ShieldAlert,
+  Loader2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { updateOrderItemStatus, deleteProduct, bulkDeleteProducts, bulkUpdateProductStatus, subscribeToNewsletter, updateOrderItemNotes } from "@/lib/actions";
+import { updateOrderItemStatus, deleteProduct, bulkDeleteProducts, bulkUpdateProductStatus, subscribeToNewsletter, updateOrderItemNotes, updateArtisanStatus, toggleArtisanVerification } from "@/lib/actions";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 const EditProductModal = dynamic(() => import("@/components/edit-product-modal").then(mod => mod.EditProductModal), {
@@ -232,7 +236,75 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
     }
   };
 
-  const products = artisan.products || [];
+  const [products, setProducts] = useState<any[]>(artisan.products || []);
+  const [shopStatus, setShopStatus] = useState<"PENDING" | "APPROVED" | "REJECTED">(artisan.status || "PENDING");
+  const [isShopVerified, setIsShopVerified] = useState<boolean>(Boolean(artisan.isVerified));
+  const [isModeratingShop, setIsModeratingShop] = useState<boolean>(false);
+
+  useEffect(() => {
+    setShopStatus(artisan.status || "PENDING");
+    setIsShopVerified(Boolean(artisan.isVerified));
+  }, [artisan.status, artisan.isVerified]);
+
+  const handleShopStatusChange = async (nextStatus: "PENDING" | "APPROVED" | "REJECTED") => {
+    if (!isAdminPreview || isModeratingShop || shopStatus === nextStatus) return;
+    setIsModeratingShop(true);
+    const res = await updateArtisanStatus(artisan.id, nextStatus);
+    if (res.success) {
+      setShopStatus(nextStatus);
+      const statusLabel =
+        nextStatus === "APPROVED"
+          ? (dict.admin?.approve || (lang === "ar" ? "معتمد" : "Approved"))
+          : nextStatus === "PENDING"
+            ? (dict.admin?.pending || (lang === "ar" ? "قيد المراجعة" : "Pending"))
+            : (dict.admin?.reject || (lang === "ar" ? "مجمد" : "Frozen"));
+      toast.success(
+        dict.admin?.studio_status_updated
+          ? dict.admin.studio_status_updated.replace("{status}", statusLabel)
+          : lang === "ar"
+            ? `تم تحديث حالة المتجر إلى ${statusLabel}`
+            : `Shop status updated to ${statusLabel}`,
+        { style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" } }
+      );
+      router.refresh();
+    } else {
+      toast.error(res.error || (lang === "ar" ? "فشل تحديث حالة المتجر" : "Failed to update shop status"), {
+        style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" },
+      });
+    }
+    setIsModeratingShop(false);
+  };
+
+  const handleShopVerifyToggle = async () => {
+    if (!isAdminPreview || isModeratingShop) return;
+    setIsModeratingShop(true);
+    const nextVerified = !isShopVerified;
+    const res = await toggleArtisanVerification(artisan.id, nextVerified);
+    if (res.success) {
+      setIsShopVerified(nextVerified);
+      toast.success(
+        nextVerified
+          ? (dict.admin?.artisan_verified || (lang === "ar" ? "تم توثيق المتجر" : "Artisan verified"))
+          : (dict.admin?.artisan_unverified || (lang === "ar" ? "تم إلغاء توثيق المتجر" : "Artisan unverified")),
+        { style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" } }
+      );
+      router.refresh();
+    } else {
+      toast.error(res.error || (lang === "ar" ? "فشل تحديث شارة التوثيق" : "Update failed"), {
+        style: { borderRadius: "20px", background: "#1a2c2c", color: "#fff" },
+      });
+    }
+    setIsModeratingShop(false);
+  };
+
+  useEffect(() => {
+    setProducts(artisan.products || []);
+  }, [artisan.products]);
+
+  const handleProductModerated = (productId: string, updates: { status?: string; rejectionReason?: string | null; isFeatured?: boolean }) => {
+    setProducts(prev => prev.map((p: any) => p.id === productId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
+    setSelectedProductForEdit((prev: any) => prev && prev.id === productId ? { ...prev, ...updates } : prev);
+  };
   const totalFavorites = products.reduce((acc: number, p: any) => acc + (p._count?.favoritedBy || 0), 0);
   const totalReviews = products.reduce((acc: number, p: any) => acc + (p._count?.reviews || 0), 0);
   const totalRevenue = sales.reduce((acc, sale) => acc + (sale.price * sale.quantity), 0);
@@ -330,7 +402,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
 
           <div className="max-w-[1600px] mx-auto pt-4 md:pt-6 pb-16">
             {/* Verification Status Banner */}
-            {artisan.status === "PENDING" && (
+            {shopStatus === "PENDING" && (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -379,8 +451,8 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                         link: "#settings"
                       },
                       {
-                        label: dict.studio.checklist_products.replace('{count}', artisan.products.length.toString()),
-                        done: artisan.products.length >= 3,
+                        label: dict.studio.checklist_products.replace('{count}', products.length.toString()),
+                        done: products.length >= 3,
                         link: "#inventory"
                       },
                       {
@@ -425,7 +497,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
               </motion.div>
             )}
 
-            {artisan.status === "REJECTED" && (
+            {shopStatus === "REJECTED" && (
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -476,9 +548,105 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
 
                 {isAdminPreview && (
                   <div className="flex flex-wrap gap-3 w-full md:w-auto justify-center sm:justify-end items-center">
-                    <div className="h-10 md:h-12 px-5 bg-white/10 backdrop-blur-xl text-white font-bold rounded-xl md:rounded-full border border-white/20 flex items-center gap-2.5 text-xs md:text-sm shadow-lg">
-                      <ShieldCheck className="w-4 h-4 text-accent-light" />
-                      {dict.studio.auditor_access}
+                    <div className="w-full md:w-auto md:min-w-[310px] bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-3 sm:p-3.5 shadow-lg space-y-2.5">
+
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-black uppercase tracking-wider text-white/90 min-w-0">
+                          <ShieldCheck className="w-3.5 h-3.5 text-accent-light shrink-0" />
+                          <span className="truncate">{dict.studio.auditor_access}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleShopVerifyToggle}
+                            disabled={isModeratingShop}
+                            className={cn(
+                              "h-7 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 border cursor-pointer disabled:opacity-50",
+                              isShopVerified
+                                ? "bg-blue-500 text-white border-blue-400 shadow-sm"
+                                : "bg-white/10 text-white/75 border-white/15 hover:bg-white/20 hover:text-white"
+                            )}
+                            title={
+                              isShopVerified
+                                ? (dict.admin?.verified_artisan || (lang === "ar" ? "متجر موثق" : "Verified Artisan"))
+                                : (dict.admin?.standard_artisan || (lang === "ar" ? "منح شارة التوثيق" : "Grant Verified Badge"))
+                            }
+                          >
+                            {isModeratingShop ? (
+                              <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                            ) : isShopVerified ? (
+                              <ShieldCheck className="w-3 h-3 shrink-0" />
+                            ) : (
+                              <ShieldAlert className="w-3 h-3 shrink-0" />
+                            )}
+                            <span>
+                              {isShopVerified
+                                ? (lang === "ar" ? "موثق" : "Verified")
+                                : (lang === "ar" ? "توثيق" : "Verify")}
+                            </span>
+                          </button>
+
+                          {artisan.slug && (
+                            <Link
+                              href={`/${lang}/artisans/${artisan.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 flex items-center justify-center text-white/80 hover:text-white transition-all"
+                              title={lang === "ar" ? "عرض المتجر العام" : "View Public Storefront"}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1 p-1 bg-black/20 rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => handleShopStatusChange("APPROVED")}
+                          disabled={isModeratingShop || shopStatus === "APPROVED"}
+                          className={cn(
+                            "h-8 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 min-w-0 cursor-pointer disabled:cursor-default",
+                            shopStatus === "APPROVED"
+                              ? "bg-emerald-500 text-white shadow-sm"
+                              : "text-white/65 hover:text-white hover:bg-white/10"
+                          )}
+                        >
+                          <Check className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{dict.admin?.approve || (lang === "ar" ? "اعتماد" : "Approve")}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleShopStatusChange("PENDING")}
+                          disabled={isModeratingShop || shopStatus === "PENDING"}
+                          className={cn(
+                            "h-8 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 min-w-0 cursor-pointer disabled:cursor-default",
+                            shopStatus === "PENDING"
+                              ? "bg-amber-500 text-white shadow-sm"
+                              : "text-white/65 hover:text-white hover:bg-white/10"
+                          )}
+                        >
+                          <Clock className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{dict.admin?.pending || (lang === "ar" ? "معلق" : "Pending")}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleShopStatusChange("REJECTED")}
+                          disabled={isModeratingShop || shopStatus === "REJECTED"}
+                          className={cn(
+                            "h-8 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 min-w-0 cursor-pointer disabled:cursor-default",
+                            shopStatus === "REJECTED"
+                              ? "bg-red-500 text-white shadow-sm"
+                              : "text-white/65 hover:text-white hover:bg-white/10"
+                          )}
+                        >
+                          <X className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{dict.admin?.reject || (lang === "ar" ? "تجميد" : "Freeze")}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -568,7 +736,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     dict={dict}
                     lang={lang}
                     isAdminPreview={isAdminPreview}
-                    isShopApproved={artisan.status === "APPROVED"}
+                    isShopApproved={shopStatus === "APPROVED"}
                     setSelectedProductForEdit={setSelectedProductForEdit}
                     setIsEditModalOpen={setIsEditModalOpen}
                     setProductToDelete={setProductToDelete}
@@ -601,12 +769,14 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     sales={sales}
                     lang={lang}
                     artisanId={artisan.id}
+                    isAdminPreview={isAdminPreview}
                     artisan={artisan}
                   />
                 )}
 
                 {activeTab === "logistics" && (
                   <PaymentTab
+                    isAdminPreview={isAdminPreview}
                     artisan={artisan}
                     lang={lang}
                     dict={dict}
@@ -614,7 +784,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                 )}
 
                 {activeTab === "reviews" && <ReviewsTab reviews={reviews} dict={dict} lang={lang} />}
-                {activeTab === "settings" && <SettingsTab artisan={artisan} dict={dict} lang={lang} />}
+                {activeTab === "settings" && <SettingsTab artisan={artisan} dict={dict} lang={lang} isAdminPreview={isAdminPreview} />}
 
               </motion.div>
             </AnimatePresence>
@@ -623,6 +793,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
           {selectedProductForEdit && (
             <div className="no-print">
               <EditProductModal
+                key={selectedProductForEdit.id}
                 product={selectedProductForEdit}
                 isOpen={isEditModalOpen}
                 onClose={() => {
@@ -631,6 +802,8 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                 }}
                 readOnly={isAdminPreview}
                 dict={dict}
+                lang={lang}
+                onProductModerated={handleProductModerated}
               />
             </div>
           )}
@@ -807,7 +980,9 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                       </div>
                       <textarea
                         defaultValue={selectedItem.artisanNotes || ""}
+                        disabled={isAdminPreview}
                         onBlur={async (e) => {
+                          if (isAdminPreview) return;
                           const newNotes = e.target.value;
                           if (newNotes === (selectedItem.artisanNotes || "")) return;
                           const res = await updateOrderItemNotes(selectedItem.id, newNotes);
@@ -834,7 +1009,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                       {dict.product?.close || dict.common?.close || (lang === "ar" ? "إغلاق" : "Close")}
                     </button>
 
-                    {selectedItem.status === "PENDING" && (
+                    {!isAdminPreview && selectedItem.status === "PENDING" && (
                       <button
                         type="button"
                         disabled={isUpdating === selectedItem.id}

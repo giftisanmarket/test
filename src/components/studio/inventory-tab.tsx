@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { 
@@ -63,10 +63,10 @@ export function InventoryTab({
   const [statusFilter, setStatusFilter] = useState<"ALL" | "APPROVED" | "OUT_OF_STOCK" | "PENDING" | "REJECTED">("ALL");
   const [updatingStockId, setUpdatingStockId] = useState<string | null>(null);
 
-  // Sync state if products prop changes
-  if (products !== productList && products.length !== productList.length) {
+  // Sync state whenever products prop updates (e.g. after moderation or refresh)
+  useEffect(() => {
     setProductList(products);
-  }
+  }, [products]);
 
   // Stock counters
   const totalCount = productList.length;
@@ -170,9 +170,9 @@ export function InventoryTab({
             { id: "ALL", label: isAr ? "جميع القطع" : "All Pieces", count: totalCount, color: "text-primary" },
             { id: "APPROVED", label: isAr ? "متاح بالمتجر" : "Available in Store", count: approvedCount, color: "text-green-600" },
             { id: "OUT_OF_STOCK", label: isAr ? "نفد المخزون" : "Out of Stock", count: outOfStockCount, color: "text-red-600", alert: outOfStockCount > 0 },
-            { id: "PENDING", label: isAr ? "قيد المراجعة" : "Under Review", count: pendingCount, color: "text-sky-600" },
+            { id: "PENDING", label: isAr ? "قيد المراجعة" : "Under Review", count: pendingCount, color: "text-sky-600", pendingAlert: isAdminPreview && pendingCount > 0 },
             ...(needsAttentionCount > 0 ? [{ id: "REJECTED", label: isAr ? "يتطلب تعديل" : "Needs Revision", count: needsAttentionCount, color: "text-red-500", alert: true }] : [])
-          ].map(tab => (
+          ].map((tab: any) => (
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id as any)}
@@ -180,7 +180,9 @@ export function InventoryTab({
                 "px-4 py-2.5 rounded-xl md:rounded-2xl text-xs md:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-2 border active:scale-95 shrink-0",
                 statusFilter === tab.id
                   ? "bg-primary text-white border-primary shadow-lg shadow-primary/10"
-                  : "bg-cream/40 text-charcoal/70 border-primary/5 hover:bg-cream hover:text-primary"
+                  : tab.pendingAlert
+                    ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                    : "bg-cream/40 text-charcoal/70 border-primary/5 hover:bg-cream hover:text-primary"
               )}
             >
               <span>{tab.label}</span>
@@ -188,9 +190,11 @@ export function InventoryTab({
                 "px-2 py-0.5 rounded-full text-[10px] font-black",
                 statusFilter === tab.id
                   ? "bg-white/20 text-white"
-                  : tab.alert
-                    ? "bg-red-50 text-red-600 font-black"
-                    : "bg-primary/5 text-primary/60"
+                  : tab.pendingAlert
+                    ? "bg-amber-500 text-white font-black"
+                    : tab.alert
+                      ? "bg-red-50 text-red-600 font-black"
+                      : "bg-primary/5 text-primary/60"
               )}>
                 {tab.count}
               </span>
@@ -269,7 +273,7 @@ export function InventoryTab({
                     {/* Status Badge */}
                     <div className="absolute top-4 start-4 z-10 flex flex-col gap-2">
                       <span className={cn(
-                        "px-3 py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-xl border",
+                        "px-3 py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-xl border w-fit",
                         p.status === "APPROVED" ? "bg-green-500/90 text-white border-white/20" :
                         p.status === "REJECTED" ? "bg-red-500/90 text-white border-white/20" :
                                                   "bg-amber-500/90 text-white border-white/20"
@@ -280,9 +284,16 @@ export function InventoryTab({
                                                 dict.admin.treasure_pending}
                       </span>
 
+                      {p.isFeatured && (
+                        <span className="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest bg-accent/90 text-white backdrop-blur-md shadow-lg border border-white/20 flex items-center gap-1 w-fit">
+                          <Star className="w-2.5 h-2.5 fill-white" />
+                          {isAr ? "مميز بالرئيسية" : "Featured"}
+                        </span>
+                      )}
+
                       {/* Only Show Badge if strictly Out of Stock (0 pieces) */}
                       {isOutOfStock && (
-                        <span className="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest bg-red-600/90 text-white backdrop-blur-md shadow-lg border border-white/20 flex items-center gap-1">
+                        <span className="px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest bg-red-600/90 text-white backdrop-blur-md shadow-lg border border-white/20 flex items-center gap-1 w-fit">
                           <AlertTriangle className="w-2.5 h-2.5" />
                           {isAr ? "نفد المخزون" : "Out of Stock"}
                         </span>
@@ -290,7 +301,12 @@ export function InventoryTab({
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="absolute bottom-3 end-3 flex items-center gap-1.5 z-20 transition-all duration-300 xl:opacity-0 xl:translate-y-2 group-hover:opacity-100 group-hover:translate-y-0">
+                    <div className={cn(
+                      "absolute bottom-3 end-3 flex items-center gap-1.5 z-20 transition-all duration-300",
+                      isAdminPreview && p.status === "PENDING"
+                        ? "opacity-100 translate-y-0"
+                        : "xl:opacity-0 xl:translate-y-2 group-hover:opacity-100 group-hover:translate-y-0"
+                    )}>
                       {!isAdminPreview ? (
                         <Link
                           href={`/${lang}/studio/products/${p.id}/edit`}
@@ -308,10 +324,16 @@ export function InventoryTab({
                             setSelectedProductForEdit(p);
                             setIsEditModalOpen(true);
                           }}
-                          title="View"
-                          className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/95 backdrop-blur-md text-primary flex items-center justify-center shadow-lg hover:bg-accent hover:text-white transition-all active:scale-90 border border-primary/10 cursor-pointer"
+                          title={isAr ? "مراجعة المنتج واتخاذ قرار" : "Review & Moderate Product"}
+                          className={cn(
+                            "h-8 sm:h-9 md:h-10 px-3 sm:px-3.5 rounded-full backdrop-blur-md text-[11px] sm:text-xs font-bold flex items-center gap-1.5 shadow-lg transition-all active:scale-95 border cursor-pointer",
+                            p.status === "PENDING"
+                              ? "bg-amber-500 text-white border-white/30 hover:bg-amber-600"
+                              : "bg-white/95 text-primary border-primary/10 hover:bg-accent hover:text-white"
+                          )}
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5 shrink-0" />
+                          <span>{isAr ? "مراجعة" : "Review"}</span>
                         </button>
                       )}
 
@@ -323,18 +345,21 @@ export function InventoryTab({
                             setProductToDelete(p.id);
                           }}
                           disabled={isDeleting === p.id}
-                          title="Delete"
-                          className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/95 backdrop-blur-md text-red-500 flex items-center justify-center shadow-lg hover:bg-red-500 hover:text-white transition-all active:scale-90 disabled:opacity-50 border border-primary/10 cursor-pointer"
+                          title={isAr ? "حذف المنتج" : "Delete Product"}
+                          className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white/95 backdrop-blur-md text-red-500 flex items-center justify-center shadow-lg hover:bg-red-500 hover:text-white transition-all active:scale-90 disabled:opacity-50 border border-primary/10 cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
                       )}
                       <Link
                         href={`/${lang}/products/${p.slug || p.id}`}
-                        title="View Product Page"
-                        className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/95 backdrop-blur-md text-primary flex items-center justify-center shadow-lg hover:bg-primary hover:text-white transition-all active:scale-90 border border-primary/10 cursor-pointer"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title={isAr ? "عرض في المتجر" : "View in Store"}
+                        className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white/95 backdrop-blur-md text-primary flex items-center justify-center shadow-lg hover:bg-primary hover:text-white transition-all active:scale-90 border border-primary/10 cursor-pointer"
                       >
-                        <ArrowUpRight className="w-4 h-4" />
+                        <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </Link>
                     </div>
                   </div>

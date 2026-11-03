@@ -21,6 +21,7 @@ export default async function AdminProductsPage({ params }: { params: Promise<{ 
           user: true
         }
       },
+      variants: true,
       reviews: true
     },
     orderBy: { createdAt: 'desc' }

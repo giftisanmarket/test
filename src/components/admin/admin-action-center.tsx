@@ -68,7 +68,7 @@ export function AdminActionCenter({ stats, dict, isAr }: AdminActionCenterProps)
     {
       count: pendingProducts,
       label: isAr ? "منتجات بانتظار مراجعة الجودة" : "Products awaiting moderation",
-      href: "/admin/products?filter=PENDING",
+      href: "/admin/products?status=PENDING",
       icon: ShoppingBag,
       badgeColor: "bg-purple-600 text-white",
       borderColor: "border-purple-500/30 hover:border-purple-500"

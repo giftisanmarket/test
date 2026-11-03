@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { 
@@ -40,6 +40,15 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
   const [studioStatusFilter, setStudioStatusFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<string>("NEWEST");
   const [isSortOpen, setIsSortOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const filterParam = params.get("filter") || params.get("status");
+    if (filterParam && ["PENDING", "APPROVED", "REJECTED", "NO_STUDIO"].includes(filterParam.toUpperCase())) {
+      setStudioStatusFilter(filterParam.toUpperCase());
+    }
+  }, []);
 
   const sortOptions = [
     { key: "NEWEST", label: isAr ? "الأحدث انضماماً" : "Newest Members" },

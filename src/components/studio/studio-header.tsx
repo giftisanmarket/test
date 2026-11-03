@@ -6,23 +6,26 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { performSignOut } from "@/lib/native";
 import { useState, useRef, useEffect, useMemo } from "react";
-import { 
-  LayoutDashboard, 
-  Plus, 
-  Settings, 
-  ExternalLink, 
-  Store, 
-  User, 
-  Globe, 
-  Menu, 
-  X, 
-  ChevronDown, 
-  CheckCircle2, 
-  Clock, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Plus,
+  Settings,
+  ExternalLink,
+  Store,
+  User,
+  Globe,
+  Menu,
+  X,
+  ChevronDown,
+  CheckCircle2,
+  Clock,
+  LogOut,
   Sparkles,
   HelpCircle,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft,
+  ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 import { useNotifications } from "@/components/notification-provider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -58,6 +61,15 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
   const profileRef = useRef<HTMLDivElement>(null);
   const isAr = lang === "ar";
+  const artisanUserId = searchParams?.get("artisanUserId");
+  const isAdminPreview = user?.role === "ADMIN" && Boolean(artisanUserId);
+
+  const studioBaseHref = isAdminPreview
+    ? `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}`
+    : `/${lang}/studio`;
+  const studioSettingsHref = isAdminPreview
+    ? `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}&tab=settings`
+    : `/${lang}/studio?tab=settings`;
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -85,12 +97,14 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
     const nextLang = lang === "en" ? "ar" : "en";
     document.cookie = `NEXT_LOCALE=${nextLang}; path=/; max-age=31536000`;
     const nextPath = pathname.replace(/^\/(en|ar)/, `/${nextLang}`);
+    const qs = searchParams?.toString();
+    const targetUrl = qs ? `${nextPath}?${qs}` : nextPath;
 
     toast.success(
       nextLang === "ar" ? "جاري التحويل إلى اللغة العربية..." : "Switching to English...",
       { id: "lang-switch-toast", duration: 1500 }
     );
-    router.push(nextPath);
+    router.push(targetUrl);
   };
 
   useEffect(() => {
@@ -106,7 +120,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [pathname, lang]);
+  }, [pathname, lang, searchParams]);
 
   // Handle avatar click: on mobile (< 768px), open full drawer; on desktop, toggle dropdown
   const handleAvatarClick = () => {
@@ -120,49 +134,60 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
   };
 
   // Navigation items
-  const navItems = useMemo(() => [
-    {
-      label: dict?.studio?.overview || (isAr ? "لوحة التحكم" : "Dashboard"),
-      href: `/${lang}/studio`,
-      icon: LayoutDashboard,
-      isActive: pathname === `/${lang}/studio` && !searchParams?.get("tab"),
-    },
-    {
-      label: dict?.studio?.add_treasure || (isAr ? "إضافة قطعة" : "Add Product"),
-      href: `/${lang}/studio/new-product`,
-      icon: Plus,
-      isActive: pathname === `/${lang}/studio/new-product`,
-    },
-    {
-      label: dict?.common?.messages || (isAr ? "المحادثات" : "Messages"),
-      onClick: () => {
-        setIsMobileMenuOpen(false);
-        openChat();
+  const navItems = useMemo(
+    () => [
+      {
+        label: dict?.studio?.overview || (isAr ? "لوحة التحكم" : "Dashboard"),
+        href: studioBaseHref,
+        icon: LayoutDashboard,
+        isActive: pathname === `/${lang}/studio` && !searchParams?.get("tab"),
       },
-      icon: MessageSquare,
-      badge: unreadCount > 0 ? unreadCount : null,
-      isActive: isChatOpen,
-    },
-    {
-      label: dict?.studio?.studio_settings || (isAr ? "الإعدادات" : "Settings"),
-      href: `/${lang}/studio?tab=settings`,
-      icon: Settings,
-      isActive: pathname === `/${lang}/studio` && searchParams?.get("tab") === "settings",
-    },
-  ], [lang, pathname, dict, isAr, searchParams, unreadCount, isChatOpen, openChat]);
+      isAdminPreview
+        ? {
+            label: isAr ? "العودة للوحة الإدارة" : "Back to Admin Panel",
+            href: `/${lang}/admin/users`,
+            icon: isAr ? ArrowRight : ArrowLeft,
+            isActive: false,
+          }
+        : {
+            label: dict?.studio?.add_treasure || (isAr ? "إضافة قطعة" : "Add Product"),
+            href: `/${lang}/studio/new-product`,
+            icon: Plus,
+            isActive: pathname === `/${lang}/studio/new-product`,
+          },
+      {
+        label: dict?.common?.messages || (isAr ? "المحادثات" : "Messages"),
+        onClick: () => {
+          setIsMobileMenuOpen(false);
+          openChat();
+        },
+        icon: MessageSquare,
+        badge: unreadCount > 0 ? unreadCount : null,
+        isActive: isChatOpen,
+      },
+      {
+        label: dict?.studio?.studio_settings || (isAr ? "الإعدادات" : "Settings"),
+        href: studioSettingsHref,
+        icon: Settings,
+        isActive: pathname === `/${lang}/studio` && searchParams?.get("tab") === "settings",
+      },
+    ],
+    [lang, pathname, dict, isAr, searchParams, unreadCount, isChatOpen, openChat, isAdminPreview, studioBaseHref, studioSettingsHref]
+  );
 
-  const studioDisplayName = artisan?.studioName || user.name || (isAr ? "متجر الحرفي" : "Artisan Shop");
-  const avatarImage = artisan?.avatar || user.image;
-  const isVerified = artisan?.status === "APPROVED";
+  const studioDisplayName = isAdminPreview
+    ? user.name || (isAr ? "مشرف النظام" : "Platform Admin")
+    : artisan?.studioName || user.name || (isAr ? "متجر الحرفي" : "Artisan Shop");
+  const avatarImage = isAdminPreview ? user.image : artisan?.avatar || user.image;
+  const isVerified = !isAdminPreview && artisan?.status === "APPROVED";
   const publicShopUrl = isVerified && artisan?.slug ? `/${lang}/artisans/${artisan.slug}` : null;
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-primary/10 shadow-xs pt-safe">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-6">
-        
+      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 h-16 md:h-20 flex items-center justify-between gap-2 sm:gap-3 md:gap-6">
         {/* Brand Logo + Shop Subtitle (Stacked layout matching Admin branding) */}
-        <Link 
-          href={`/${lang}/studio`} 
+        <Link
+          href={studioBaseHref}
           className="flex items-center gap-2 md:gap-3 shrink-0 group focus:outline-none"
           title={dict?.studio?.dashboard || (isAr ? "لوحة تحكم المتجر" : "Shop Dashboard")}
         >
@@ -188,24 +213,41 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
               )}
             </div>
             <span className="text-[10px] md:text-[11px] text-accent font-black uppercase tracking-widest leading-none mt-1">
-              {isAr ? "المتجر" : "Shop"}
+              {isAdminPreview ? (isAr ? "مراجعة إدارية" : "Admin Audit") : (isAr ? "المتجر" : "Shop")}
             </span>
           </div>
         </Link>
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
-          
-          {/* Primary CTA: Add Product (hidden if already on new-product page) */}
-          {!pathname?.includes("/studio/new-product") && (
+          {/* Primary CTA: Back to Admin in Admin Preview, otherwise Add Product */}
+          {isAdminPreview ? (
             <Link
-              href={`/${lang}/studio/new-product`}
-              className="w-8 h-8 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full text-xs font-bold text-white bg-accent hover:bg-accent-light transition-all shadow-sm shadow-accent/20 active:scale-95 flex items-center justify-center gap-1.5 shrink-0 group"
-              title={dict?.studio?.add_treasure || (isAr ? "إضافة قطعة" : "Add Product")}
+              href={`/${lang}/admin/users`}
+              className="h-8 sm:h-auto px-2.5 sm:px-4 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold text-white bg-primary hover:bg-primary-light transition-all shadow-sm active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
+              title={isAr ? "العودة للوحة الإدارة" : "Back to Admin Panel"}
             >
-              <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5 transition-transform group-hover:rotate-90 duration-300" />
-              <span className="hidden sm:inline">{dict?.studio?.add_treasure || (isAr ? "إضافة قطعة" : "Add Product")}</span>
+              {isAr ? (
+                <ArrowRight className="w-3.5 h-3.5 text-accent-light shrink-0" />
+              ) : (
+                <ArrowLeft className="w-3.5 h-3.5 text-accent-light shrink-0" />
+              )}
+              <span className="sm:hidden">{isAr ? "الإدارة" : "Admin"}</span>
+              <span className="hidden sm:inline">{isAr ? "العودة للإدارة" : "Back to Admin"}</span>
             </Link>
+          ) : (
+            !pathname?.includes("/studio/new-product") && (
+              <Link
+                href={`/${lang}/studio/new-product`}
+                className="w-8 h-8 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full text-xs font-bold text-white bg-accent hover:bg-accent-light transition-all shadow-sm shadow-accent/20 active:scale-95 flex items-center justify-center gap-1.5 shrink-0 group"
+                title={dict?.studio?.add_treasure || (isAr ? "إضافة قطعة" : "Add Product")}
+              >
+                <Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5 transition-transform group-hover:rotate-90 duration-300" />
+                <span className="hidden sm:inline">
+                  {dict?.studio?.add_treasure || (isAr ? "إضافة قطعة" : "Add Product")}
+                </span>
+              </Link>
+            )
           )}
 
           {/* Messages Drawer Trigger (Accessible on both Mobile & Desktop) */}
@@ -247,7 +289,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
           <button
             type="button"
             onClick={switchLanguage}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 rounded-full text-xs font-bold text-charcoal/70 hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 md:px-3 md:py-2 rounded-full text-xs font-bold text-charcoal/70 hover:text-primary hover:bg-primary/5 transition-all border border-transparent hover:border-primary/10 cursor-pointer"
             title={isAr ? "التبديل إلى الإنجليزية (Alt + L)" : "Switch to Arabic (Alt + L)"}
           >
             <Globe className="w-3.5 h-3.5 text-accent" />
@@ -261,7 +303,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
               onClick={handleAvatarClick}
               className={cn(
                 "flex items-center gap-1.5 p-1 rounded-full transition-all focus:outline-none cursor-pointer",
-                (isProfileOpen || isMobileMenuOpen)
+                isProfileOpen || isMobileMenuOpen
                   ? "ring-2 ring-accent bg-accent/5"
                   : "hover:ring-2 hover:ring-primary/10"
               )}
@@ -281,7 +323,12 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                   <User className="w-4 h-4 text-primary/60" />
                 )}
               </div>
-              <ChevronDown className={cn("w-3.5 h-3.5 text-charcoal/40 transition-transform hidden sm:block", isProfileOpen && "rotate-180 text-accent")} />
+              <ChevronDown
+                className={cn(
+                  "w-3.5 h-3.5 text-charcoal/40 transition-transform hidden sm:block",
+                  isProfileOpen && "rotate-180 text-accent"
+                )}
+              />
             </button>
 
             {/* Profile Dropdown (Desktop & Tablet) */}
@@ -296,14 +343,15 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                 >
                   {/* Studio Header Info */}
                   <div className="px-5 py-3 border-b border-primary/5 bg-cream/20">
-                    <p className="text-xs font-black text-primary truncate">
-                      {studioDisplayName}
-                    </p>
-                    <p className="text-[11px] text-charcoal/50 truncate font-sans">
-                      {user.email}
-                    </p>
+                    <p className="text-xs font-black text-primary truncate">{studioDisplayName}</p>
+                    <p className="text-[11px] text-charcoal/50 truncate font-sans">{user.email}</p>
                     <div className="mt-2.5 flex items-center gap-1.5">
-                      {isVerified ? (
+                      {isAdminPreview ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-primary/5 text-primary border border-primary/15">
+                          <ShieldCheck className="w-3 h-3 text-accent" />
+                          {isAr ? "مشرف النظام" : "Admin Auditor"}
+                        </span>
+                      ) : isVerified ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-green-50 text-green-700 border border-green-200">
                           <CheckCircle2 className="w-3 h-3 text-green-600" />
                           {isAr ? "متجر موثق" : "Verified Shop"}
@@ -317,11 +365,35 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                     </div>
                   </div>
 
-                  {/* Mode Switch: Marketplace / Buyer Mode */}
-                  <div className="p-2 border-b border-primary/5">
+                  {/* Mode Switch */}
+                  <div className="p-2 border-b border-primary/5 space-y-1">
                     <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary/40">
                       {isAr ? "وضع التبديل" : "Switch Mode"}
                     </div>
+                    {isAdminPreview && (
+                      <Link
+                        href={`/${lang}/admin/users`}
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center justify-between px-3 py-2 rounded-2xl hover:bg-primary/5 text-primary font-bold text-xs transition-colors group"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold leading-tight">
+                              {isAr ? "لوحة الإدارة" : "Admin Dashboard"}
+                            </p>
+                            <p className="text-[10px] text-charcoal/40 font-normal">
+                              {isAr ? "العودة لإدارة المتاجر والمستخدمين" : "Return to users & shops management"}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/5 text-primary border border-primary/10">
+                          {isAr ? "إدارة" : "Admin"}
+                        </span>
+                      </Link>
+                    )}
                     <Link
                       href={`/${lang}`}
                       onClick={() => setIsProfileOpen(false)}
@@ -332,8 +404,12 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                           <Store className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold leading-tight">{isAr ? "العودة للسوق" : "Browse Marketplace"}</p>
-                          <p className="text-[10px] text-charcoal/40 font-normal">{isAr ? "التسوق واستكشاف المنتجات" : "Shop handcrafted gifts"}</p>
+                          <p className="text-xs font-bold leading-tight">
+                            {isAr ? "العودة للسوق" : "Browse Marketplace"}
+                          </p>
+                          <p className="text-[10px] text-charcoal/40 font-normal">
+                            {isAr ? "التسوق واستكشاف المنتجات" : "Shop handcrafted gifts"}
+                          </p>
                         </div>
                       </div>
                       <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-cream text-charcoal/60 border border-primary/5">
@@ -362,16 +438,18 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                         </span>
                       )}
                     </button>
+                    {!isAdminPreview && (
+                      <Link
+                        href={`/${lang}/studio/new-product`}
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-accent/5 text-charcoal/80 font-bold text-xs transition-colors group"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-accent group-hover:rotate-90 transition-transform duration-300" />
+                        <span>{dict?.studio?.add_treasure || (isAr ? "إضافة منتج جديد" : "Add New Product")}</span>
+                      </Link>
+                    )}
                     <Link
-                      href={`/${lang}/studio/new-product`}
-                      onClick={() => setIsProfileOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-accent/5 text-charcoal/80 font-bold text-xs transition-colors group"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-accent group-hover:rotate-90 transition-transform duration-300" />
-                      <span>{dict?.studio?.add_treasure || (isAr ? "إضافة منتج جديد" : "Add New Product")}</span>
-                    </Link>
-                    <Link
-                      href={`/${lang}/studio?tab=settings`}
+                      href={studioSettingsHref}
                       onClick={() => setIsProfileOpen(false)}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-primary/5 text-charcoal/80 font-bold text-xs transition-colors"
                     >
@@ -411,7 +489,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                         setIsProfileOpen(false);
                         performSignOut(lang);
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-red-50 text-red-600 font-bold text-xs transition-colors"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-2xl hover:bg-red-50 text-red-600 font-bold text-xs transition-colors cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5" />
                       <span>{dict?.common?.sign_out || dict?.common?.logout || (isAr ? "تسجيل الخروج" : "Sign Out")}</span>
@@ -436,22 +514,26 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
           >
             <div className="space-y-4">
               {/* Studio Info Card */}
-              <div className="p-3.5 bg-cream/40 rounded-2xl border border-primary/5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 rounded-full overflow-hidden border border-primary/10 bg-cream">
+              <div className="p-3.5 bg-cream/40 rounded-2xl border border-primary/5 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden border border-primary/10 bg-cream shrink-0">
                     {avatarImage ? (
                       <Image src={avatarImage} alt={studioDisplayName} fill className="object-cover" />
                     ) : (
                       <User className="w-5 h-5 m-2.5 text-primary/60" />
                     )}
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-primary leading-tight">{studioDisplayName}</h4>
-                    <p className="text-[11px] text-charcoal/50">{user.email}</p>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-black text-primary leading-tight truncate">{studioDisplayName}</h4>
+                    <p className="text-[11px] text-charcoal/50 truncate">{user.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {isVerified ? (
+                <div className="flex items-center gap-2 shrink-0">
+                  {isAdminPreview ? (
+                    <span className="text-[10px] font-black uppercase text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/15">
+                      {isAr ? "إدارة" : "Admin"}
+                    </span>
+                  ) : isVerified ? (
                     <span className="text-[10px] font-black uppercase text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
                       {isAr ? "موثق" : "Verified"}
                     </span>
@@ -463,7 +545,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                   <button
                     type="button"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-charcoal/50 hover:text-primary hover:bg-primary/5 transition-colors"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-charcoal/50 hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer"
                     aria-label={isAr ? "إغلاق" : "Close"}
                   >
                     <X className="w-4 h-4" />
@@ -518,8 +600,6 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                   );
                 })}
 
-
-
                 {/* Support */}
                 <Link
                   href={`/${lang}/contact`}
@@ -557,7 +637,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                     setIsMobileMenuOpen(false);
                     switchLanguage();
                   }}
-                  className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-white text-primary border border-primary/10 shadow-xs hover:bg-accent hover:text-white transition-colors"
+                  className="px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-white text-primary border border-primary/10 shadow-xs hover:bg-accent hover:text-white transition-colors cursor-pointer"
                 >
                   {isAr ? "English" : "العربية"}
                 </button>
@@ -585,7 +665,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                     setIsMobileMenuOpen(false);
                     performSignOut(lang);
                   }}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-red-600 bg-red-50/50 hover:bg-red-50 font-bold text-xs transition-colors"
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-red-600 bg-red-50/50 hover:bg-red-50 font-bold text-xs transition-colors cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>{dict?.common?.sign_out || dict?.common?.logout || (isAr ? "تسجيل الخروج" : "Sign Out")}</span>

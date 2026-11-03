@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   ExternalLink,
   Calendar,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { acceptCurrentArtisanAgreement, updateArtisanProfile, updateProfileAvatar, checkSlugAvailability, uploadImage } from "@/lib/actions";
@@ -36,12 +37,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 
 interface SettingsTabProps {
+  isAdminPreview?: boolean;
   artisan: any;
   dict: any;
   lang?: string;
 }
 
-export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
+export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false }: SettingsTabProps) {
   const router = useRouter();
   const { update } = useSession();
   const [studioName, setStudioName] = useState(artisan.studioName || "");
@@ -77,6 +79,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   const handleDetectLocation = async () => {
+    if (isAdminPreview) return;
     setIsDetectingLocation(true);
 
     try {
@@ -118,6 +121,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   );
 
   const handleAcceptAgreement = async () => {
+    if (isAdminPreview) return;
     setIsAcceptingAgreement(true);
     try {
       const result = await acceptCurrentArtisanAgreement(lang === "ar" ? "ar" : "en");
@@ -134,7 +138,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   };
 
   useEffect(() => {
-    if (!slug || slug === artisan.slug) {
+    if (isAdminPreview || !slug || slug === artisan.slug) {
       setSlugAvailability('idle');
       return;
     }
@@ -155,7 +159,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
   }, [slug, artisan.slug, artisan.userId]);
 
   const handleAvatarUpload = (file: File) => {
-    if (!file) return;
+    if (isAdminPreview || !file) return;
     setIsUploadingAvatar(true);
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -237,6 +241,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdminPreview) return;
     if (!studioName.trim() || !phoneNumber.trim() || !slug.trim()) {
       toast.error(lang === "ar" ? "اسم المتجر، الرابط، ورقم الهاتف مطلوبة." : "Shop Name, Handle, and Phone Number are required.");
       return;
@@ -295,6 +300,17 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
           </div>
         </div>
 
+        {isAdminPreview && (
+          <div className="mb-6 p-3.5 sm:p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-2.5 text-xs font-bold text-primary/80">
+            <Lock className="w-4 h-4 text-accent shrink-0" />
+            <span>
+              {lang === "ar"
+                ? "وضع المراجعة الإدارية — بيانات المتجر وعنوان الاستلام والهوية البصرية للعرض فقط"
+                : "Auditor View — Shop profile, courier pickup address & branding are read-only"}
+            </span>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-6 lg:gap-8 xl:gap-12">
           {/* Sub Navigation */}
           <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-3 lg:pb-0 scrollbar-hide -mx-1 px-1">
@@ -348,14 +364,14 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         )}
 
                         {/* Permanent Camera Action Badge */}
-                        <div className="absolute bottom-1 end-1 w-9 h-9 rounded-full bg-accent text-white border-2 border-white shadow-xl flex items-center justify-center z-10 pointer-events-none group-hover:scale-110 transition-transform">
+                        <div className={cn(isAdminPreview && "hidden", "absolute bottom-1 end-1 w-9 h-9 rounded-full bg-accent text-white border-2 border-white shadow-xl flex items-center justify-center z-10 pointer-events-none group-hover:scale-110 transition-transform")}>
                           <Camera className="w-4 h-4" />
                         </div>
 
                         <label
                           className={cn(
                             "absolute inset-0 flex items-center justify-center bg-primary/30 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all rounded-full cursor-pointer border-4 border-white z-20",
-                            isUploadingAvatar && "pointer-events-none opacity-0"
+                            (isUploadingAvatar || isAdminPreview) && "hidden pointer-events-none opacity-0"
                           )}
                           title={dict.studio_profile.change_avatar || "Click to Change Logo"}
                         >
@@ -379,7 +395,8 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <p className="text-[10px] font-black uppercase tracking-widest text-primary/30">{dict.studio_profile.studio_avatar}</p>
                         <label className={cn(
                           "text-xs font-bold text-accent hover:text-primary transition-colors flex items-center justify-center lg:justify-start gap-1.5 cursor-pointer",
-                          isUploadingAvatar && "opacity-60 pointer-events-none"
+                          isUploadingAvatar && "opacity-60 pointer-events-none",
+                          isAdminPreview && "hidden"
                         )}>
                           {isUploadingAvatar ? (
                             <>
@@ -416,6 +433,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                               type="text"
                               required
                               value={studioName}
+                              disabled={isAdminPreview}
                               onChange={(e) => setStudioName(stripEmojis(e.target.value))}
                               className="w-full h-14 ps-14 pe-6 rounded-2xl bg-cream/20 border border-primary/5 focus:border-accent focus:bg-white transition-all font-bold text-primary"
                               placeholder={dict.studio_profile.studio_name_placeholder}
@@ -434,6 +452,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                               required
                               maxLength={30}
                               value={slug}
+                              disabled={isAdminPreview}
                               onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 30))}
                               className={cn(
                                 "w-full h-14 ps-11 md:ps-14 pe-11 md:pe-14 rounded-2xl bg-cream/20 border transition-all font-bold text-sm min-w-0",
@@ -461,6 +480,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <textarea
                           required
                           value={bio}
+                          disabled={isAdminPreview}
                           onChange={(e) => setBio(stripEmojis(e.target.value))}
                           rows={4}
                           className="w-full p-6 rounded-[2rem] bg-cream/20 border border-primary/5 focus:border-accent focus:bg-white transition-all font-medium text-primary resize-none"
@@ -479,6 +499,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                           type="text"
                           required
                           value={location}
+                          disabled={isAdminPreview}
                           onChange={(e) => setLocation(e.target.value)}
                           className="w-full h-14 ps-14 pe-6 rounded-2xl bg-cream/20 border border-primary/5 focus:border-accent focus:bg-white transition-all font-bold text-primary"
                           placeholder={dict.studio_profile.location_placeholder}
@@ -493,6 +514,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                           type="tel"
                           required
                           value={phoneNumber}
+                          disabled={isAdminPreview}
                           onChange={(e) => setPhoneNumber(e.target.value)}
                           className="w-full h-14 ps-14 pe-6 rounded-2xl bg-cream/20 border border-primary/5 focus:border-accent focus:bg-white transition-all font-bold text-primary"
                           placeholder="+20 ..."
@@ -510,6 +532,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                           min="1"
                           max="80"
                           value={yearsOfExperience}
+                          disabled={isAdminPreview}
                           onChange={(e) => setYearsOfExperience(Math.max(1, parseInt(e.target.value) || 1))}
                           className="w-full h-14 ps-14 pe-6 rounded-2xl bg-cream/20 border border-primary/5 focus:border-accent focus:bg-white transition-all font-bold text-primary"
                           placeholder="1"
@@ -555,7 +578,10 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                           type="button"
                           onClick={handleDetectLocation}
                           disabled={isDetectingLocation}
-                          className="w-full sm:w-auto px-5 py-2.5 bg-accent/10 border border-accent/20 hover:bg-accent hover:text-white text-accent rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm shrink-0"
+                          className={cn(
+                            isAdminPreview && "hidden",
+                            "w-full sm:w-auto px-5 py-2.5 bg-accent/10 border border-accent/20 hover:bg-accent hover:text-white text-accent rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-95 shadow-sm shrink-0"
+                          )}
                         >
                           {isDetectingLocation ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -575,6 +601,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <input
                           type="text"
                           value={pickupAddress}
+                          disabled={isAdminPreview}
                           onChange={(e) => setPickupAddress(e.target.value)}
                           className="w-full h-14 px-6 rounded-2xl bg-white border border-primary/10 focus:border-accent font-medium text-primary text-sm"
                           placeholder={lang === "ar" ? "مثال: ١٥ شارع التحرير، الدقي" : "e.g., 15 El-Tahrir St, Dokki"}
@@ -588,6 +615,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <input
                           type="text"
                           value={pickupDistrict}
+                          disabled={isAdminPreview}
                           onChange={(e) => setPickupDistrict(e.target.value)}
                           className="w-full h-14 px-6 rounded-2xl bg-white border border-primary/10 focus:border-accent font-medium text-primary text-sm"
                           placeholder={lang === "ar" ? "مثال: المعادي / الزمالك" : "e.g., Maadi / Zamalek"}
@@ -601,6 +629,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <input
                           type="text"
                           value={pickupCity}
+                          disabled={isAdminPreview}
                           onChange={(e) => setPickupCity(e.target.value)}
                           className="w-full h-14 px-6 rounded-2xl bg-white border border-primary/10 focus:border-accent font-medium text-primary text-sm"
                           placeholder={lang === "ar" ? "مثال: القاهرة" : "e.g., Cairo"}
@@ -614,6 +643,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <input
                           type="text"
                           value={pickupBuilding}
+                          disabled={isAdminPreview}
                           onChange={(e) => setPickupBuilding(e.target.value)}
                           className="w-full h-14 px-6 rounded-2xl bg-white border border-primary/10 focus:border-accent font-medium text-primary text-sm"
                           placeholder={lang === "ar" ? "مثال: مبنى ٤، الدور ٣، شقة ١٢" : "e.g., Bldg 4, Fl 3, Apt 12"}
@@ -627,6 +657,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <input
                           type="text"
                           value={pickupNotes}
+                          disabled={isAdminPreview}
                           onChange={(e) => setPickupNotes(e.target.value)}
                           className="w-full h-14 px-6 rounded-2xl bg-white border border-primary/10 focus:border-accent font-medium text-primary text-sm"
                           placeholder={lang === "ar" ? "مثال: بجوار البنك الأهلي، بوابة خضراء" : "e.g., Near NBE Bank, Green Gate"}
@@ -639,7 +670,10 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                     <button
                       type="submit"
                       disabled={isSaving}
-                      className="h-16 px-12 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 flex items-center gap-3 disabled:opacity-50 active:scale-95"
+                      className={cn(
+                        isAdminPreview && "hidden",
+                        "h-16 px-12 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 flex items-center gap-3 disabled:opacity-50 active:scale-95"
+                      )}
                     >
                       {isSaving ? dict.studio_profile.syncing : dict.studio_profile.save_profile}
                       <Save className="w-5 h-5" />
@@ -665,7 +699,7 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                       {bannerImage ? (
                         <>
                           <Image src={bannerImage} alt="Banner" fill className="object-cover" />
-                          <div className="absolute inset-0 bg-primary/20 lg:bg-primary/40 lg:opacity-0 lg:group-hover:opacity-100 transition-all flex items-center justify-center opacity-100">
+                          <div className={cn(isAdminPreview && "hidden", "absolute inset-0 bg-primary/20 lg:bg-primary/40 lg:opacity-0 lg:group-hover:opacity-100 transition-all flex items-center justify-center opacity-100")}>
                             <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 text-white shadow-2xl">
                               <Camera className="w-6 h-6 md:w-8 md:h-8" />
                             </div>
@@ -680,11 +714,12 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                       <input
                         type="file"
                         accept="image/*"
-                        disabled={isUploadingBanner}
-                        className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                        disabled={isUploadingBanner || isAdminPreview}
+                        className={cn(isAdminPreview && "hidden", "absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed")}
+
                         onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if (!file) return;
+                          if (isAdminPreview || !file) return;
                           setIsUploadingBanner(true);
                           const reader = new FileReader();
                           reader.onloadend = () => {
@@ -772,7 +807,8 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         <button
                           key={color}
                           type="button"
-                          onClick={() => setBrandColor(color)}
+                          disabled={isAdminPreview}
+                          onClick={() => { if (!isAdminPreview) setBrandColor(color); }}
                           className={cn(
                             "aspect-square rounded-2xl border-4 transition-all relative overflow-hidden active:scale-90",
                             brandColor === color ? "border-primary scale-110 shadow-xl" : "border-transparent hover:scale-105"
@@ -809,7 +845,10 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                     <button
                       type="submit"
                       disabled={isSaving || isUploadingBanner}
-                      className="h-16 px-12 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 flex items-center gap-3 disabled:opacity-50 active:scale-95"
+                      className={cn(
+                        isAdminPreview && "hidden",
+                        "h-16 px-12 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 flex items-center gap-3 disabled:opacity-50 active:scale-95"
+                      )}
                     >
                       {isUploadingBanner ? (lang === "ar" ? "جاري رفع الصورة..." : "Uploading banner...") : isSaving ? dict.studio_profile.syncing : dict.studio_profile.save_branding}
                       {isUploadingBanner ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
@@ -947,9 +986,13 @@ export function SettingsTab({ artisan, dict, lang = "en" }: SettingsTabProps) {
                         </Link>
                         <button
                           type="button"
-                          disabled={isAcceptingAgreement}
+                          disabled={isAcceptingAgreement || isAdminPreview}
+                          className={cn(
+                            isAdminPreview && "hidden",
+                            "w-full sm:w-auto px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-light transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                          )}
                           onClick={handleAcceptAgreement}
-                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-light transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+
                         >
                           {isAcceptingAgreement && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                           {lang === "ar" ? "أوافق على النسخة الحالية" : "Accept current version"}

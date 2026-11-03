@@ -1741,6 +1741,8 @@ export async function refreshArtisanBalanceAction(artisanId: string) {
     }
 
     const { clearedCount } = await clearEligibleArtisanEscrow(artisanId);
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     revalidatePath("/studio");
     return { success: true, clearedCount };
   } catch (error: any) {
@@ -1914,6 +1916,10 @@ export async function updateArtisanCommission(artisanId: string, rate: number) {
     });
 
     revalidatePath("/admin/users");
+    revalidatePath("/en/admin/users");
+    revalidatePath("/ar/admin/users");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     return { success: true };
   } catch (error: any) {
     console.error("Update commission error:", error);
@@ -3714,6 +3720,10 @@ export async function deleteUser(userId: string) {
     }
 
     revalidatePath("/admin/users");
+    revalidatePath("/en/admin/users");
+    revalidatePath("/ar/admin/users");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     return { success: true };
   } catch (error) {
     console.error("Delete user error:", error);
@@ -3740,6 +3750,10 @@ export async function updateArtisanStatus(artisanId: string, status: "PENDING" |
     }
 
     revalidatePath("/admin/users");
+    revalidatePath("/en/admin/users");
+    revalidatePath("/ar/admin/users");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     revalidatePath("/");
     revalidatePath("/artisans");
     revalidatePath("/categories");
@@ -3796,7 +3810,9 @@ export async function updateProductStatus(productId: string, status: "PENDING" |
     revalidatePath("/categories");
     revalidatePath("/artisans");
     revalidatePath("/admin/products");
-    revalidateCatalog();
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
+    revalidateCatalog(product.slug || undefined);
     return { success: true };
   } catch (error) {
     console.error("Update product status error:", error);
@@ -3811,13 +3827,16 @@ export async function toggleProductFeatured(productId: string, isFeatured: boole
       return { error: "Unauthorized: Admin privileges required" };
     }
 
-    await prisma.product.update({
+    const updated = await prisma.product.update({
       where: { id: productId },
-      data: { isFeatured }
+      data: { isFeatured },
+      select: { slug: true }
     });
     revalidatePath("/");
     revalidatePath("/admin/products");
-    revalidateCatalog();
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
+    revalidateCatalog(updated.slug || undefined);
     return { success: true };
   } catch (error) {
     console.error("Toggle featured error:", error);
@@ -3837,6 +3856,10 @@ export async function toggleArtisanVerification(artisanId: string, isVerified: b
       data: { isVerified }
     });
     revalidatePath("/admin/users");
+    revalidatePath("/en/admin/users");
+    revalidatePath("/ar/admin/users");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     return { success: true };
   } catch (error) {
     console.error("Toggle verification error:", error);
@@ -3879,6 +3902,10 @@ export async function updateUserRole(userId: string, role: "CLIENT" | "ARTISAN" 
     }
 
     revalidatePath("/admin/users");
+    revalidatePath("/en/admin/users");
+    revalidatePath("/ar/admin/users");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     revalidatePath("/studio");
     return { success: true };
   } catch (error) {

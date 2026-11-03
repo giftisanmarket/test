@@ -27,7 +27,8 @@ import {
   Download,
   RotateCw,
   Search,
-  RotateCcw
+  RotateCcw,
+  Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { requestPayoutAction, refreshArtisanBalanceAction } from "@/lib/actions";
@@ -35,12 +36,14 @@ import { MIN_PAYOUT_AMOUNT } from "@/lib/constants";
 import { toast } from "react-hot-toast";
 
 interface PaymentTabProps {
+  isAdminPreview?: boolean;
   artisan: any;
   lang: string;
   dict: any;
 }
 
 export function PaymentTab({
+  isAdminPreview = false,
   artisan,
   lang,
   dict,
@@ -260,6 +263,7 @@ export function PaymentTab({
 
   const handleRequestPayout = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdminPreview) return;
     const withdrawAmount = parseFloat(amount);
 
     if (isNaN(withdrawAmount) || withdrawAmount < MIN_PAYOUT_AMOUNT) {
@@ -339,6 +343,12 @@ export function PaymentTab({
             </button>
 
             <div className="flex flex-col items-center md:items-end gap-1.5 w-full sm:w-auto">
+              {isAdminPreview && (
+                <div className="px-4 h-12 rounded-2xl bg-primary/5 border border-primary/10 text-primary/70 font-bold text-xs flex items-center justify-center gap-2 w-full sm:w-auto">
+                  <Lock className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span>{isRTL ? "وضع المراجعة (للعرض فقط)" : "Auditor View (Read-Only)"}</span>
+                </div>
+              )}
               <motion.button
                 whileHover={canWithdraw ? { scale: 1.02 } : undefined}
                 whileTap={canWithdraw ? { scale: 0.98 } : undefined}
@@ -350,6 +360,7 @@ export function PaymentTab({
                 }}
                 className={cn(
                   "px-6 h-12 font-bold rounded-2xl flex items-center gap-2 transition-all text-xs md:text-sm w-full sm:w-auto justify-center",
+                  isAdminPreview && "hidden",
                   canWithdraw 
                     ? "bg-accent hover:bg-accent-dark text-white shadow-xl shadow-accent/20 cursor-pointer" 
                     : "bg-charcoal/10 text-charcoal/40 border border-primary/5 cursor-not-allowed shadow-none"
@@ -357,7 +368,7 @@ export function PaymentTab({
               >
                 <Send className="w-3.5 h-3.5 rotate-45" /> {isRTL ? "طلب سحب الأرباح" : "Request Withdrawal"}
               </motion.button>
-              {!canWithdraw && (
+              {!isAdminPreview && !canWithdraw && (
                 <span className="text-[10px] font-medium text-charcoal/40">
                   {balance.withdrawable <= 0
                     ? (isRTL ? `متاح عند وصول الرصيد إلى ${MIN_PAYOUT_AMOUNT} ج.م` : `Available when withdrawable balance reaches ${MIN_PAYOUT_AMOUNT} EGP`)
@@ -968,7 +979,7 @@ export function PaymentTab({
       {/* 2. Payout Request Modal Dialog */}
       {typeof document !== "undefined" && createPortal(
         <AnimatePresence>
-          {showWithdrawForm && (
+          {!isAdminPreview && showWithdrawForm && (
             <div className="fixed inset-0 z-[9999] overflow-y-auto flex items-center justify-center p-3 sm:p-4 md:p-6">
               {/* Backdrop */}
               <motion.div

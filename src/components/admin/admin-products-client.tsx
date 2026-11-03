@@ -23,6 +23,12 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductModerationActions } from "@/components/admin/product-moderation-actions";
 import { useFilterPersistence } from "@/lib/use-filter-persistence";
+import dynamic from "next/dynamic";
+
+const EditProductModal = dynamic(
+  () => import("@/components/edit-product-modal").then((mod) => mod.EditProductModal),
+  { ssr: false }
+);
 
 interface AdminProductsClientProps {
   initialProducts: any[];
@@ -41,6 +47,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [categorySearchQuery, setCategorySearchQuery] = useState("");
   const [products, setProducts] = useState(initialProducts);
+  const [selectedProductForReview, setSelectedProductForReview] = useState<any | null>(null);
 
   useEffect(() => {
     setProducts(initialProducts);
@@ -48,6 +55,19 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
 
   const handleProductDeleted = (deletedId: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== deletedId));
+    setSelectedProductForReview((prev: any) => (prev?.id === deletedId ? null : prev));
+  };
+
+  const handleProductModerated = (
+    productId: string,
+    updates: { status?: string; rejectionReason?: string | null; isFeatured?: boolean }
+  ) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === productId ? { ...p, ...updates } : p))
+    );
+    setSelectedProductForReview((prev: any) =>
+      prev && prev.id === productId ? { ...prev, ...updates } : prev
+    );
   };
 
   // Persist admin products filtering state across navigations
@@ -173,6 +193,19 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
 
   return (
     <div className="space-y-8 md:space-y-12" dir={isAr ? "rtl" : "ltr"}>
+      {selectedProductForReview && (
+        <EditProductModal
+          key={selectedProductForReview.id}
+          product={selectedProductForReview}
+          isOpen={Boolean(selectedProductForReview)}
+          onClose={() => setSelectedProductForReview(null)}
+          readOnly={true}
+          dict={dict}
+          lang={lang}
+          onProductModerated={handleProductModerated}
+        />
+      )}
+
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-primary/5 pb-8">
         <div>
@@ -371,7 +404,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                             "text-[10px] font-black px-1.5 py-0.5 rounded-full",
                             categoryFilter === "ALL" ? "bg-white/20 text-white" : "bg-primary/5 text-primary/50"
                           )}>
-                            {initialProducts.length}
+                            {products.length}
                           </span>
                         </div>
                         {categoryFilter === "ALL" && <Check className="w-3.5 h-3.5 text-accent-light shrink-0" />}
@@ -483,7 +516,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
               { key: "ALL", label: isAr ? "الكل" : "All", count: stats.total },
               { key: "PENDING", label: isAr ? "المراجعة" : "Pending", count: stats.pending },
               { key: "APPROVED", label: isAr ? "معتمد" : "Approved", count: stats.approved },
-              { key: "REJECTED", label: isAr ? "مرفوض" : "Rejected", count: initialProducts.filter(p => p.status === "REJECTED").length },
+              { key: "REJECTED", label: isAr ? "مرفوض" : "Rejected", count: products.filter(p => p.status === "REJECTED").length },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -657,7 +690,15 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
               >
                 {/* Header: Product Info & Image */}
                 <div className="flex items-start gap-3.5">
-                  <div className="relative w-16 h-16 rounded-xl overflow-hidden border border-primary/5 shadow-sm shrink-0 bg-cream">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedProductForReview(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") setSelectedProductForReview(p);
+                    }}
+                    className="relative w-16 h-16 rounded-xl overflow-hidden border border-primary/5 shadow-sm shrink-0 bg-cream cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent"
+                  >
                     <BespokeImage src={p.images[0]} alt={p.name} fill className="object-cover" />
                     {p.isFeatured && (
                       <div className="absolute top-1 start-1 w-5 h-5 rounded-full bg-accent text-white flex items-center justify-center shadow">
@@ -668,9 +709,13 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-bold text-primary text-sm line-clamp-1">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProductForReview(p)}
+                        className="font-bold text-primary hover:text-accent transition-colors text-sm line-clamp-1 text-start cursor-pointer"
+                      >
                         {p.name}
-                      </h3>
+                      </button>
                       <span className={cn(
                         "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border shrink-0",
                         p.status === "APPROVED" ? "bg-green-50 text-green-600 border-green-200" :
@@ -713,8 +758,8 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                 </div>
 
                 {/* Moderation Actions Strip */}
-                <div className="pt-2 border-t border-primary/5 flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold text-primary/40 uppercase tracking-wider">
+                <div className="pt-2 border-t border-primary/5 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold text-primary/40 uppercase tracking-wider truncate max-w-[130px]">
                     {p.category}
                   </span>
 
@@ -726,6 +771,9 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                     slug={p.slug}
                     dict={dict}
                     onDeleted={handleProductDeleted}
+                    rejectionReason={p.rejectionReason}
+                    onReview={() => setSelectedProductForReview(p)}
+                    onModerated={handleProductModerated}
                   />
                 </div>
               </div>
@@ -787,12 +835,26 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                     <tr key={p.id} className="hover:bg-cream/30 transition-colors group">
                       <td className="px-6 md:px-8 py-4 md:py-6">
                         <div className="flex items-center gap-4">
-                          <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border border-primary/5 shadow-sm shrink-0 bg-cream">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedProductForReview(p)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") setSelectedProductForReview(p);
+                            }}
+                            className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border border-primary/5 shadow-sm shrink-0 bg-cream cursor-pointer"
+                          >
                             <BespokeImage src={p.images[0]} alt={p.name} fill className="object-cover" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <p className="font-bold text-primary group-hover:text-accent transition-colors truncate max-w-[200px] text-sm md:text-base">{p.name}</p>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedProductForReview(p)}
+                                className="font-bold text-primary group-hover:text-accent transition-colors truncate max-w-[200px] text-sm md:text-base text-start cursor-pointer"
+                              >
+                                {p.name}
+                              </button>
                               {p.isFeatured && <Star className="w-3 h-3 text-accent fill-accent shrink-0" />}
                             </div>
                             <p className="text-[10px] md:text-xs text-accent font-bold">
@@ -857,6 +919,9 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                           slug={p.slug}
                           dict={dict}
                           onDeleted={handleProductDeleted}
+                    rejectionReason={p.rejectionReason}
+                    onReview={() => setSelectedProductForReview(p)}
+                    onModerated={handleProductModerated}
                         />
                       </td>
                     </tr>

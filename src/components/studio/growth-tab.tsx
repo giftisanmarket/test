@@ -41,7 +41,8 @@ import {
   Link2,
   LayoutGrid,
   Square,
-  Lightbulb
+  Lightbulb,
+  Lock
 } from "lucide-react";
 import { FaInstagram, FaFacebook, FaTiktok, FaPinterest } from "react-icons/fa6";
 import QRCode from "react-qr-code";
@@ -51,6 +52,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 interface GrowthTabProps {
+  isAdminPreview?: boolean;
   dict: any;
   coupons: any[];
   sales: any[];
@@ -59,7 +61,7 @@ interface GrowthTabProps {
   artisan?: any;
 }
 
-export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisanId, artisan }: GrowthTabProps) {
+export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisanId, artisan, isAdminPreview = false }: GrowthTabProps) {
   const router = useRouter();
   const isAr = lang === "ar";
   const currency = dict?.product?.currency || (isAr ? "ج.م" : "EGP");
@@ -104,6 +106,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
 
   const handleSaveSocials = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdminPreview) return;
     setIsSavingSocials(true);
     try {
       const response = await fetch("/api/artisan/socials", {
@@ -441,6 +444,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
 
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdminPreview) return;
     const cleanCode = newCoupon.code.trim().toUpperCase();
     if (!cleanCode) {
       toast.error(isAr ? "يرجى كتابة رمز القسيمة" : "Please enter a coupon code");
@@ -495,6 +499,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
   };
 
   const handleToggleStatus = async (couponId: string, currentActive: boolean) => {
+    if (isAdminPreview) return;
     setTogglingId(couponId);
     try {
       const res = await toggleCouponStatusAction(couponId, !currentActive);
@@ -516,6 +521,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
   };
 
   const handleDeleteCoupon = async (id: string, code: string) => {
+    if (isAdminPreview) return;
     setDeletingId(id);
     try {
       const res = await deleteArtisanCoupon(id);
@@ -967,6 +973,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                       <input
                         type="text"
                         value={instagram}
+                        disabled={isAdminPreview}
                         onChange={(e) => setInstagram(e.target.value)}
                         placeholder={isAr ? "مثال: craft_studio" : "e.g. craft_studio"}
                         className="w-full bg-white border border-primary/15 rounded-xl px-3.5 py-2.5 text-xs font-medium text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:border-primary transition shadow-2xs"
@@ -982,6 +989,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                       <input
                         type="text"
                         value={tiktok}
+                        disabled={isAdminPreview}
                         onChange={(e) => setTiktok(e.target.value)}
                         placeholder={isAr ? "مثال: @craft_studio" : "e.g. @craft_studio"}
                         className="w-full bg-white border border-primary/15 rounded-xl px-3.5 py-2.5 text-xs font-medium text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:border-primary transition shadow-2xs"
@@ -997,6 +1005,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                       <input
                         type="text"
                         value={facebook}
+                        disabled={isAdminPreview}
                         onChange={(e) => setFacebook(e.target.value)}
                         placeholder={isAr ? "مثال: craftstudio" : "e.g. craftstudio"}
                         className="w-full bg-white border border-primary/15 rounded-xl px-3.5 py-2.5 text-xs font-medium text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:border-primary transition shadow-2xs"
@@ -1012,6 +1021,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                       <input
                         type="text"
                         value={pinterest}
+                        disabled={isAdminPreview}
                         onChange={(e) => setPinterest(e.target.value)}
                         placeholder={isAr ? "مثال: craftstudio" : "e.g. craftstudio"}
                         className="w-full bg-white border border-primary/15 rounded-xl px-3.5 py-2.5 text-xs font-medium text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:border-primary transition shadow-2xs"
@@ -1020,10 +1030,19 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                   </div>
 
                   <div className="flex justify-end pt-1">
+                    {isAdminPreview && (
+                      <div className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/5 border border-primary/10 text-primary/70 text-xs font-bold">
+                        <Lock className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>{isAr ? "وضع المراجعة (للعرض فقط)" : "Auditor View (Read-Only)"}</span>
+                      </div>
+                    )}
                     <button
                       type="submit"
                       disabled={isSavingSocials}
-                      className="w-full sm:w-auto h-11 px-6 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-sm active:scale-95 cursor-pointer"
+                      className={cn(
+                        isAdminPreview && "hidden",
+                        "w-full sm:w-auto h-11 px-6 rounded-xl bg-primary hover:bg-primary-light text-white text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 shadow-sm active:scale-95 cursor-pointer"
+                      )}
                     >
                       {isSavingSocials ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -1165,7 +1184,13 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                   </p>
                 </div>
 
-                {!isCreating && (
+                {isAdminPreview && (
+                  <div className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary/5 border border-primary/10 text-primary/70 text-xs font-bold shrink-0">
+                    <Lock className="w-3.5 h-3.5 text-accent shrink-0" />
+                    <span>{isAr ? "وضع المراجعة (للعرض فقط)" : "Auditor View (Read-Only)"}</span>
+                  </div>
+                )}
+                {!isAdminPreview && !isCreating && (
                   <button
                     onClick={() => setIsCreating(true)}
                     className="w-full sm:w-auto h-11 sm:h-12 px-5 sm:px-6 bg-primary hover:bg-primary-light text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2.5 shadow-lg shadow-primary/10 active:scale-95 shrink-0 text-xs cursor-pointer"
@@ -1177,7 +1202,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
               </div>
         {/* Create Coupon Form */}
         <AnimatePresence>
-          {isCreating && (
+          {!isAdminPreview && isCreating && (
             <motion.div
               initial={{ opacity: 0, y: -20, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}
@@ -1711,7 +1736,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                   ? "ابدأ بتشجيع المشترين وزيادة مبيعاتك عبر توفير خصم ترحيبي أو عروض موسمية خاصة لمتجرك."
                   : "Boost conversion and turn shop visitors into repeat collectors by offering exclusive promo codes."}
               </p>
-              {!isCreating && (
+              {!isAdminPreview && !isCreating && (
                 <button
                   onClick={() => setIsCreating(true)}
                   className="h-11 sm:h-12 px-6 bg-primary hover:bg-primary-light text-white font-bold rounded-2xl transition-all inline-flex items-center gap-2 shadow-lg text-xs sm:text-sm active:scale-95 cursor-pointer"
@@ -1773,6 +1798,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                           disabled={isToggling || !!isExpired}
                           title={coupon.isActive ? (isAr ? "إيقاف مؤقت" : "Pause Coupon") : (isAr ? "تفعيل القسيمة" : "Activate Coupon")}
                           className={cn(
+                            isAdminPreview && "hidden",
                             "w-9 h-9 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-colors border cursor-pointer",
                             coupon.isActive 
                               ? "bg-cream/40 border-primary/10 text-charcoal/60 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-200" 
@@ -1793,7 +1819,10 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                           onClick={() => setCouponToDelete({ id: coupon.id, code: coupon.code })}
                           disabled={isDeleting}
                           title={isAr ? "حذف القسيمة" : "Delete Coupon"}
-                          className="w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-cream/40 border border-primary/10 text-charcoal/40 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors flex items-center justify-center active:scale-95 cursor-pointer"
+                          className={cn(
+                            isAdminPreview && "hidden",
+                            "w-9 h-9 sm:w-8 sm:h-8 rounded-xl bg-cream/40 border border-primary/10 text-charcoal/40 hover:text-red-600 hover:bg-red-50 hover:border-red-200 transition-colors flex items-center justify-center active:scale-95 cursor-pointer"
+                          )}
                         >
                           {isDeleting ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500" />

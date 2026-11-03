@@ -24,7 +24,7 @@ export function SalesChart({ sales, tickFormatter }: SalesChartProps) {
   const [chartHeight, setChartHeight] = useState(300);
 
   useEffect(() => {
-    const updateHeight = () => setChartHeight(window.innerWidth < 640 ? 200 : 300);
+    const updateHeight = () => setChartHeight(window.innerWidth < 640 ? 200 : window.innerWidth >= 1536 ? 340 : 300);
     updateHeight();
     window.addEventListener('resize', updateHeight);
     return () => window.removeEventListener('resize', updateHeight);
@@ -56,7 +56,7 @@ export function SalesChart({ sales, tickFormatter }: SalesChartProps) {
 
   if (!isMounted) {
     return (
-      <div style={{ height: chartHeight }} className="w-full mt-4 md:mt-8 rounded-2xl bg-cream/10 border border-primary/5 flex items-center justify-center animate-pulse">
+      <div style={{ height: chartHeight }} className="w-full min-w-0 mt-4 md:mt-6 rounded-2xl bg-cream/10 border border-primary/5 flex items-center justify-center animate-pulse">
         <div className="flex flex-col items-center gap-2">
           <div className="w-12 h-12 rounded-full border-4 border-primary/10 border-t-primary animate-spin" />
           <span className="text-xs font-bold text-primary/40">Loading Analytics...</span>
@@ -66,8 +66,8 @@ export function SalesChart({ sales, tickFormatter }: SalesChartProps) {
   }
 
   return (
-    <div style={{ height: chartHeight }} className="w-full mt-4 md:mt-8">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+    <div style={{ height: chartHeight }} className="w-full min-w-0 mt-4 md:mt-6">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
         <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
           <defs>
             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">

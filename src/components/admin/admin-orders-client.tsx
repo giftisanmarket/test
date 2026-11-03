@@ -158,7 +158,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
 
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row gap-4 justify-between">
-            <div className="relative group flex-1 max-w-md">
+            <div className="relative group flex-1 max-w-md xl:max-w-lg">
               <div className="absolute inset-y-0 start-0 ps-5 flex items-center pointer-events-none">
                 <Search className="w-4 h-4 text-primary/20 group-focus-within:text-accent transition-colors" />
               </div>
@@ -450,8 +450,8 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                 <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs md:text-sm font-bold text-primary truncate max-w-[150px]">{order.user?.name || "Anonymous"}</p>
-                                <p className="text-[9px] md:text-[10px] text-charcoal/40 font-medium truncate max-w-[150px]">{order.user?.email || order.clientEmail || "N/A"}</p>
+                                <p className="text-xs md:text-sm font-bold text-primary truncate max-w-[150px] xl:max-w-[240px] 2xl:max-w-[320px]">{order.user?.name || "Anonymous"}</p>
+                                <p className="text-[9px] md:text-[10px] text-charcoal/40 font-medium truncate max-w-[150px] xl:max-w-[240px] 2xl:max-w-[320px]">{order.user?.email || order.clientEmail || "N/A"}</p>
                               </div>
                             </div>
                           </td>

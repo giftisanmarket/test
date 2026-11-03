@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { useSession } from "next-auth/react";
 import { getUnreadMessageCount } from "@/lib/actions";
 import { toast } from "react-hot-toast";
-import { MessageSquare, Mail, Bell } from "lucide-react";
+import { Mail, Bell } from "lucide-react";
 
 interface NotificationContextType {
   unreadCount: number;
@@ -14,6 +14,8 @@ interface NotificationContextType {
   openChat: (partnerUserId?: string) => void;
   closeChat: () => void;
   toggleChat: () => void;
+  studioActiveTab: string;
+  setStudioActiveTab: (tab: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -25,6 +27,8 @@ const NotificationContext = createContext<NotificationContextType>({
   openChat: () => { },
   closeChat: () => { },
   toggleChat: () => { },
+  studioActiveTab: "overview",
+  setStudioActiveTab: () => { },
 });
 
 export function NotificationProvider({ children, lang = "en" }: { children: React.ReactNode; lang?: string }) {
@@ -32,6 +36,7 @@ export function NotificationProvider({ children, lang = "en" }: { children: Reac
   const [unreadCount, setUnreadCount] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChatPartnerId, setActiveChatPartnerId] = useState<string | null>(null);
+  const [studioActiveTab, setStudioActiveTab] = useState<string>("overview");
   const lastCountRef = useRef(0);
   const isFirstFetch = useRef(true);
 
@@ -107,6 +112,8 @@ export function NotificationProvider({ children, lang = "en" }: { children: Reac
         openChat,
         closeChat,
         toggleChat,
+        studioActiveTab,
+        setStudioActiveTab,
       }}
     >
       {children}
@@ -115,4 +122,3 @@ export function NotificationProvider({ children, lang = "en" }: { children: Reac
 }
 
 export const useNotifications = () => useContext(NotificationContext);
-

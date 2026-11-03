@@ -290,10 +290,10 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
 
   return (
     <div className="space-y-12">
-      <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-8 lg:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 md:mb-16 gap-6 md:gap-12">
+      <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] p-5 md:p-8 lg:p-10 xl:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-6 md:gap-10">
           <div className="space-y-2 text-center md:text-start w-full md:w-auto">
-            <h2 className="text-3xl md:text-5xl lg:text-6xl font-heading font-bold text-primary leading-tight">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-primary leading-tight">
               {dict.studio_profile.studio_title_base} <span className="serif italic font-normal text-accent">{dict.studio_profile.studio_title_accent}</span>
             </h2>
             <p className="text-sm md:text-base text-charcoal/40 font-medium">{dict.studio_profile.branding_desc}</p>
@@ -311,9 +311,9 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
           </div>
         )}
 
-        <div className="grid lg:grid-cols-[280px_1fr] xl:grid-cols-[300px_1fr] gap-6 lg:gap-8 xl:gap-12">
+        <div className="grid lg:grid-cols-[260px_1fr] xl:grid-cols-[280px_1fr] 2xl:grid-cols-[300px_1fr] gap-6 lg:gap-8 xl:gap-12 items-start">
           {/* Sub Navigation */}
-          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-3 lg:pb-0 scrollbar-hide -mx-1 px-1">
+          <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-3 lg:pb-0 scrollbar-hide -mx-1 px-1 lg:sticky lg:top-28">
             {navItems.map((item) => (
               <button
                 key={item.id}
@@ -331,7 +331,7 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
             ))}
           </div>
 
-          <div className="min-h-[500px]">
+          <div className="min-h-[500px] min-w-0">
             <AnimatePresence mode="wait">
               {activeSettingsTab === "profile" ? (
                 <motion.form
@@ -593,8 +593,8 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
                       </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-2 md:col-span-2">
+                    <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5 md:gap-6">
+                      <div className="space-y-2 md:col-span-2 xl:col-span-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-primary/40 ms-4">
                           {lang === "ar" ? "اسم الشارع والرقم" : "Street Address & Number"}
                         </label>
@@ -695,7 +695,7 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
                       <h3 className="text-xl font-heading font-bold text-primary">{dict.studio_profile.studio_banner}</h3>
                       <p className="text-[10px] font-black uppercase tracking-widest text-primary/20">{dict.studio_profile.banner_recommended}</p>
                     </div>
-                    <div className="relative w-full h-48 md:h-64 rounded-[2.5rem] bg-cream/20 border-2 border-dashed border-primary/10 overflow-hidden group">
+                    <div className="relative w-full h-48 md:h-64 xl:h-72 2xl:h-80 rounded-[2.5rem] bg-cream/20 border-2 border-dashed border-primary/10 overflow-hidden group">
                       {bannerImage ? (
                         <>
                           <Image src={bannerImage} alt="Banner" fill className="object-cover" />
@@ -802,7 +802,7 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
                   {/* Brand Color */}
                   <div className="space-y-6">
                     <h3 className="text-xl font-heading font-bold text-primary">{dict.studio_profile.signature_palette}</h3>
-                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-4">
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 sm:gap-4 max-w-2xl">
                       {["#da7b5a", "#1a4332", "#4a90e2", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#1a1a1a"].map((color) => (
                         <button
                           key={color}
@@ -831,7 +831,7 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
                       <Sparkles className="w-5 h-5 text-accent" />
                       <h4 className="font-bold text-primary">{dict.studio_profile.preview_theme}</h4>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 max-w-3xl">
                       <div className="w-full h-14 md:h-16 rounded-xl md:rounded-2xl flex items-center justify-center text-[10px] md:text-xs font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all duration-500" style={{ backgroundColor: brandColor }}>
                         {dict.studio_profile.button || "Primary Button"}
                       </div>
@@ -1007,7 +1007,7 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
                       {lang === "ar" ? "حقوقك وضماناتك الأساسية كصانع في جيفتيزان:" : "Core Protections Guaranteed Under These Terms:"}
                     </h4>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4">
                       <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white border border-primary/10 flex items-start gap-3">
                         <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                         <div className="space-y-0.5 text-xs">

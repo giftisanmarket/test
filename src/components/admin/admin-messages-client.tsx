@@ -222,10 +222,10 @@ export function AdminMessagesClient({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-cream/30">
+    <div className="flex flex-col space-y-6 lg:h-[calc(100vh-4.5rem)] min-w-0">
       {/* Top Admin Header */}
-      <div className="p-4 md:p-8 border-b border-primary/10 bg-white shadow-2xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-primary/10 bg-white shadow-sm shrink-0">
+        <div className="w-full flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="p-2 rounded-xl bg-accent/10 text-accent">
@@ -273,11 +273,11 @@ export function AdminMessagesClient({
       </div>
 
       {/* Main Content: Split Master-Detail Layout */}
-      <div className="flex-1 flex max-w-7xl mx-auto w-full p-4 md:p-8 gap-6 overflow-hidden">
+      <div className="flex-1 flex w-full gap-4 lg:gap-6 min-h-[560px] lg:min-h-0 overflow-hidden">
         
         {/* Left Column: Thread List */}
         <div className={cn(
-          "w-full md:w-[380px] lg:w-[420px] bg-white rounded-3xl border border-primary/10 shadow-xl flex flex-col shrink-0 overflow-hidden",
+          "w-full md:w-[340px] lg:w-[380px] xl:w-[420px] 2xl:w-[460px] bg-white rounded-3xl border border-primary/10 shadow-xl flex flex-col shrink-0 overflow-hidden",
           selectedThreadKey ? "hidden md:flex" : "flex"
         )}>
           {/* Thread Search & Filters */}

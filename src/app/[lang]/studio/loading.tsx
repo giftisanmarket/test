@@ -26,7 +26,7 @@ export default function StudioLoading() {
     <div className="pb-32 overflow-x-hidden">
       {/* Premium Header Skeleton */}
       <div className="bg-white border-b border-primary/5 pt-6 pb-10 md:pt-8 md:pb-14">
-        <div className="max-w-[1400px] mx-auto px-4 md:px-12">
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 md:gap-10">
             <div className="space-y-4 md:space-y-6">
               <div className="flex items-center gap-3">
@@ -49,7 +49,7 @@ export default function StudioLoading() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="max-w-[1400px] mx-auto px-4 md:px-12 py-8 md:py-20"
+        className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-8 md:py-14"
       >
         <div className="space-y-8 md:space-y-12">
           {/* Stats Grid - Responsive Columns */}

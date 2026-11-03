@@ -579,7 +579,7 @@ export function OutreachClient({
 
   return (
     <>
-      <div className="max-w-4xl mx-auto" dir={isAr ? "rtl" : "ltr"}>
+      <div className="w-full" dir={isAr ? "rtl" : "ltr"}>
         <div className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-primary/5 shadow-2xl shadow-primary/5 overflow-hidden">
 
           {/* Header */}

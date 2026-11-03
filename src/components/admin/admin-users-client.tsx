@@ -14,11 +14,9 @@ import {
   UserCheck, 
   Clock, 
   ArrowUpDown,
-  Filter,
-  CheckCircle2,
-  AlertCircle,
   ChevronDown,
-  Check
+  Check,
+  RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VerifyArtisanButton } from "@/components/admin/verify-artisan-button";
@@ -48,7 +46,19 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
     if (filterParam && ["PENDING", "APPROVED", "REJECTED", "NO_STUDIO"].includes(filterParam.toUpperCase())) {
       setStudioStatusFilter(filterParam.toUpperCase());
     }
+    const roleParam = params.get("role");
+    if (roleParam && ["ALL", "ARTISAN", "CLIENT", "ADMIN"].includes(roleParam.toUpperCase())) {
+      setRoleFilter(roleParam.toUpperCase());
+    }
   }, []);
+
+  const hasActiveFilters = roleFilter !== "ALL" || studioStatusFilter !== "ALL" || searchQuery.trim().length > 0;
+
+  const resetAllFilters = () => {
+    setSearchQuery("");
+    setRoleFilter("ALL");
+    setStudioStatusFilter("ALL");
+  };
 
   const sortOptions = [
     { key: "NEWEST", label: isAr ? "الأحدث انضماماً" : "Newest Members" },
@@ -65,9 +75,12 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
   const stats = useMemo(() => {
     const total = initialUsers.length;
     const artisans = initialUsers.filter(u => u.role === "ARTISAN" || u.artisanProfile).length;
-    const clients = initialUsers.filter(u => u.role === "CLIENT" || u.role === "USER" || !u.artisanProfile).length;
+    const clients = initialUsers.filter(u => u.role === "CLIENT" || u.role === "USER" || (!u.artisanProfile && u.role !== "ADMIN")).length;
+    const admins = initialUsers.filter(u => u.role === "ADMIN").length;
     const pendingApprovals = initialUsers.filter(u => u.artisanProfile?.status === "PENDING").length;
-    return { total, artisans, clients, pendingApprovals };
+    const approvedShops = initialUsers.filter(u => u.artisanProfile?.status === "APPROVED").length;
+    const rejectedShops = initialUsers.filter(u => u.artisanProfile?.status === "REJECTED").length;
+    return { total, artisans, clients, admins, pendingApprovals, approvedShops, rejectedShops };
   }, [initialUsers]);
 
   // Filtered and Sorted Users
@@ -88,7 +101,14 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
       // 2. Role Filter
       if (roleFilter !== "ALL") {
         if (roleFilter === "ARTISAN" && user.role !== "ARTISAN" && !user.artisanProfile) return false;
-        if (roleFilter === "CLIENT" && user.role !== "CLIENT" && user.role !== "USER") return false;
+        if (
+          roleFilter === "CLIENT" &&
+          user.role !== "CLIENT" &&
+          user.role !== "USER" &&
+          (Boolean(user.artisanProfile) || user.role === "ADMIN")
+        ) {
+          return false;
+        }
         if (roleFilter === "ADMIN" && user.role !== "ADMIN") return false;
       }
 
@@ -125,9 +145,9 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
   }, [initialUsers, searchQuery, roleFilter, studioStatusFilter, sortBy]);
 
   return (
-    <div className="space-y-8 md:space-y-12" dir={isAr ? "rtl" : "ltr"}>
+    <div className="space-y-6 sm:space-y-8 md:space-y-12" dir={isAr ? "rtl" : "ltr"}>
       {/* Header Banner */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 border-b border-primary/5 pb-8">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 border-b border-primary/5 pb-6 sm:pb-8">
         <div>
           <h1 className="text-4xl md:text-5xl font-heading font-black text-primary tracking-tighter mb-2">
             {dict.admin?.artisans_title || "Artisans"} & <span className="serif italic text-accent font-normal">{dict.admin?.users_accent || "Users"}</span>
@@ -142,189 +162,324 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <div className="bg-white p-5 rounded-2xl md:rounded-3xl border border-primary/5 shadow-lg shadow-primary/5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
-            <Users className="w-6 h-6" />
+      {/* Summary KPI Cards (Tap to Quick-Filter) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+        <button
+          type="button"
+          onClick={resetAllFilters}
+          className={cn(
+            "bg-white p-4 sm:p-5 rounded-2xl md:rounded-3xl border shadow-lg shadow-primary/5 flex items-center gap-3 sm:gap-4 text-start transition-all cursor-pointer active:scale-[0.98]",
+            roleFilter === "ALL" && studioStatusFilter === "ALL"
+              ? "border-primary/25 ring-2 ring-primary/10"
+              : "border-primary/5 hover:border-primary/20"
+          )}
+        >
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
+            <Users className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-primary/40 mb-0.5">
+          <div className="min-w-0">
+            <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-primary/40 mb-0.5 truncate">
               {dict.admin?.total_members || (isAr ? "إجمالي الأعضاء" : "Total Members")}
             </p>
-            <p className="text-2xl font-black text-primary leading-none">{stats.total}</p>
+            <p className="text-xl sm:text-2xl font-black text-primary leading-none">{stats.total}</p>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white p-5 rounded-2xl md:rounded-3xl border border-primary/5 shadow-lg shadow-primary/5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
-            <Store className="w-6 h-6" />
+        <button
+          type="button"
+          onClick={() => {
+            setRoleFilter(roleFilter === "ARTISAN" ? "ALL" : "ARTISAN");
+            setStudioStatusFilter("ALL");
+          }}
+          className={cn(
+            "bg-white p-4 sm:p-5 rounded-2xl md:rounded-3xl border shadow-lg shadow-primary/5 flex items-center gap-3 sm:gap-4 text-start transition-all cursor-pointer active:scale-[0.98]",
+            roleFilter === "ARTISAN" && studioStatusFilter === "ALL"
+              ? "border-accent/40 ring-2 ring-accent/15"
+              : "border-primary/5 hover:border-accent/30"
+          )}
+        >
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
+            <Store className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-primary/40 mb-0.5">
+          <div className="min-w-0">
+            <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-primary/40 mb-0.5 truncate">
               {isAr ? "الحرفيين" : "Artisans"}
             </p>
-            <p className="text-2xl font-black text-accent leading-none">{stats.artisans}</p>
+            <p className="text-xl sm:text-2xl font-black text-accent leading-none">{stats.artisans}</p>
           </div>
-        </div>
+        </button>
 
-        <div className="bg-white p-5 rounded-2xl md:rounded-3xl border border-primary/5 shadow-lg shadow-primary/5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-            <UserCheck className="w-6 h-6" />
+        <button
+          type="button"
+          onClick={() => {
+            setRoleFilter(roleFilter === "CLIENT" ? "ALL" : "CLIENT");
+            setStudioStatusFilter("ALL");
+          }}
+          className={cn(
+            "bg-white p-4 sm:p-5 rounded-2xl md:rounded-3xl border shadow-lg shadow-primary/5 flex items-center gap-3 sm:gap-4 text-start transition-all cursor-pointer active:scale-[0.98]",
+            roleFilter === "CLIENT"
+              ? "border-blue-500/40 ring-2 ring-blue-500/15"
+              : "border-primary/5 hover:border-blue-500/25"
+          )}
+        >
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <UserCheck className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider text-primary/40 mb-0.5">
+          <div className="min-w-0">
+            <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider text-primary/40 mb-0.5 truncate">
               {isAr ? "العملاء" : "Clients"}
             </p>
-            <p className="text-2xl font-black text-blue-600 leading-none">{stats.clients}</p>
+            <p className="text-xl sm:text-2xl font-black text-blue-600 leading-none">{stats.clients}</p>
           </div>
-        </div>
+        </button>
 
-        <div className={cn(
-          "p-5 rounded-2xl md:rounded-3xl border shadow-lg flex items-center gap-4 transition-all",
-          stats.pendingApprovals > 0 
-            ? "bg-amber-500/10 border-amber-500/30 text-amber-900 shadow-amber-500/5 animate-pulse" 
-            : "bg-white border-primary/5 text-primary shadow-primary/5"
-        )}>
+        <button
+          type="button"
+          onClick={() => {
+            setRoleFilter("ALL");
+            setStudioStatusFilter(studioStatusFilter === "PENDING" ? "ALL" : "PENDING");
+          }}
+          className={cn(
+            "p-4 sm:p-5 rounded-2xl md:rounded-3xl border shadow-lg flex items-center gap-3 sm:gap-4 text-start transition-all cursor-pointer active:scale-[0.98]",
+            studioStatusFilter === "PENDING"
+              ? "bg-amber-500/15 border-amber-500 text-amber-900 ring-2 ring-amber-500/20 shadow-amber-500/10"
+              : stats.pendingApprovals > 0 
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-900 shadow-amber-500/5" 
+                : "bg-white border-primary/5 text-primary shadow-primary/5"
+          )}
+        >
           <div className={cn(
-            "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
+            "w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0",
             stats.pendingApprovals > 0 ? "bg-amber-500 text-white" : "bg-primary/5 text-primary/40"
           )}>
-            <Clock className="w-6 h-6" />
+            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-wider opacity-60 mb-0.5">
+          <div className="min-w-0">
+            <p className="text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider opacity-60 mb-0.5 leading-tight">
               {isAr ? "بانتظار الموافقة" : "Pending Approval"}
             </p>
-            <p className="text-2xl font-black leading-none">{stats.pendingApprovals}</p>
+            <p className="text-xl sm:text-2xl font-black leading-none">{stats.pendingApprovals}</p>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Control Bar: Search & Filters & Sorting */}
-      <div className="bg-white p-5 md:p-6 rounded-3xl border border-primary/5 shadow-xl shadow-primary/5 space-y-5">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+      <div className="bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl sm:rounded-3xl border border-primary/5 shadow-xl shadow-primary/5 space-y-3.5 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
           {/* Search Input */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute start-4 top-1/2 -translate-y-1/2 text-primary/30" />
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 absolute start-4 top-1/2 -translate-y-1/2 text-primary/30 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={isAr ? "ابحث باسم المستخدم، البريد، اسم المتجر، أو الهاتف..." : "Search by name, email, shop name, or phone..."}
-              className="w-full h-12 ps-11 pe-10 bg-cream/30 border border-primary/5 rounded-2xl text-xs font-bold text-primary placeholder:text-primary/30 focus:outline-none focus:border-accent focus:bg-white transition-all shadow-inner"
+              placeholder={isAr ? "ابحث باسم المستخدم، البريد، المتجر، أو الهاتف..." : "Search by name, email, shop name, or phone..."}
+              className="w-full h-11 sm:h-12 ps-11 pe-10 bg-cream/30 border border-primary/5 rounded-xl sm:rounded-2xl text-xs font-bold text-primary placeholder:text-primary/30 focus:outline-none focus:border-accent focus:bg-white transition-all shadow-inner"
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute end-3 top-1/2 -translate-y-1/2 p-1 text-primary/30 hover:text-primary transition-colors"
+                className="absolute end-3 top-1/2 -translate-y-1/2 p-1 text-primary/30 hover:text-primary transition-colors cursor-pointer"
+                aria-label={isAr ? "مسح البحث" : "Clear search"}
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* Custom Sort By Dropdown */}
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsSortOpen(!isSortOpen)}
-              className="h-12 px-5 bg-white border border-primary/10 hover:border-accent text-primary rounded-2xl flex items-center justify-between gap-3 font-bold text-xs shadow-sm hover:shadow transition-all cursor-pointer select-none"
-            >
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="w-3.5 h-3.5 text-accent" />
-                <span>{activeSortOption.label}</span>
-              </div>
-              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200 text-primary/40", isSortOpen && "rotate-180")} />
-            </button>
-
-            {isSortOpen && (
-              <>
-                <div 
-                  className="fixed inset-0 z-30" 
-                  onClick={() => setIsSortOpen(false)}
-                />
-                <div className="absolute top-full end-0 mt-2 w-56 bg-white rounded-2xl border border-primary/10 shadow-2xl z-40 overflow-hidden py-1.5 px-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  {sortOptions.map((option) => {
-                    const isSelected = sortBy === option.key;
-                    return (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => {
-                          setSortBy(option.key);
-                          setIsSortOpen(false);
-                        }}
-                        className={cn(
-                          "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-start",
-                          isSelected
-                            ? "bg-primary text-white shadow-md font-black"
-                            : "text-charcoal/70 hover:bg-primary/5 hover:text-primary"
-                        )}
-                      >
-                        <span>{option.label}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-accent-light shrink-0" />}
-                      </button>
-                    );
-                  })}
+          {/* Sort Dropdown & Quick Reset */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative flex-1 sm:flex-initial">
+              <button
+                type="button"
+                onClick={() => setIsSortOpen(!isSortOpen)}
+                className="w-full sm:w-auto h-11 sm:h-12 px-4 sm:px-5 bg-white border border-primary/10 hover:border-accent text-primary rounded-xl sm:rounded-2xl flex items-center justify-between gap-3 font-bold text-xs shadow-sm hover:shadow transition-all cursor-pointer select-none"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span className="truncate">{activeSortOption.label}</span>
                 </div>
-              </>
+                <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200 text-primary/40 shrink-0", isSortOpen && "rotate-180")} />
+              </button>
+
+              {isSortOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-30" 
+                    onClick={() => setIsSortOpen(false)}
+                  />
+                  <div className="absolute top-full start-0 sm:start-auto sm:end-0 mt-2 w-full sm:w-56 bg-white rounded-2xl border border-primary/10 shadow-2xl z-40 overflow-hidden py-1.5 px-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {sortOptions.map((option) => {
+                      const isSelected = sortBy === option.key;
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => {
+                            setSortBy(option.key);
+                            setIsSortOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-start",
+                            isSelected
+                              ? "bg-primary text-white shadow-md font-black"
+                              : "text-charcoal/70 hover:bg-primary/5 hover:text-primary"
+                          )}
+                        >
+                          <span>{option.label}</span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-accent-light shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="h-11 sm:h-12 px-3.5 bg-primary/5 hover:bg-primary/10 text-primary rounded-xl sm:rounded-2xl flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-wider transition-all shrink-0 cursor-pointer border border-primary/10 active:scale-95"
+                title={isAr ? "إعادة ضبط التصفية" : "Reset Filters"}
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-accent shrink-0" />
+                <span>{isAr ? "إعادة ضبط" : "Reset"}</span>
+              </button>
             )}
           </div>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-3 border-t border-primary/5">
-          {/* Role Filter */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-black uppercase tracking-wider text-primary/40 me-1">
-              {isAr ? "الرتبة:" : "Role:"}
-            </span>
-            {[
-              { key: "ALL", label: isAr ? "الكل" : "All Roles" },
-              { key: "ARTISAN", label: isAr ? "حرفيين" : "Artisans" },
-              { key: "CLIENT", label: isAr ? "عملاء" : "Clients" },
-              { key: "ADMIN", label: isAr ? "مدراء" : "Admins" },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setRoleFilter(tab.key)}
-                className={cn(
-                  "px-3.5 h-8 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border",
-                  roleFilter === tab.key
-                    ? "bg-primary text-white border-primary shadow-md"
-                    : "bg-white text-primary/40 border-primary/5 hover:border-primary/20"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {/* Responsive Role & Shop Status Filters */}
+        <div className="flex flex-col 2xl:flex-row 2xl:items-center 2xl:justify-between gap-3 sm:gap-3.5 pt-3 border-t border-primary/5">
+          {/* Role Filter: 4-Col Segmented Control on Mobile (<sm), Pill Row on Tablet/Desktop (sm+) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="flex items-center justify-between sm:justify-start px-0.5 sm:px-0 shrink-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-primary/45 sm:me-1 flex items-center gap-1.5">
+                <Users className="w-3 h-3 text-primary/35 sm:hidden" />
+                <span>{isAr ? "الرتبة" : "Role"}<span className="hidden sm:inline">:</span></span>
+              </span>
+              {roleFilter !== "ALL" && (
+                <button
+                  type="button"
+                  onClick={() => setRoleFilter("ALL")}
+                  className="sm:hidden text-[9px] font-black uppercase tracking-wider text-accent hover:underline cursor-pointer"
+                >
+                  {isAr ? "عرض الكل" : "All"}
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 sm:gap-1.5 p-1 sm:p-0 bg-cream/60 sm:bg-transparent rounded-xl sm:rounded-none border border-primary/5 sm:border-0 overflow-x-auto no-scrollbar">
+              {[
+                { key: "ALL", mobileLabel: isAr ? "الكل" : "All", desktopLabel: isAr ? "الكل" : "All Roles", count: stats.total },
+                { key: "ARTISAN", mobileLabel: isAr ? "حرفيين" : "Artisans", desktopLabel: isAr ? "حرفيين" : "Artisans", count: stats.artisans },
+                { key: "CLIENT", mobileLabel: isAr ? "عملاء" : "Clients", desktopLabel: isAr ? "عملاء" : "Clients", count: stats.clients },
+                { key: "ADMIN", mobileLabel: isAr ? "مدراء" : "Admins", desktopLabel: isAr ? "مدراء" : "Admins", count: stats.admins },
+              ].map((tab) => {
+                const isActive = roleFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setRoleFilter(tab.key)}
+                    className={cn(
+                      "h-8 min-w-0 sm:min-w-fit px-1 min-[375px]:px-1.5 sm:px-3.5 rounded-lg sm:rounded-full text-[9.5px] min-[380px]:text-[10px] font-black uppercase tracking-tight sm:tracking-wider transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer select-none sm:border active:scale-[0.98]",
+                      isActive
+                        ? "bg-primary text-white shadow-sm sm:shadow-md sm:border-primary"
+                        : "bg-transparent sm:bg-white text-primary/55 sm:text-primary/45 sm:border-primary/5 hover:text-primary sm:hover:border-primary/20"
+                    )}
+                  >
+                    <span className="sm:hidden truncate">{tab.mobileLabel}</span>
+                    <span className="hidden sm:inline">{tab.desktopLabel}</span>
+                    <span className={cn(
+                      "hidden sm:inline-flex items-center justify-center text-[9px] px-1.5 py-0.5 rounded-full leading-none",
+                      isActive ? "bg-white/20 text-white" : "bg-primary/5 text-primary/40"
+                    )}>
+                      {tab.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Shop Status Filter */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-black uppercase tracking-wider text-primary/40 me-1">
-              {dict.admin?.studio_status ? `${dict.admin.studio_status}:` : (isAr ? "حالة المتجر:" : "Shop Status:")}
-            </span>
-            {[
-              { key: "ALL", label: isAr ? "الكل" : "All" },
-              { key: "PENDING", label: isAr ? "بانتظار الموافقة" : "Pending Approval" },
-              { key: "APPROVED", label: isAr ? "معتمد" : "Approved" },
-              { key: "REJECTED", label: isAr ? "مرفوض" : "Rejected" },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setStudioStatusFilter(tab.key)}
-                className={cn(
-                  "px-3.5 h-8 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border",
-                  studioStatusFilter === tab.key
-                    ? "bg-accent text-white border-accent shadow-md"
-                    : "bg-white text-primary/40 border-primary/5 hover:border-primary/20"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Shop Status Filter: 4-Col Segmented Control on Mobile (<sm), Pill Row on Tablet/Desktop (sm+) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="flex items-center justify-between sm:justify-start px-0.5 sm:px-0 shrink-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-primary/45 sm:me-1 flex items-center gap-1.5">
+                <Store className="w-3 h-3 text-accent/70 sm:hidden" />
+                <span>
+                  {dict.admin?.studio_status || (isAr ? "حالة المتجر" : "Shop Status")}
+                  <span className="hidden sm:inline">:</span>
+                </span>
+              </span>
+              {studioStatusFilter !== "ALL" && (
+                <button
+                  type="button"
+                  onClick={() => setStudioStatusFilter("ALL")}
+                  className="sm:hidden text-[9px] font-black uppercase tracking-wider text-accent hover:underline cursor-pointer"
+                >
+                  {isAr ? "عرض الكل" : "All"}
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-4 sm:flex sm:items-center gap-1 sm:gap-1.5 p-1 sm:p-0 bg-cream/60 sm:bg-transparent rounded-xl sm:rounded-none border border-primary/5 sm:border-0 overflow-x-auto no-scrollbar">
+              {[
+                { key: "ALL", mobileLabel: isAr ? "الكل" : "All", desktopLabel: isAr ? "الكل" : "All", count: undefined, highlightPending: false },
+                { key: "PENDING", mobileLabel: isAr ? "معلق" : "Pending", desktopLabel: isAr ? "بانتظار الموافقة" : "Pending Approval", count: stats.pendingApprovals, highlightPending: stats.pendingApprovals > 0 },
+                { key: "APPROVED", mobileLabel: isAr ? "معتمد" : "Approved", desktopLabel: isAr ? "معتمد" : "Approved", count: stats.approvedShops, highlightPending: false },
+                { key: "REJECTED", mobileLabel: isAr ? "مرفوض" : "Rejected", desktopLabel: isAr ? "مرفوض" : "Rejected", count: stats.rejectedShops, highlightPending: false },
+              ].map((tab) => {
+                const isActive = studioStatusFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setStudioStatusFilter(tab.key)}
+                    className={cn(
+                      "h-8 min-w-0 sm:min-w-fit px-1 min-[375px]:px-1.5 sm:px-3.5 rounded-lg sm:rounded-full text-[9.5px] min-[380px]:text-[10px] font-black uppercase tracking-tight sm:tracking-wider transition-all flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap shrink-0 cursor-pointer select-none sm:border active:scale-[0.98]",
+                      isActive
+                        ? "bg-accent text-white shadow-sm sm:shadow-md sm:border-accent"
+                        : tab.highlightPending
+                          ? "bg-amber-500/12 sm:bg-amber-50 text-amber-800 sm:border-amber-500/25 hover:bg-amber-500/20"
+                          : "bg-transparent sm:bg-white text-primary/55 sm:text-primary/45 sm:border-primary/5 hover:text-primary sm:hover:border-primary/20"
+                    )}
+                  >
+                    <span className="sm:hidden truncate">{tab.mobileLabel}</span>
+                    <span className="hidden sm:inline">{tab.desktopLabel}</span>
+                    {tab.key === "PENDING" && stats.pendingApprovals > 0 && (
+                      <>
+                        <span className={cn(
+                          "w-1.5 h-1.5 rounded-full min-[375px]:hidden sm:hidden shrink-0",
+                          isActive ? "bg-white" : "bg-amber-500"
+                        )} />
+                        <span className={cn(
+                          "hidden min-[375px]:inline-flex sm:hidden items-center justify-center min-w-[15px] h-[15px] px-1 rounded-full text-[8.5px] font-black leading-none shrink-0",
+                          isActive ? "bg-white/25 text-white" : "bg-amber-500 text-white"
+                        )}>
+                          {stats.pendingApprovals}
+                        </span>
+                      </>
+                    )}
+                    {tab.count !== undefined && (
+                      <span className={cn(
+                        "hidden sm:inline-flex items-center justify-center text-[9px] px-1.5 py-0.5 rounded-full leading-none",
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : tab.highlightPending
+                            ? "bg-amber-500 text-white"
+                            : "bg-primary/5 text-primary/40"
+                      )}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -338,12 +493,9 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
               {isAr ? "لم يتم العثور على أي مستخدمين يطابقون تصفيتك." : "No users matched your search or filters."}
             </p>
             <button
-              onClick={() => {
-                setSearchQuery("");
-                setRoleFilter("ALL");
-                setStudioStatusFilter("ALL");
-              }}
-              className="px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary font-bold rounded-xl text-xs uppercase tracking-wider"
+              type="button"
+              onClick={resetAllFilters}
+              className="px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary font-bold rounded-xl text-xs uppercase tracking-wider cursor-pointer"
             >
               {isAr ? "إعادة ضبط التصفية" : "Reset Filters"}
             </button>
@@ -404,7 +556,7 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
                     </div>
 
                     <Link 
-                      href={`/studio?artisanUserId=${user.id}`}
+                      href={`/${lang}/studio?artisanUserId=${user.id}`}
                       className="h-7 px-2.5 bg-primary text-white rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center justify-center hover:bg-primary-light transition-all active:scale-95 shrink-0"
                     >
                       {dict.admin?.preview_studio || "Preview"}
@@ -467,7 +619,7 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
       {/* Main Users Table (Desktop >= lg) */}
       <div className="hidden lg:block bg-white rounded-[1.5rem] md:rounded-[3rem] border border-primary/5 shadow-2xl shadow-primary/5 overflow-hidden">
         <div className="overflow-x-auto min-h-[280px]">
-          <table className="w-full text-start min-w-[960px]">
+          <table className="w-full text-start min-w-[960px] lg:min-w-full">
             <thead>
               <tr className="bg-primary/5 border-b border-primary/5">
                 <th className="px-5 md:px-7 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-primary/40 uppercase tracking-widest text-start min-w-[220px]">
@@ -500,12 +652,9 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
                         {isAr ? "لم يتم العثور على أي مستخدمين يطابقون تصفيتك." : "No users matched your active search and filter criteria."}
                       </p>
                       <button
-                        onClick={() => {
-                          setSearchQuery("");
-                          setRoleFilter("ALL");
-                          setStudioStatusFilter("ALL");
-                        }}
-                        className="px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary font-bold rounded-xl text-xs uppercase tracking-wider transition-all"
+                        type="button"
+                        onClick={resetAllFilters}
+                        className="px-4 py-2 bg-primary/5 hover:bg-primary/10 text-primary font-bold rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer"
                       >
                         {isAr ? "إعادة ضبط التصفية" : "Reset Filters"}
                       </button>
@@ -527,7 +676,7 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-primary text-sm md:text-base line-clamp-1">{user.name}</p>
-                          <p className="text-[10px] md:text-xs text-charcoal/40 truncate max-w-[180px]">{user.email}</p>
+                          <p className="text-[10px] md:text-xs text-charcoal/40 truncate max-w-[180px] xl:max-w-[260px] 2xl:max-w-[340px]">{user.email}</p>
                           {user.artisanProfile?.phoneNumber && (
                             <p className="text-[10px] md:text-xs font-bold text-accent mt-1 flex items-center gap-1">
                               <span className="w-1 h-1 rounded-full bg-accent animate-pulse" />
@@ -559,7 +708,7 @@ export function AdminUsersClient({ initialUsers, dict, lang }: AdminUsersClientP
                             </div>
                             <div className="flex flex-col gap-2">
                                <Link 
-                                 href={`/studio?artisanUserId=${user.id}`}
+                                 href={`/${lang}/studio?artisanUserId=${user.id}`}
                                  className="h-8 md:h-9 px-4 bg-primary text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-primary-light transition-all active:scale-95 shadow-sm"
                                >
                                  {dict.admin?.preview_studio || "Preview Shop"}

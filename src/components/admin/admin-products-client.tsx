@@ -851,7 +851,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                               <button
                                 type="button"
                                 onClick={() => setSelectedProductForReview(p)}
-                                className="font-bold text-primary group-hover:text-accent transition-colors truncate max-w-[200px] text-sm md:text-base text-start cursor-pointer"
+                                className="font-bold text-primary group-hover:text-accent transition-colors truncate max-w-[200px] xl:max-w-[320px] 2xl:max-w-[440px] text-sm md:text-base text-start cursor-pointer"
                               >
                                 {p.name}
                               </button>
@@ -869,7 +869,7 @@ export function AdminProductsClient({ initialProducts, dict, lang }: AdminProduc
                           <div className="relative w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden border border-primary/5 shrink-0 bg-cream">
                             <Image src={p.artisan.avatar} alt={p.artisan.user?.name || "Artisan"} fill className="object-cover" />
                           </div>
-                          <span className="text-xs md:text-sm font-bold text-primary truncate max-w-[140px] whitespace-nowrap">
+                          <span className="text-xs md:text-sm font-bold text-primary truncate max-w-[140px] xl:max-w-[220px] 2xl:max-w-[280px] whitespace-nowrap">
                             {p.artisan.studioName || p.artisan.user?.name || "Artisan"}
                           </span>
                         </div>

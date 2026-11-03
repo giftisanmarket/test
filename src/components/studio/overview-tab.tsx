@@ -20,7 +20,7 @@ import dynamic from "next/dynamic";
 const SalesChart = dynamic(() => import("@/components/sales-chart").then(mod => mod.SalesChart), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[250px] mt-4 md:mt-8 rounded-2xl bg-cream/10 border border-primary/5 flex items-center justify-center animate-pulse">
+    <div className="w-full h-[250px] mt-4 md:mt-6 rounded-2xl bg-cream/10 border border-primary/5 flex items-center justify-center animate-pulse">
       <div className="w-8 h-8 rounded-full border-2 border-primary/10 border-t-primary animate-spin" />
     </div>
   ),
@@ -67,7 +67,7 @@ export function OverviewTab({
   }, [activeTooltip]);
 
   return (
-    <div className="space-y-8 md:space-y-10">
+    <div className="space-y-6 md:space-y-8">
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         {[
@@ -155,90 +155,96 @@ export function OverviewTab({
         ))}
       </div>
 
-      {/* Sales Performance Chart */}
-      <div className="bg-white rounded-2xl md:rounded-[3rem] p-5 md:p-10 lg:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
-        <div className="flex flex-wrap justify-between items-start gap-3 mb-6 md:mb-10">
-          <div>
-            <h2 className="text-xl md:text-3xl font-heading font-bold text-primary">{dict.studio.sales_performance} <span className="serif italic font-normal text-accent">{dict.studio.sales_performance_accent}</span></h2>
-            <p className="text-charcoal/40 text-xs md:text-sm mt-1">{dict.studio.daily_revenue_desc}</p>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-accent px-3 py-1.5 bg-accent/10 rounded-full shrink-0">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            {dict.studio.live_data}
-          </div>
-        </div>
-        <SalesChart sales={sales} tickFormatter={(value) => `${dict.product.currency} ${value}`} />
-      </div>
-
-      {/* Recent Activity Feed */}
-      <div className="bg-white rounded-2xl md:rounded-[3rem] p-5 md:p-10 lg:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
-        <div className="flex justify-between items-center mb-6 md:mb-10">
-          <div>
-            <h2 className="text-xl md:text-3xl font-heading font-bold text-primary">{dict.studio.recent_activity} <span className="serif italic font-normal text-accent">{dict.studio.recent_activity_accent}</span></h2>
-            <p className="text-charcoal/40 text-xs md:text-sm mt-1">{dict.studio.no_activity_desc}</p>
-          </div>
-        </div>
-
-        <div className="space-y-4 md:space-y-6">
-          {activities.length === 0 ? (
-            <div className="text-center py-12 md:py-20 bg-cream/20 rounded-[1.5rem] md:rounded-[2rem] border border-dashed border-primary/10">
-              <Clock className="w-8 h-8 md:w-10 md:h-10 text-primary/10 mx-auto mb-4" />
-              <p className="text-charcoal/30 italic text-sm">{dict.studio.no_activity}</p>
+      {/* Desktop 2-Column Analytics & Activity Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+        {/* Sales Performance Chart */}
+        <div className="xl:col-span-7 2xl:col-span-8 min-w-0 bg-white rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] p-5 md:p-8 lg:p-10 border border-primary/5 shadow-2xl shadow-primary/5 flex flex-col justify-between">
+          <div className="flex flex-wrap justify-between items-start gap-3 mb-4 md:mb-6">
+            <div>
+              <h2 className="text-xl md:text-3xl font-heading font-bold text-primary">
+                {dict.studio.sales_performance} <span className="serif italic font-normal text-accent">{dict.studio.sales_performance_accent}</span>
+              </h2>
+              <p className="text-charcoal/40 text-xs md:text-sm mt-1">{dict.studio.daily_revenue_desc}</p>
             </div>
-          ) : (
-            activities.map((activity) => (
-              <div key={activity.id + activity.type} className="flex items-center gap-4 md:gap-6 p-3 md:p-4 rounded-[1.5rem] md:rounded-[2rem] hover:bg-cream/50 transition-all group border border-transparent hover:border-primary/5">
-                <div className={cn(
-                  "w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-lg",
-                  activity.type === 'SALE' ? "bg-green-500 text-white shadow-green-500/20" :
-                    activity.type === 'REVIEW' ? "bg-accent text-white shadow-accent/20" :
-                      activity.status === 'APPROVED' ? "bg-blue-500 text-white shadow-blue-500/20" :
-                        activity.status === 'REJECTED' ? "bg-red-500 text-white shadow-red-500/20" :
-                          "bg-amber-500 text-white shadow-amber-500/20"
-                )}>
-                  {activity.type === 'SALE' ? <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" /> :
-                    activity.type === 'REVIEW' ? <Star className="w-4 h-4 md:w-5 md:h-5" /> :
-                      activity.status === 'APPROVED' ? <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" /> :
-                        activity.status === 'REJECTED' ? <X className="w-4 h-4 md:w-5 md:h-5" /> :
-                          <Clock className="w-4 h-4 md:w-5 md:h-5" />}
-                </div>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-accent px-3 py-1.5 bg-accent/10 rounded-full shrink-0">
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              {dict.studio.live_data}
+            </div>
+          </div>
+          <SalesChart sales={sales} tickFormatter={(value) => `${dict.product.currency} ${value}`} />
+        </div>
 
-                <div className="flex-1">
-                  <h4 className="font-bold text-primary text-sm md:text-base">
-                    {activity.type === 'SALE' ? dict.studio.activity_sale :
-                      activity.type === 'REVIEW' ? dict.studio.activity_review :
-                        activity.status === 'APPROVED' ? dict.studio.activity_product_approved :
-                          activity.status === 'REJECTED' ? dict.studio.activity_product_rejected :
-                            dict.studio.activity_product_pending}
-                  </h4>
-                  <p className="text-[10px] md:text-xs text-charcoal/60 leading-relaxed max-w-md">
-                    {activity.type === 'SALE' ? dict.studio.activity_sale_desc.replace('{customer}', activity.customer).replace('{name}', activity.name) :
-                      activity.type === 'REVIEW' ? dict.studio.activity_review_desc.replace('{name}', activity.name) :
-                        activity.status === 'APPROVED' ? dict.studio.activity_product_approved_desc.replace('{name}', activity.name) :
-                          activity.status === 'REJECTED' ? (
-                            <>
-                              {dict.studio.activity_product_rejected_desc.replace('{name}', activity.name)}
-                              {activity.reason && (
-                                <span className="block mt-1 font-bold text-red-500 italic">
-                                  &ldquo;{activity.reason}&rdquo;
-                                </span>
-                              )}
-                            </>
-                          ) :
-                            dict.studio.activity_product_pending_desc.replace('{name}', activity.name)}
-                  </p>
-                </div>
+        {/* Recent Activity Feed */}
+        <div className="xl:col-span-5 2xl:col-span-4 min-w-0 bg-white rounded-2xl md:rounded-[2.5rem] lg:rounded-[3rem] p-5 md:p-8 lg:p-10 border border-primary/5 shadow-2xl shadow-primary/5 flex flex-col">
+          <div className="flex justify-between items-center mb-6 md:mb-8">
+            <div>
+              <h2 className="text-xl md:text-2xl 2xl:text-3xl font-heading font-bold text-primary">
+                {dict.studio.recent_activity} <span className="serif italic font-normal text-accent">{dict.studio.recent_activity_accent}</span>
+              </h2>
+              <p className="text-charcoal/40 text-xs md:text-sm mt-1">{dict.studio.no_activity_desc}</p>
+            </div>
+          </div>
 
-                <div className="text-end shrink-0">
-                  <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.1em] text-primary/20 whitespace-nowrap">{new Date(activity.date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' })}</p>
-                  <p className="text-[8px] md:text-[9px] font-bold text-accent whitespace-nowrap">{new Date(activity.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
+          <div className="space-y-3 md:space-y-4 flex-1">
+            {activities.length === 0 ? (
+              <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-center py-12 px-4 bg-cream/20 rounded-[1.5rem] md:rounded-[2rem] border border-dashed border-primary/10">
+                <Clock className="w-8 h-8 md:w-10 md:h-10 text-primary/10 mx-auto mb-3" />
+                <p className="text-charcoal/30 italic text-sm">{dict.studio.no_activity}</p>
               </div>
-            ))
-          )}
+            ) : (
+              activities.map((activity) => (
+                <div key={activity.id + activity.type} className="flex items-center gap-3.5 md:gap-4 p-3 md:p-3.5 rounded-[1.25rem] md:rounded-2xl hover:bg-cream/50 transition-all group border border-transparent hover:border-primary/5">
+                  <div className={cn(
+                    "w-10 h-10 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-lg",
+                    activity.type === 'SALE' ? "bg-green-500 text-white shadow-green-500/20" :
+                      activity.type === 'REVIEW' ? "bg-accent text-white shadow-accent/20" :
+                        activity.status === 'APPROVED' ? "bg-blue-500 text-white shadow-blue-500/20" :
+                          activity.status === 'REJECTED' ? "bg-red-500 text-white shadow-red-500/20" :
+                            "bg-amber-500 text-white shadow-amber-500/20"
+                  )}>
+                    {activity.type === 'SALE' ? <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" /> :
+                      activity.type === 'REVIEW' ? <Star className="w-4 h-4 md:w-5 md:h-5" /> :
+                        activity.status === 'APPROVED' ? <CheckCircle2 className="w-4 h-4 md:w-5 md:h-5" /> :
+                          activity.status === 'REJECTED' ? <X className="w-4 h-4 md:w-5 md:h-5" /> :
+                            <Clock className="w-4 h-4 md:w-5 md:h-5" />}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-primary text-sm md:text-base truncate">
+                      {activity.type === 'SALE' ? dict.studio.activity_sale :
+                        activity.type === 'REVIEW' ? dict.studio.activity_review :
+                          activity.status === 'APPROVED' ? dict.studio.activity_product_approved :
+                            activity.status === 'REJECTED' ? dict.studio.activity_product_rejected :
+                              dict.studio.activity_product_pending}
+                    </h4>
+                    <p className="text-[11px] md:text-xs text-charcoal/60 leading-relaxed max-w-2xl xl:max-w-none line-clamp-2">
+                      {activity.type === 'SALE' ? dict.studio.activity_sale_desc.replace('{customer}', activity.customer).replace('{name}', activity.name) :
+                        activity.type === 'REVIEW' ? dict.studio.activity_review_desc.replace('{name}', activity.name) :
+                          activity.status === 'APPROVED' ? dict.studio.activity_product_approved_desc.replace('{name}', activity.name) :
+                            activity.status === 'REJECTED' ? (
+                              <>
+                                {dict.studio.activity_product_rejected_desc.replace('{name}', activity.name)}
+                                {activity.reason && (
+                                  <span className="block mt-1 font-bold text-red-500 italic">
+                                    &ldquo;{activity.reason}&rdquo;
+                                  </span>
+                                )}
+                              </>
+                            ) :
+                              dict.studio.activity_product_pending_desc.replace('{name}', activity.name)}
+                    </p>
+                  </div>
+
+                  <div className="text-end shrink-0">
+                    <p className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.1em] text-primary/30 whitespace-nowrap">{new Date(activity.date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' })}</p>
+                    <p className="text-[8px] md:text-[9px] font-bold text-accent whitespace-nowrap">{new Date(activity.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

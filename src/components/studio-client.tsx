@@ -101,9 +101,45 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
   const isNative = useIsNative();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { openChat } = useNotifications();
-  const [showMask, setShowMask] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "inventory" | "sales" | "reviews" | "growth" | "logistics" | "settings">("overview");
+  const { openChat, setStudioActiveTab } = useNotifications();
+  const [showMask, setShowMask] = useState(false);
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateMask = () => {
+      const el = tabsScrollRef.current;
+      if (!el) return;
+      const hasOverflow = el.scrollWidth > el.clientWidth + 10;
+      if (!hasOverflow) {
+        setShowMask(false);
+        return;
+      }
+      const isRTL = lang === "ar";
+      const isAtEnd = isRTL
+        ? Math.abs(el.scrollLeft) >= el.scrollWidth - el.clientWidth - 10
+        : el.scrollLeft >= el.scrollWidth - el.clientWidth - 10;
+      setShowMask(!isAtEnd);
+    };
+    updateMask();
+    window.addEventListener("resize", updateMask);
+    return () => window.removeEventListener("resize", updateMask);
+  }, [lang]);
+  const [activeTab, setActiveTab] = useState<"overview" | "inventory" | "sales" | "reviews" | "growth" | "logistics" | "settings">(() => {
+    const initialTab = searchParams.get("tab");
+    if (initialTab === "bio-link") return "growth";
+    if (initialTab && ["overview", "inventory", "sales", "reviews", "growth", "logistics", "settings"].includes(initialTab)) {
+      return initialTab as "overview" | "inventory" | "sales" | "reviews" | "growth" | "logistics" | "settings";
+    }
+    return "overview";
+  });
+
+  useEffect(() => {
+    setStudioActiveTab(activeTab);
+  }, [activeTab, setStudioActiveTab]);
+
+  useEffect(() => {
+    return () => setStudioActiveTab("overview");
+  }, [setStudioActiveTab]);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -342,7 +378,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
   return (
     <>
       <div>
-        <main className={cn("no-print max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-4 md:py-6", isNative && "pb-32")}>
+        <main className={cn("no-print w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 md:py-6 min-w-0", isNative && "pb-32")}>
 
           <AnimatePresence>
             {productToDelete && (
@@ -400,7 +436,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
             isDestructive={true}
           />
 
-          <div className="max-w-[1600px] mx-auto pt-4 md:pt-6 pb-16">
+          <div className="w-full pt-2 md:pt-4 pb-16 min-w-0">
             {/* Verification Status Banner */}
             {shopStatus === "PENDING" && (
               <motion.div
@@ -426,7 +462,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                   </p>
 
                   <Link
-                    href="/contact"
+                    href={`/${lang}/contact`}
                     className="inline-flex items-center gap-2 px-8 py-3 bg-amber-600 text-white text-xs font-black uppercase tracking-widest rounded-full hover:bg-amber-700 transition-all shadow-lg shadow-amber-600/20 active:scale-95"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -435,7 +471,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                 </div>
 
                 {/* Checklist Section */}
-                <div className="lg:w-96 bg-white/60 backdrop-blur-sm rounded-[2rem] p-8 border border-white shadow-inner flex flex-col gap-6">
+                <div className="lg:w-96 xl:w-[440px] bg-white/60 backdrop-blur-sm rounded-[2rem] p-6 md:p-8 border border-white shadow-inner flex flex-col gap-6 shrink-0">
                   <div className="flex items-center justify-between">
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-900/40">
                       {dict.studio.studio_setup_checklist}
@@ -458,7 +494,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                       {
                         label: dict.studio.checklist_email,
                         done: !!artisan.user?.emailVerified,
-                        link: "/profile/settings"
+                        link: `/${lang}/profile/settings`
                       }
                     ].map((item, idx) => (
                       <Link
@@ -539,7 +575,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                       {artisan.studioName || (lang === "ar" ? `متجر ${artisan.user.name}` : `${artisan.user.name}'s Shop`)}
                     </h1>
                     {artisan.bio && (
-                      <p className="text-white/70 text-xs md:text-sm max-w-xl italic font-medium leading-relaxed line-clamp-1">
+                      <p className="text-white/70 text-xs md:text-sm max-w-xl xl:max-w-2xl 2xl:max-w-3xl italic font-medium leading-relaxed line-clamp-1">
                         "{artisan.bio}"
                       </p>
                     )}
@@ -656,6 +692,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
 
             <div className="relative mb-4">
               <div
+                ref={tabsScrollRef}
                 onScroll={handleScroll}
                 className={cn(
                   "flex gap-2 md:gap-3 overflow-x-auto pt-3 pb-8 -mb-4 scrollbar-hide whitespace-nowrap relative z-20 transition-all duration-300",
@@ -825,7 +862,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                   initial={{ opacity: 0, scale: 0.95, y: 15 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                  className="relative w-full max-w-full sm:max-w-xl md:max-w-2xl bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden no-print max-h-[92vh] flex flex-col"
+                  className="relative w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl bg-white rounded-2xl sm:rounded-[2.5rem] md:rounded-[3rem] shadow-2xl overflow-hidden no-print max-h-[92vh] flex flex-col"
                 >
                   {/* Modal Header */}
                   <div className="p-4 sm:p-6 md:p-8 pb-3 sm:pb-4 border-b border-primary/5 flex items-center justify-between gap-3 shrink-0">

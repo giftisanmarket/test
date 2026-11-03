@@ -127,7 +127,7 @@ export function InventoryTab({
 
   return (
     <div id="inventory" className="relative">
-      <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-8 lg:p-12 border border-primary/5 shadow-2xl shadow-primary/5 mb-32">
+      <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] p-5 md:p-8 lg:p-10 xl:p-12 border border-primary/5 shadow-2xl shadow-primary/5 mb-24">
         
         {/* Header Title & Actions */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-10 gap-6 md:gap-10">
@@ -140,7 +140,7 @@ export function InventoryTab({
           
           {!isAdminPreview ? (
             <Link
-              href="/studio/new-product"
+              href={`/${lang}/studio/new-product`}
               className="w-full md:w-auto h-13 md:h-15 px-6 md:px-10 bg-accent text-white font-bold rounded-xl md:rounded-full hover:bg-accent-light transition-all flex items-center justify-center gap-3 shadow-xl shadow-accent/20 active:scale-95 duration-200 text-sm md:text-base"
             >
               <Plus className="w-5 h-5" /> {dict.studio.add_treasure}
@@ -165,7 +165,9 @@ export function InventoryTab({
         )}
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar">
+        {/* Toolbar: Filter Pills & Search Bar */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0 no-scrollbar min-w-0">
           {[
             { id: "ALL", label: isAr ? "جميع القطع" : "All Pieces", count: totalCount, color: "text-primary" },
             { id: "APPROVED", label: isAr ? "متاح بالمتجر" : "Available in Store", count: approvedCount, color: "text-green-600" },
@@ -204,8 +206,8 @@ export function InventoryTab({
 
         {/* Search Bar */}
         {productList.length > 0 && (
-          <div className="mb-8 md:mb-10 relative group">
-            <div className="absolute inset-y-0 start-0 ps-6 flex items-center pointer-events-none">
+          <div className="relative group w-full xl:w-80 2xl:w-96 shrink-0">
+            <div className="absolute inset-y-0 start-0 ps-4 flex items-center pointer-events-none">
               <Search className="w-5 h-5 text-primary/20 group-focus-within:text-accent transition-colors" />
             </div>
             <input
@@ -213,12 +215,12 @@ export function InventoryTab({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={dict.studio.search_treasures}
-              className="w-full h-14 md:h-16 ps-16 pe-8 bg-cream/30 border border-primary/5 rounded-[1.5rem] md:rounded-[2rem] focus:outline-none focus:border-accent focus:bg-white transition-all text-sm md:text-base font-bold text-primary placeholder:text-primary/20 shadow-inner"
+              className="w-full h-12 md:h-13 ps-12 pe-10 bg-cream/30 border border-primary/5 rounded-2xl focus:outline-none focus:border-accent focus:bg-white transition-all text-sm font-bold text-primary placeholder:text-primary/30 shadow-inner"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 end-0 pe-6 flex items-center text-primary/20 hover:text-primary transition-colors"
+                className="absolute inset-y-0 end-0 pe-4 flex items-center text-primary/20 hover:text-primary transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -227,7 +229,10 @@ export function InventoryTab({
         )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6 lg:gap-8">
+        </div>
+
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-5 lg:gap-6">
           {filteredProducts.length === 0 ? (
             <div className="col-span-full py-20 md:py-28 text-center space-y-6 bg-cream/20 rounded-[2rem] md:rounded-[3rem] border-2 border-dashed border-primary/5">
               <div className="w-20 h-20 md:w-28 md:h-28 bg-white rounded-full flex items-center justify-center mx-auto mb-2 shadow-xl shadow-primary/5">

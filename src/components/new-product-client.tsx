@@ -1124,7 +1124,7 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
   };
 
   return (
-    <main className="container mx-auto px-4 py-6 sm:py-8 md:py-12 max-w-4xl text-start">
+    <main className="w-full max-w-[1600px] xl:max-w-[1760px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-6 sm:py-8 md:py-10 text-start">
         <Link
           href={`/${lang}/studio`}
           className="inline-flex items-center gap-2 text-primary/40 hover:text-primary text-sm font-bold uppercase tracking-widest mb-6 md:mb-8 transition-colors group"
@@ -1157,8 +1157,9 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8 md:space-y-10">
-          <section className="bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 md:p-12 shadow-2xl shadow-primary/5 border border-primary/5 space-y-6 sm:space-y-8 text-start">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 xl:gap-10 items-start">
+          <section className="xl:col-span-7 min-w-0 bg-white rounded-3xl sm:rounded-[2.5rem] p-5 sm:p-8 lg:p-10 shadow-2xl shadow-primary/5 border border-primary/5 space-y-6 sm:space-y-8 text-start">
             <div className="flex items-center gap-3 pb-6 border-b border-primary/5">
               <Sparkles className="w-6 h-6 text-accent" />
               <h2 className="text-2xl font-heading font-bold text-primary">{dict.new_product.the_essentials}</h2>
@@ -1268,7 +1269,7 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={cn(
-              "bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-2xl shadow-primary/5 border transition-all duration-300 space-y-6 md:space-y-8 relative overflow-hidden",
+              "xl:col-span-5 xl:col-start-8 xl:row-start-1 xl:row-span-3 xl:sticky xl:top-24 min-w-0 bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 lg:p-10 shadow-2xl shadow-primary/5 border transition-all duration-300 space-y-6 relative overflow-hidden",
               isDraggingOver ? "border-accent ring-4 ring-accent/10 bg-accent/5" : "border-primary/5"
             )}
           >
@@ -1341,7 +1342,7 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
             )}
 
             {/* Media Gallery 10-Slot Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5 md:gap-4">
               {formData.images.map((img, idx) => {
                 const isCover = idx === 0;
                 const isFilled = Boolean(img);
@@ -1506,6 +1507,7 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
             </div>
           </section>
 
+          <div className="xl:col-span-7 min-w-0">
           <VariationsSection 
             options={options}
             setOptions={setOptions}
@@ -1515,7 +1517,9 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
             dict={dict}
           />
 
-          <section className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 shadow-2xl shadow-primary/5 border border-primary/5 space-y-6 md:space-y-8">
+          </div>
+
+          <section className="xl:col-span-7 min-w-0 bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 lg:p-10 shadow-2xl shadow-primary/5 border border-primary/5 space-y-6 md:space-y-8">
             <div className="flex items-center gap-3 pb-5 md:pb-6 border-b border-primary/5">
               <CheckCircle2 className="w-5 md:w-6 h-5 md:h-6 text-accent" />
               <h2 className="text-xl md:text-2xl font-heading font-bold text-primary">{dict.new_product.special_details}</h2>
@@ -1643,8 +1647,11 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
           </section>
 
           {/* Form Bottom Spacing & Publishing Note */}
-          <div className="pt-2 pb-24 text-center">
-            <p className="text-xs text-charcoal/40 font-medium max-w-md mx-auto">
+          </div>
+
+          {/* Form Bottom Spacing & Publishing Note */}
+          <div className="pt-4 pb-24 text-center">
+            <p className="text-xs text-charcoal/40 font-medium max-w-md xl:max-w-2xl mx-auto">
               {isEditMode
                 ? (isAr
                     ? "بعد حفظ التعديلات، سيُعاد إرسال منتجك للمراجعة من فريق جيفتيزان قبل أن يظهر مجدداً في المتجر."
@@ -1656,8 +1663,8 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
         </form>
 
         {/* Floating Sticky Action Bar */}
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-primary/10 py-3 px-4 md:px-8 shadow-2xl transition-all">
-          <div className="container mx-auto max-w-4xl flex items-center justify-between gap-3 sm:gap-4">
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-xl border-t border-primary/10 py-3 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 shadow-2xl transition-all">
+          <div className="w-full max-w-[1600px] xl:max-w-[1760px] mx-auto flex items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0 hidden sm:block text-start">
               <p className="text-xs font-bold text-primary truncate max-w-xs">
                 {formData.name || dict.new_product?.untitled_product || (isAr ? "قطعة جديدة بدون عنوان" : "Untitled Product")}

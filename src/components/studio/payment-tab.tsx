@@ -314,7 +314,7 @@ export function PaymentTab({
   return (
     <div className="space-y-12">
       {/* 1. Header and Balance Cards */}
-      <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
+      <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] p-6 md:p-8 lg:p-10 xl:p-12 border border-primary/5 shadow-2xl shadow-primary/5">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pb-8 border-b border-primary/5">
           <div className="space-y-2 text-start">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-700 text-[9px] md:text-[10px] font-black uppercase tracking-widest rounded-full border border-green-500/10">
@@ -451,7 +451,7 @@ export function PaymentTab({
       </div>
 
       {/* 3. Transaction History */}
-      <div className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 border border-primary/5 shadow-2xl shadow-primary/5 text-start">
+      <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] p-6 md:p-8 lg:p-10 xl:p-12 border border-primary/5 shadow-2xl shadow-primary/5 text-start">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-primary/5">
           <div className="flex items-center gap-3">
@@ -480,7 +480,7 @@ export function PaymentTab({
           <div className="space-y-4 mb-6">
             <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
               {/* Search Bar */}
-              <div className="relative flex-1">
+              <div className="relative flex-1 xl:max-w-xl">
                 <Search className={cn("w-4 h-4 text-primary/40 absolute top-1/2 -translate-y-1/2 pointer-events-none", isRTL ? "right-3.5" : "left-3.5")} />
                 <input
                   type="text"
@@ -948,14 +948,14 @@ export function PaymentTab({
 
       {/* 4. Educational Guidelines Tab / Prelaunch Info */}
       <div className="p-6 md:p-12 bg-primary text-white rounded-3xl md:rounded-[3rem] shadow-2xl relative overflow-hidden group text-start">
-        <div className="relative z-10 space-y-6 max-w-4xl">
+        <div className="relative z-10 space-y-6 w-full">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 text-accent-light text-[9px] font-black uppercase tracking-widest rounded-full border border-white/10">
             <HelpCircle className="w-3.5 h-3.5" /> {isRTL ? "فهم نظام الدفع والعمولات" : "Understanding Our Payout System"}
           </div>
           <h3 className="text-xl md:text-3xl font-heading font-black tracking-tight leading-snug">
             {isRTL ? "كيف يتم احتساب نسبتك ومتى يمكنك سحبها؟" : "How is your share calculated, and when is it ready?"}
           </h3>
-          <div className="space-y-4 text-sm text-white/70 font-medium leading-relaxed">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 text-sm text-white/75 font-medium leading-relaxed [&>p]:p-4 [&>p]:md:p-6 [&>p]:rounded-2xl [&>p]:bg-white/5 [&>p]:border [&>p]:border-white/10">
             <p>
               1. <strong>{isRTL ? "مبيعات فورية" : "Immediate Split Tracking"}:</strong> {isRTL 
                 ? "عندما يشتري عميل منتجك، يذهب المبلغ لوعاء المنصة المركزي. نقوم فوراً بحساب أرباحك كاملة (استمتع بـ 0% عمولة للمنصة!) وحفظها كرصيد معلّق." 

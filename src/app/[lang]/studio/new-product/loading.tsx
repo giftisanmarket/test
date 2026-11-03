@@ -26,7 +26,7 @@ export default function NewProductLoading() {
   return (
     <div className="pb-32 overflow-x-hidden">
       <div className="bg-white border-b border-primary/5 pt-6 pb-10 md:pt-8 md:pb-14">
-        <div className="max-w-5xl mx-auto px-4 md:px-12">
+        <div className="w-full max-w-[1600px] xl:max-w-[1760px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12">
           <div className="space-y-4">
              <div className="h-3 md:h-4 w-24 md:w-32 bg-primary/5 rounded-full animate-pulse" />
              <div className="h-10 md:h-12 w-full max-w-[280px] md:max-w-[450px] bg-primary/5 rounded-xl md:rounded-2xl animate-pulse" />
@@ -38,7 +38,7 @@ export default function NewProductLoading() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="max-w-5xl mx-auto px-4 md:px-12 py-8 md:py-16"
+        className="w-full max-w-[1600px] xl:max-w-[1760px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-8 md:py-12"
       >
         <div className="grid lg:grid-cols-12 gap-8 md:gap-12">
           {/* Left Side: Form Skeleton */}

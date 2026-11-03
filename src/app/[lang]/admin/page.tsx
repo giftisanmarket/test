@@ -166,7 +166,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
       </div>
 
       {/* Priority Action Center */}
-      <AdminActionCenter stats={stats} dict={dict} isAr={isAr} />
+      <AdminActionCenter stats={stats} dict={dict} isAr={isAr} lang={lang} />
 
       {/* Primary Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
@@ -202,7 +202,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
       {/* Main Content Layout Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8 items-start">
         {/* Left Column: Visual Analytics & Recent Orders (col-span 2) */}
-        <div className="xl:col-span-2 space-y-6 sm:space-y-8 md:space-y-10">
+        <div className="xl:col-span-2 min-w-0 space-y-6 sm:space-y-8 md:space-y-10">
           {/* Interactive Recharts Analytics Chart */}
           <AdminChartClient orders={recentOrders} dict={dict} lang={lang} />
 
@@ -300,7 +300,7 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
         </div>
 
         {/* Right Column: Quick Actions & Health (col-span 1) */}
-        <div className="space-y-8 md:space-y-10">
+        <div className="min-w-0 space-y-8 md:space-y-10">
           {/* Quick Operations panel */}
           <div className="space-y-4 md:space-y-6">
             <h2 className="text-xl md:text-2xl font-heading font-bold text-primary px-2 flex items-center gap-2">

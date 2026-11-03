@@ -189,10 +189,10 @@ export function SalesTab({
   };
 
   return (
-    <div className="bg-white rounded-[1.75rem] sm:rounded-[2.5rem] md:rounded-[3.5rem] p-3.5 sm:p-6 md:p-8 lg:p-12 border border-primary/5 shadow-xl sm:shadow-2xl shadow-primary/5 text-charcoal">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-10 md:mb-16 gap-4 sm:gap-6 md:gap-12">
+    <div className="bg-white rounded-[1.75rem] sm:rounded-[2.5rem] lg:rounded-[3rem] p-3.5 sm:p-6 md:p-8 lg:p-10 xl:p-12 border border-primary/5 shadow-xl sm:shadow-2xl shadow-primary/5 text-charcoal">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 lg:mb-10 gap-4 sm:gap-6 md:gap-8">
         <div className="space-y-1 sm:space-y-2 text-start w-full sm:w-auto">
-          <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-heading font-bold text-primary leading-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-primary leading-tight">
             {dict.studio.sales_fulfillment} <span className="serif italic font-normal text-accent">{dict.studio.sales_fulfillment_accent}</span>
           </h2>
           <p className="text-xs sm:text-sm md:text-base text-charcoal/40 font-medium">{dict.studio.track_orders_desc}</p>
@@ -215,8 +215,8 @@ export function SalesTab({
 
       <div className="space-y-4 sm:space-y-6 md:space-y-8">
         {sales.length > 0 && (
-          <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
-            <div className="relative group">
+          <div className="flex flex-col xl:flex-row-reverse xl:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="relative group w-full xl:w-80 2xl:w-96 shrink-0">
               <div className="absolute inset-y-0 start-0 ps-4 sm:ps-5 flex items-center pointer-events-none">
                 <Search className="w-4 h-4 text-primary/20 group-focus-within:text-accent transition-colors" />
               </div>
@@ -225,7 +225,7 @@ export function SalesTab({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={dict.studio.search_orders}
-                className="w-full h-11 sm:h-14 ps-11 sm:ps-12 pe-11 sm:pe-12 bg-cream/30 border border-primary/5 rounded-xl sm:rounded-2xl focus:outline-none focus:border-accent focus:bg-white transition-all text-xs sm:text-sm font-bold text-primary placeholder:text-primary/20 shadow-inner"
+                className="w-full h-11 sm:h-12 ps-11 sm:ps-12 pe-11 sm:pe-12 bg-cream/30 border border-primary/5 rounded-xl sm:rounded-2xl focus:outline-none focus:border-accent focus:bg-white transition-all text-xs sm:text-sm font-bold text-primary placeholder:text-primary/30 shadow-inner"
               />
               {searchQuery && (
                 <button
@@ -288,7 +288,8 @@ export function SalesTab({
             </div>
           </div>
         ) : (
-          filteredSales.map((item: any) => {
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
+          {filteredSales.map((item: any) => {
             return (
               <div 
                 key={item.id} 
@@ -301,7 +302,7 @@ export function SalesTab({
                                                  "border-s-4 border-s-green-500"
                 )}
               >
-                <div className="p-3.5 sm:p-6 md:p-8 lg:p-10 space-y-3.5 sm:space-y-5">
+                <div className="p-3.5 sm:p-6 md:p-7 lg:p-8 flex flex-col justify-between h-full gap-3.5 sm:gap-5">
                   {/* Mobile Top Header: Status Pill + Date/Gift indicator */}
                   <div className="flex md:hidden items-center justify-between gap-2 border-b border-primary/5 pb-2.5">
                     <span className={cn(
@@ -340,7 +341,7 @@ export function SalesTab({
                   {/* Main Content Layout: Compact Row on all viewports */}
                   <div className="flex flex-row items-start gap-3 sm:gap-6 md:gap-8">
                     {/* Thumbnail */}
-                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shrink-0 border border-primary/10 md:border-2 md:border-white shadow-xs md:shadow-lg bg-cream/20">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-xl sm:rounded-2xl md:rounded-3xl overflow-hidden shrink-0 border border-primary/10 md:border-2 md:border-white shadow-xs md:shadow-lg bg-cream/20">
                       <BespokeImage type="product" id={item.product.id} src={item.product.images[0]} alt={item.product.name} fill className="object-cover" />
                     </div>
 
@@ -519,7 +520,8 @@ export function SalesTab({
                 </div>
               </div>
             );
-          })
+          })}
+          </div>
         )}
       </div>
 

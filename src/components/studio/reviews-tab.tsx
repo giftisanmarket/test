@@ -40,7 +40,7 @@ export function ReviewsTab({ reviews, dict, lang }: ReviewsTabProps) {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6">
         {reviews.length === 0 ? (
           <div className="col-span-full py-20 md:py-32 px-6 md:px-10 text-center bg-white rounded-[2rem] md:rounded-[4rem] border border-primary/5 shadow-2xl shadow-primary/5 flex flex-col items-center justify-center">
             <div className="w-24 h-24 md:w-32 md:h-32 bg-cream rounded-full flex items-center justify-center mb-10 shadow-inner ring-8 ring-primary/5">
@@ -56,7 +56,7 @@ export function ReviewsTab({ reviews, dict, lang }: ReviewsTabProps) {
             <motion.div
               layout
               key={review.id}
-              className="bg-white p-5 md:p-10 rounded-3xl md:rounded-[3.5rem] border border-primary/5 shadow-xl shadow-primary/5 flex flex-col justify-between group hover:border-accent/20 transition-all hover:shadow-2xl hover:shadow-primary/10"
+              className="bg-white p-5 md:p-7 lg:p-8 rounded-3xl md:rounded-[2.5rem] border border-primary/5 shadow-xl shadow-primary/5 flex flex-col justify-between group hover:border-accent/20 transition-all hover:shadow-2xl hover:shadow-primary/10"
             >
               <div>
                 <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start mb-8 gap-4">
@@ -169,7 +169,7 @@ export function ReviewsTab({ reviews, dict, lang }: ReviewsTabProps) {
               </div>
 
               <Link
-                href={`/products/${review.product.slug || review.product.id}`}
+                href={`/${lang}/products/${review.product.slug || review.product.id}`}
                 className="mt-8 pt-8 border-t border-primary/5 flex items-center gap-5 group/p"
               >
                 <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden bg-cream border border-primary/5 shadow-inner shrink-0 group-hover/p:scale-105 transition-transform">

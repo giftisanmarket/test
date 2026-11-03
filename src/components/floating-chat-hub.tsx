@@ -98,7 +98,8 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
     isChatOpen, 
     closeChat, 
     toggleChat, 
-    activeChatPartnerId 
+    activeChatPartnerId,
+    studioActiveTab
   } = useNotifications();
 
   const [messages, setMessages] = useState<any[]>([]);
@@ -117,7 +118,15 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
 
   // Security guard: only render this global hub for logged-in users with ARTISAN role on studio pages
   const isArtisan = session?.user?.role === "ARTISAN";
-  const isStudioPage = pathname?.includes("/studio");
+  const isStudioPage = /^\/(en|ar)\/studio\/?$/.test(pathname || "");
+  const showFloatingBubble = !isChatOpen && !["settings", "logistics"].includes(studioActiveTab);
+
+  // Close drawer automatically if artisan navigates to a sub-route (e.g., new-product or edit)
+  useEffect(() => {
+    if (!isStudioPage && isChatOpen) {
+      closeChat();
+    }
+  }, [isStudioPage, isChatOpen, closeChat]);
 
   // Handle escape key to close drawer
   useEffect(() => {
@@ -790,7 +799,7 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
       </AnimatePresence>
 
       {/* Desktop Floating Launcher Bubble (Visible on Desktop only when Drawer is closed) */}
-      {!isChatOpen && (
+      {showFloatingBubble && (
         <div className="hidden md:flex fixed z-[99] bottom-6 right-6 rtl:left-6 rtl:right-auto flex-col items-end">
           <motion.button
             whileHover={{ scale: 1.05 }}

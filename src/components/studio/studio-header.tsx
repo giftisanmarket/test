@@ -63,6 +63,11 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
   const isAr = lang === "ar";
   const artisanUserId = searchParams?.get("artisanUserId");
   const isAdminPreview = user?.role === "ADMIN" && Boolean(artisanUserId);
+  const isProductFormPage = Boolean(
+    pathname?.includes("/studio/new-product") ||
+    (pathname?.includes("/studio/products/") && pathname?.endsWith("/edit"))
+  );
+  const showMessagesControl = !isAdminPreview && !isProductFormPage;
 
   const studioBaseHref = isAdminPreview
     ? `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}`
@@ -155,16 +160,20 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
             icon: Plus,
             isActive: pathname === `/${lang}/studio/new-product`,
           },
-      {
-        label: dict?.common?.messages || (isAr ? "المحادثات" : "Messages"),
-        onClick: () => {
-          setIsMobileMenuOpen(false);
-          openChat();
-        },
-        icon: MessageSquare,
-        badge: unreadCount > 0 ? unreadCount : null,
-        isActive: isChatOpen,
-      },
+      ...(showMessagesControl
+        ? [
+            {
+              label: dict?.common?.messages || (isAr ? "المحادثات" : "Messages"),
+              onClick: () => {
+                setIsMobileMenuOpen(false);
+                openChat();
+              },
+              icon: MessageSquare,
+              badge: unreadCount > 0 ? unreadCount : null,
+              isActive: isChatOpen,
+            },
+          ]
+        : []),
       {
         label: dict?.studio?.studio_settings || (isAr ? "الإعدادات" : "Settings"),
         href: studioSettingsHref,
@@ -172,7 +181,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
         isActive: pathname === `/${lang}/studio` && searchParams?.get("tab") === "settings",
       },
     ],
-    [lang, pathname, dict, isAr, searchParams, unreadCount, isChatOpen, openChat, isAdminPreview, studioBaseHref, studioSettingsHref]
+    [lang, pathname, dict, isAr, searchParams, unreadCount, isChatOpen, openChat, isAdminPreview, showMessagesControl, studioBaseHref, studioSettingsHref]
   );
 
   const studioDisplayName = isAdminPreview
@@ -184,7 +193,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-primary/10 shadow-xs pt-safe">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 h-16 md:h-20 flex items-center justify-between gap-2 sm:gap-3 md:gap-6">
+      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 h-16 md:h-20 flex items-center justify-between gap-2 sm:gap-3 md:gap-6">
         {/* Brand Logo + Shop Subtitle (Stacked layout matching Admin branding) */}
         <Link
           href={studioBaseHref}
@@ -251,25 +260,27 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
           )}
 
           {/* Messages Drawer Trigger (Accessible on both Mobile & Desktop) */}
-          <button
-            type="button"
-            onClick={() => openChat()}
-            className={cn(
-              "flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs font-bold transition-all shadow-xs relative cursor-pointer",
-              isChatOpen
-                ? "bg-primary text-white border-primary shadow-sm"
-                : "text-primary hover:bg-primary/5 border border-primary/15"
-            )}
-            title={dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}
-          >
-            <MessageSquare className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5", isChatOpen ? "text-accent-light" : "text-accent")} />
-            <span className="hidden sm:inline ms-1.5">{dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}</span>
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -end-1 sm:static sm:ms-1.5 w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+          {showMessagesControl && (
+            <button
+              type="button"
+              onClick={() => openChat()}
+              className={cn(
+                "flex items-center justify-center w-8 h-8 sm:w-auto sm:h-auto sm:px-3.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-xs font-bold transition-all shadow-xs relative cursor-pointer",
+                isChatOpen
+                  ? "bg-primary text-white border-primary shadow-sm"
+                  : "text-primary hover:bg-primary/5 border border-primary/15"
+              )}
+              title={dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}
+            >
+              <MessageSquare className={cn("w-4 h-4 sm:w-3.5 sm:h-3.5", isChatOpen ? "text-accent-light" : "text-accent")} />
+              <span className="hidden sm:inline ms-1.5">{dict?.common?.messages || (isAr ? "المحادثات" : "Messages")}</span>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -end-1 sm:static sm:ms-1.5 w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* View Live Shop (Artisan Storefront Preview - Desktop / Tablet) */}
           {publicShopUrl && (
@@ -302,7 +313,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
               type="button"
               onClick={handleAvatarClick}
               className={cn(
-                "flex items-center gap-1.5 p-1 rounded-full transition-all focus:outline-none cursor-pointer",
+                "flex items-center gap-1.5 xl:gap-2 p-1 xl:pe-2.5 rounded-full transition-all focus:outline-none cursor-pointer",
                 isProfileOpen || isMobileMenuOpen
                   ? "ring-2 ring-accent bg-accent/5"
                   : "hover:ring-2 hover:ring-primary/10"
@@ -323,6 +334,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                   <User className="w-4 h-4 text-primary/60" />
                 )}
               </div>
+              <span className="hidden xl:block text-xs font-bold text-primary max-w-[150px] 2xl:max-w-[200px] truncate">{studioDisplayName}</span>
               <ChevronDown
                 className={cn(
                   "w-3.5 h-3.5 text-charcoal/40 transition-transform hidden sm:block",
@@ -420,24 +432,26 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
                   {/* Shop Quick Shortcuts */}
                   <div className="p-2 border-b border-primary/5 space-y-0.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileOpen(false);
-                        openChat();
-                      }}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-2xl hover:bg-accent/5 text-charcoal/80 font-bold text-xs transition-colors cursor-pointer text-start"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <MessageSquare className="w-3.5 h-3.5 text-accent" />
-                        <span>{dict?.common?.messages || (isAr ? "محادثات المتجر" : "Studio Messages")}</span>
-                      </div>
-                      {unreadCount > 0 && (
-                        <span className="w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </button>
+                    {showMessagesControl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          openChat();
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-2xl hover:bg-accent/5 text-charcoal/80 font-bold text-xs transition-colors cursor-pointer text-start"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <MessageSquare className="w-3.5 h-3.5 text-accent" />
+                          <span>{dict?.common?.messages || (isAr ? "محادثات المتجر" : "Studio Messages")}</span>
+                        </div>
+                        {unreadCount > 0 && (
+                          <span className="w-4 h-4 bg-accent text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    )}
                     {!isAdminPreview && (
                       <Link
                         href={`/${lang}/studio/new-product`}

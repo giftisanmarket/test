@@ -549,7 +549,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
   return (
     <div className="space-y-6 sm:space-y-8 text-charcoal font-sans">
       {/* Studio Marketing & Growth Main Hub */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl md:rounded-[3.5rem] p-4 sm:p-6 md:p-10 lg:p-12 border border-primary/5 shadow-2xl shadow-primary/5 overflow-hidden relative">
+      <div className="bg-white rounded-2xl sm:rounded-3xl md:rounded-[2.5rem] lg:rounded-[3rem] p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 border border-primary/5 shadow-2xl shadow-primary/5 overflow-hidden relative">
         <div className="absolute top-0 end-0 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[120px] -translate-y-1/3 translate-x-1/3 pointer-events-none" />
 
         <div className="relative z-10 space-y-6 sm:space-y-8">
@@ -916,13 +916,13 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                           ? (isAr ? "الرمز يوجه الزائر لكتالوج المنتجات الكامل" : "Points scanners directly to your shop catalog")
                           : (isAr ? "الرمز يوجه الزائر لصفحة اللينكتري الخاصة بك" : "Points scanners directly to your Linktree page")}
                       </p>
-                      <p className="text-[11px] text-accent font-mono font-bold truncate max-w-xs sm:max-w-md" dir="ltr">
+                      <p className="text-[11px] text-accent font-mono font-bold truncate max-w-xs sm:max-w-md xl:max-w-xl" dir="ltr">
                         {activeUrlTab === "shop" ? shopUrl : bioUrl}
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-xs text-charcoal/60 bg-cream/40 rounded-xl p-3 border border-primary/10 max-w-sm w-full md:w-auto shrink-0 flex items-start gap-2.5">
+                  <div className="text-xs text-charcoal/60 bg-cream/40 rounded-xl p-3.5 border border-primary/10 max-w-sm xl:max-w-md w-full md:w-auto shrink-0 flex items-start gap-2.5">
                     <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
                       <p className="font-bold text-primary text-[11px]">{isAr ? "نصيحة لزيادة المبيعات:" : "Packaging Tip:"}</p>
@@ -1068,7 +1068,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
               {/* Progress Summary Card */}
               {nextTier && (
                 <div className="bg-cream/30 border border-primary/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 sm:gap-6 shadow-xs">
-                  <div className="space-y-1.5 max-w-xl">
+                  <div className="space-y-1.5 max-w-2xl">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/15 text-accent text-[11px] font-bold">
                       <Trophy className="w-3.5 h-3.5" />
                       <span>{isAr ? "تقدم المتجر الحالي" : "Current Milestone Progress"}</span>
@@ -1082,7 +1082,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
                     </p>
                   </div>
 
-                  <div className="w-full md:w-80 bg-white p-4 sm:p-5 rounded-2xl border border-primary/10 shadow-2xs shrink-0 space-y-3">
+                  <div className="w-full md:w-80 xl:w-96 bg-white p-4 sm:p-5 rounded-2xl border border-primary/10 shadow-2xs shrink-0 space-y-3">
                     <div className="flex justify-between items-baseline">
                       <span className="text-xs font-bold text-primary/70">{isAr ? "إجمالي المبيعات" : "Total Orders"}</span>
                       <span className="text-xl font-heading font-bold text-accent">
@@ -1722,7 +1722,7 @@ export function GrowthTab({ dict, coupons = [], sales = [], lang = "en", artisan
         </AnimatePresence>
 
         {/* Coupon Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
           {coupons.length === 0 ? (
             <div className="col-span-full py-12 sm:py-16 px-4 sm:px-6 text-center bg-cream/20 rounded-2xl sm:rounded-3xl md:rounded-[2.5rem] border-2 border-dashed border-primary/10">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center mx-auto mb-4 text-accent">

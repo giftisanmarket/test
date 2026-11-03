@@ -691,7 +691,7 @@ export function AdminNavClient({
         "flex-1 pt-[calc(5rem+env(safe-area-inset-top,0px))] lg:pt-0 min-w-0 pb-28 lg:pb-12 overflow-x-hidden transition-all duration-300 ease-in-out",
         isCollapsed ? "lg:ms-20" : "lg:ms-80"
       )}>
-        <div className="p-4 sm:p-6 md:p-8 lg:p-12 min-w-0 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 md:p-8 lg:px-8 xl:px-10 2xl:px-12 lg:py-8 xl:py-10 min-w-0 w-full max-w-[1920px] mx-auto">
           {children}
         </div>
       </main>

@@ -5,6 +5,9 @@ import Image, { ImageProps } from "next/image";
 import { Skeleton } from "./skeleton";
 import { cn, getOptimizedImageUrl, isVideoUrl, getVideoPosterUrl } from "@/lib/utils";
 
+// Module-level cache so images that loaded once across any component never re-trigger skeleton/loading states
+const loadedImagesCache = new Set<string>();
+
 interface BespokeImageProps extends ImageProps {
   containerClassName?: string;
   type?: "product" | "artisan" | "review";
@@ -26,19 +29,9 @@ export function BespokeImage({
   hoverToPlay = true,
   ...props 
 }: BespokeImageProps) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const isFill = !!props.fill;
-
   // Resolve image source: prefer direct source; fallback to internal endpoint only if src is absent
   const rawSrc = typeof src === "string" ? src.trim() : "";
   const resolvedSrc = rawSrc || (type && id ? `/api/image/${type}/${id}` : "/icon.png");
-
-  useEffect(() => {
-    setIsLoading(true);
-  }, [resolvedSrc]);
 
   const isSrcVideo = isVideoUrl(resolvedSrc);
 
@@ -53,6 +46,29 @@ export function BespokeImage({
   // 3. If src is a video and no photo exists, use the video's poster snapshot
   const staticCoverSrc = photoFromImages 
     || (!isSrcVideo ? resolvedSrc : (getVideoPosterUrl(resolvedSrc) || resolvedSrc));
+
+  const isAlreadyLoaded = typeof window !== "undefined" && (
+    (typeof staticCoverSrc === "string" && loadedImagesCache.has(staticCoverSrc)) ||
+    (typeof resolvedSrc === "string" && loadedImagesCache.has(resolvedSrc))
+  );
+
+  const [isLoading, setIsLoading] = useState(!isAlreadyLoaded);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const isFill = !!props.fill;
+
+  useEffect(() => {
+    const isCached = (
+      (typeof staticCoverSrc === "string" && loadedImagesCache.has(staticCoverSrc)) ||
+      (typeof resolvedSrc === "string" && loadedImagesCache.has(resolvedSrc))
+    );
+    if (isCached) {
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+  }, [staticCoverSrc, resolvedSrc]);
 
   // Dynamic Edge CDN loader for Cloudinary and Unsplash
   const cdnLoader = ({ src: lSrc, width, quality }: { src: string; width: number; quality?: number }) => {
@@ -145,12 +161,20 @@ export function BespokeImage({
         alt={alt}
         className={cn(
           "transition-opacity duration-300",
-          isLoading ? "scale-105 blur-lg grayscale" : "scale-100 blur-0 grayscale-0",
+          isLoading ? "opacity-0" : "opacity-100",
           hasVideo && isPlaying ? "opacity-0" : "opacity-100",
           className
         )}
-        onLoad={() => setIsLoading(false)}
-        onError={() => setIsLoading(false)}
+        onLoad={(e) => {
+          if (typeof staticCoverSrc === "string") loadedImagesCache.add(staticCoverSrc);
+          if (typeof resolvedSrc === "string") loadedImagesCache.add(resolvedSrc);
+          setIsLoading(false);
+          props.onLoad?.(e);
+        }}
+        onError={(e) => {
+          setIsLoading(false);
+          props.onError?.(e);
+        }}
         sizes={props.sizes || (isFill ? "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" : undefined)}
         {...props}
       />

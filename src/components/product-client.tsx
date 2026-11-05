@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Heart, Share2, Star, Truck, ShieldCheck, Clock, MapPin, ArrowRight, ArrowLeft, ChevronRight, CheckCircle2, Sparkles, Camera, ImagePlus, X, Video, Radio, MessageSquare, XCircle, ShoppingBag, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
+import { cn, getOptimizedImageUrl } from "@/lib/utils";
 import { useCart } from "@/context/cart-context";
 import { useFavorites } from "@/context/favorites-context";
 import { addReview, trackProductView } from "@/lib/actions";
@@ -156,6 +156,20 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
       });
     }
   }, [product.id]);
+
+  // Eagerly preload all product gallery images in background so swiping/switching has zero latency
+  useEffect(() => {
+    if (typeof window === "undefined" || !product?.images?.length) return;
+    product.images.forEach((imgUrl: string) => {
+      if (!imgUrl || isVideo(imgUrl)) return;
+      const targetWidth = window.innerWidth < 768 ? 800 : 1200;
+      const targetUrl = imgUrl.includes("res.cloudinary.com")
+        ? getOptimizedImageUrl(imgUrl, { width: targetWidth, quality: "auto" })
+        : imgUrl;
+      const img = new window.Image();
+      img.src = targetUrl;
+    });
+  }, [product?.images]);
   
   const isVideo = (url: string) => {
     if (!url) return false;
@@ -424,11 +438,6 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
           <div className="space-y-6 min-w-0">
             <div className="relative group">
               <motion.div
-                key={selectedVariant?.image || selectedImage}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.2}
@@ -449,24 +458,64 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                 }}
                 className="relative aspect-[4/5] sm:aspect-square rounded-3xl overflow-hidden shadow-2xl bg-cream/30 cursor-zoom-in touch-pan-y select-none"
               >
-                {isVideo(selectedVariant?.image || product.images[selectedImage]) ? (
-                  <video
-                    src={selectedVariant?.image || product.images[selectedImage]}
-                    className="w-full h-full object-cover"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                  />
-                ) : (
-                  <BespokeImage
-                    src={selectedVariant?.image || product.images[selectedImage]}
-                    alt={product.name}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    priority
-                  />
+                {product.images?.map((img: string, idx: number) => {
+                  const isCurrent = !selectedVariant?.image && selectedImage === idx;
+                  const isVid = isVideo(img);
+                  return (
+                    <div
+                      key={img || idx}
+                      className={cn(
+                        "absolute inset-0 transition-opacity duration-300 ease-out",
+                        isCurrent ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"
+                      )}
+                    >
+                      {isVid ? (
+                        <video
+                          src={img}
+                          className="w-full h-full object-cover"
+                          autoPlay={isCurrent}
+                          loop
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <BespokeImage
+                          src={img}
+                          alt={product.name}
+                          fill
+                          className="object-cover transition-transform duration-700 group-hover:scale-105"
+                          sizes="(max-width: 1024px) 100vw, 50vw"
+                          priority={idx === 0 || idx === 1}
+                          loading={idx === 0 || idx === 1 ? "eager" : "lazy"}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Selected variant image override */}
+                {selectedVariant?.image && (
+                  <div className="absolute inset-0 z-20 pointer-events-auto">
+                    {isVideo(selectedVariant.image) ? (
+                      <video
+                        src={selectedVariant.image}
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <BespokeImage
+                        src={selectedVariant.image}
+                        alt={product.name}
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        priority
+                      />
+                    )}
+                  </div>
                 )}
               </motion.div>
 
@@ -477,6 +526,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedImage(prev => (prev === 0 ? product.images.length - 1 : prev - 1));
+                      if (selectedVariant?.image) setSelectedVariant((prev: any) => prev ? { ...prev, image: null } : null);
                     }}
                     className="absolute start-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/80 backdrop-blur shadow-lg hidden md:flex items-center justify-center text-primary xl:opacity-0 xl:group-hover:opacity-100 opacity-100 transition-all hover:bg-white z-10"
                   >
@@ -486,6 +536,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedImage(prev => (prev === product.images.length - 1 ? 0 : prev + 1));
+                      if (selectedVariant?.image) setSelectedVariant((prev: any) => prev ? { ...prev, image: null } : null);
                     }}
                     className="absolute end-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/80 backdrop-blur shadow-lg hidden md:flex items-center justify-center text-primary xl:opacity-0 xl:group-hover:opacity-100 opacity-100 transition-all hover:bg-white z-10"
                   >

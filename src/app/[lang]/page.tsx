@@ -69,6 +69,21 @@ const CURATED_FEATURED_ARTISAN_SLUGS = [
   "ur-own-flower"
 ];
 
+const EXCLUDED_HOMEPAGE_ARTISAN_SLUGS = [
+  "studiopelle"
+];
+
+const baseApprovedProductWhere = {
+  status: "APPROVED" as const,
+  artisan: {
+    status: "APPROVED" as const,
+    slug: { notIn: EXCLUDED_HOMEPAGE_ARTISAN_SLUGS },
+    NOT: [
+      { studioName: { equals: "StudioPelle", mode: "insensitive" as const } }
+    ]
+  }
+};
+
 const productSelect = {
   id: true,
   name: true,
@@ -135,33 +150,51 @@ const artisanSelect = {
 };
 
 function sanitizeProducts(productsList: any[]) {
-  return productsList.map(p => ({
-    ...p,
-    // Keep top 2 images only to prevent huge JSON serialization overhead
-    images: Array.isArray(p.images)
-      ? p.images
-          .slice(0, 2)
-          .map((img: string) => ((img?.length || 0) > 60000 ? "" : img))
-      : [],
-    artisan: {
-      ...p.artisan,
-      avatar: (p.artisan?.avatar?.length || 0) > 60000 ? "" : p.artisan?.avatar
-    }
-  }));
+  return productsList
+    .filter(p => {
+      const slug = p.artisan?.slug?.toLowerCase();
+      const studio = p.artisan?.studioName?.toLowerCase();
+      return (
+        !EXCLUDED_HOMEPAGE_ARTISAN_SLUGS.includes(slug || "") &&
+        studio !== "studiopelle"
+      );
+    })
+    .map(p => ({
+      ...p,
+      // Keep top 2 images only to prevent huge JSON serialization overhead
+      images: Array.isArray(p.images)
+        ? p.images
+            .slice(0, 2)
+            .map((img: string) => ((img?.length || 0) > 60000 ? "" : img))
+        : [],
+      artisan: {
+        ...p.artisan,
+        avatar: (p.artisan?.avatar?.length || 0) > 60000 ? "" : p.artisan?.avatar
+      }
+    }));
 }
 
 function sanitizeArtisans(artisansList: any[]) {
-  return artisansList.map(a => ({
-    ...a,
-    avatar: (a.avatar?.length || 0) > 60000 ? "" : a.avatar,
-    bannerImage: (a.bannerImage?.length || 0) > 60000 ? "" : a.bannerImage,
-    products: (a.products || []).map((p: any) => ({
-      ...p,
-      images: Array.isArray(p.images)
-        ? p.images.slice(0, 1).map((img: string) => ((img?.length || 0) > 60000 ? "" : img))
-        : [],
-    }))
-  }));
+  return artisansList
+    .filter(a => {
+      const slug = a.slug?.toLowerCase();
+      const studio = a.studioName?.toLowerCase();
+      return (
+        !EXCLUDED_HOMEPAGE_ARTISAN_SLUGS.includes(slug || "") &&
+        studio !== "studiopelle"
+      );
+    })
+    .map(a => ({
+      ...a,
+      avatar: (a.avatar?.length || 0) > 60000 ? "" : a.avatar,
+      bannerImage: (a.bannerImage?.length || 0) > 60000 ? "" : a.bannerImage,
+      products: (a.products || []).map((p: any) => ({
+        ...p,
+        images: Array.isArray(p.images)
+          ? p.images.slice(0, 1).map((img: string) => ((img?.length || 0) > 60000 ? "" : img))
+          : [],
+      }))
+    }));
 }
 
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
@@ -184,12 +217,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
   ] = await Promise.all([
     // 1. Catalog for Native Discovery Feed (up to 24 items)
     prisma.product.findMany({
-      where: {
-        status: "APPROVED",
-        artisan: {
-          status: "APPROVED"
-        }
-      },
+      where: baseApprovedProductWhere,
       select: productSelect,
       take: 24,
       orderBy: [
@@ -200,12 +228,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
     // 2. Top Trending for Web Shelf (up to 12 items)
     prisma.product.findMany({
-      where: {
-        status: "APPROVED",
-        artisan: {
-          status: "APPROVED"
-        }
-      },
+      where: baseApprovedProductWhere,
       select: productSelect,
       take: 12,
       orderBy: [
@@ -217,10 +240,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     // 3. Handcrafted Bags & Leather Goods (up to 10 items)
     prisma.product.findMany({
       where: {
-        status: "APPROVED",
-        artisan: {
-          status: "APPROVED"
-        },
+        ...baseApprovedProductWhere,
         category: { in: ["bags-and-purses", "handbags", "leatherwork"], mode: "insensitive" }
       },
       select: productSelect,
@@ -234,10 +254,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     // 4. Artisan Ceramics, Woodwork & Home Collectibles (up to 10 items)
     prisma.product.findMany({
       where: {
-        status: "APPROVED",
-        artisan: {
-          status: "APPROVED"
-        },
+        ...baseApprovedProductWhere,
         category: { in: ["home-and-living", "woodwork", "ceramics", "fine-art-ceramics", "sculpture", "art-and-collectibles"], mode: "insensitive" }
       },
       select: productSelect,
@@ -251,10 +268,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     // 5. Bespoke Jewelry & Adornments (up to 12 items)
     prisma.product.findMany({
       where: {
-        status: "APPROVED",
-        artisan: {
-          status: "APPROVED"
-        },
+        ...baseApprovedProductWhere,
         category: { in: ["jewelry", "necklaces", "earrings", "bracelets", "pins-clips", "brooches-pins-clips", "hair-accessories", "accessories"], mode: "insensitive" }
       },
       select: productSelect,
@@ -268,10 +282,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     // 6. Handmade Crochet & Apparel (up to 10 items)
     prisma.product.findMany({
       where: {
-        status: "APPROVED",
-        artisan: {
-          status: "APPROVED"
-        },
+        ...baseApprovedProductWhere,
         category: { in: ["clothing", "fashion", "textiles", "wearables"], mode: "insensitive" }
       },
       select: productSelect,
@@ -285,10 +296,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     // 7. Curated Gift Sets & Keepsakes (up to 10 items)
     prisma.product.findMany({
       where: {
-        status: "APPROVED",
-        artisan: {
-          status: "APPROVED"
-        },
+        ...baseApprovedProductWhere,
         category: { in: ["gifts-sets", "gifts", "gifts-mementos", "keychains-lanyards", "toys-and-games", "weddings", "games-puzzles", "paper"], mode: "insensitive" }
       },
       select: productSelect,
@@ -314,14 +322,17 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
       });
 
-      // If less than 4 curated are available, backfill with other approved artisans (excluding moon-by-alila)
+      // If less than 4 curated are available, backfill with other approved artisans (excluding moon-by-alila and studiopelle)
       if (curated.length < 4) {
         const existingIds = curated.map((c) => c.id);
         const additional = await prisma.artisanProfile.findMany({
           where: {
             status: "APPROVED",
             id: { notIn: existingIds },
-            slug: { not: "moon-by-alila-wmp4" }
+            slug: { notIn: ["moon-by-alila-wmp4", ...EXCLUDED_HOMEPAGE_ARTISAN_SLUGS] },
+            NOT: [
+              { studioName: { equals: "StudioPelle", mode: "insensitive" } }
+            ]
           },
           select: artisanSelect,
           take: 4 - curated.length,

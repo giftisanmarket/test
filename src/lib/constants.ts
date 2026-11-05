@@ -4,5 +4,4 @@ export const SITE_DESCRIPTION = "Giftisan is a local marketplace for independent
 
 export const IS_CHAT_LOCKED = process.env.NEXT_PUBLIC_CHAT_LOCKED === "true"; // defaults to false (unlocked)
 
-export const MIN_PAYOUT_AMOUNT = 100; // Minimum withdrawal threshold in EGP
-
+export const MIN_PAYOUT_AMOUNT = 1000; // Minimum withdrawal threshold in EGP

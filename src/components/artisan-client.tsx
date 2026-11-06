@@ -14,7 +14,8 @@ import {
   Package, 
   Clock,
   Sparkles,
-  MessageSquare
+  MessageSquare,
+  PauseCircle
 } from "lucide-react";
 import { BespokeImage } from "./bespoke-image";
 import { ProductCard } from "@/components/home/product-card";
@@ -333,6 +334,32 @@ export function ArtisanClient({ artisan, dict, lang = "en" }: ArtisanClientProps
             </div>
           )}
         </div>
+
+        {/* Vacation / Store Paused Banner */}
+        {artisan.isAcceptingOrders === false && (
+          <div className="mt-6 lg:mt-8 p-5 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-amber-200/90 bg-amber-50/80 backdrop-blur-xs flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 shadow-xs">
+            <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl bg-amber-500/15 text-amber-700 border border-amber-300/60 flex items-center justify-center shrink-0 shadow-xs">
+              <PauseCircle className="w-6 h-6 lg:w-7 lg:h-7" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-200/80 text-amber-900 border border-amber-300">
+                  {isAr ? "إجازة مؤقتة" : "On Vacation"}
+                </span>
+                <h2 className="text-base sm:text-lg lg:text-xl font-heading font-bold text-amber-950">
+                  {isAr ? "المتجر متوقف مؤقتاً عن استقبال الطلبات" : "This shop is temporarily taking a break"}
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm lg:text-base text-amber-900/85 leading-relaxed font-medium">
+                {artisan.vacationNotice
+                  ? artisan.vacationNotice
+                  : (isAr
+                    ? "المتجر في استراحة مؤقتة ولا يستقبل طلبات جديدة حالياً. لا يزال بإمكانك تصفح المعروضات وحفظها في المفضلة أو التواصل مع الحرفي عبر الرسائل."
+                    : "The artisan is taking a short break and not accepting new orders at this time. You can still explore the collection, favorite items, or send a message.")}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Shop Catalog Section */}
         <section className="mt-8 lg:mt-12 2xl:mt-16">

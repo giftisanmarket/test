@@ -22,9 +22,11 @@ import {
   ExternalLink,
   Calendar,
   Lock,
+  PauseCircle,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
-import { acceptCurrentArtisanAgreement, updateArtisanProfile, updateProfileAvatar, checkSlugAvailability, uploadImage } from "@/lib/actions";
+import { acceptCurrentArtisanAgreement, updateArtisanProfile, updateProfileAvatar, checkSlugAvailability, uploadImage, toggleArtisanAvailabilityAction } from "@/lib/actions";
 import { ARTISAN_AGREEMENT_VERSION } from "@/lib/artisan-agreement";
 import { calculateTierCommission } from "@/lib/commission";
 import { uploadMediaToCloudinary } from "@/lib/client-upload";
@@ -110,6 +112,9 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
   };
 
   const [activeSettingsTab, setActiveSettingsTab] = useState("profile");
+  const [isAcceptingOrders, setIsAcceptingOrders] = useState<boolean>(artisan.isAcceptingOrders ?? true);
+  const [vacationNotice, setVacationNotice] = useState<string>(artisan.vacationNotice || "");
+  const [isSavingAvailability, setIsSavingAvailability] = useState(false);
   const [slug, setSlug] = useState(artisan.slug || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isAcceptingAgreement, setIsAcceptingAgreement] = useState(false);
@@ -282,9 +287,33 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
     setIsSaving(false);
   };
 
+  const handleSaveAvailability = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (isAdminPreview) return;
+    setIsSavingAvailability(true);
+    try {
+      const res = await toggleArtisanAvailabilityAction(isAcceptingOrders, vacationNotice, artisan.userId);
+      if (res.error) {
+        toast.error(res.error);
+      } else {
+        toast.success(
+          isAcceptingOrders
+            ? (lang === "ar" ? "تم فتح المتجر واستقبال الطلبات بنجاح" : "Shop is now open and accepting orders!")
+            : (lang === "ar" ? "تم تفعيل وضع الإجازة وإيقاف استقبال الطلبات" : "Vacation mode activated. Shop orders are paused.")
+        );
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update shop availability");
+    } finally {
+      setIsSavingAvailability(false);
+    }
+  };
+
   const navItems = [
     { id: "profile", icon: User, label: dict.studio_profile.profile_tab },
     { id: "branding", icon: Palette, label: dict.studio_profile.brand_tab },
+    { id: "availability", icon: PauseCircle, label: lang === "ar" ? "حالة المتجر والإجازات" : "Store Availability" },
     { id: "legal", icon: Scale, label: lang === "ar" ? "شروط وأحكام الحرفيين" : "Artisan Terms & Conditions" },
   ];
 
@@ -852,6 +881,160 @@ export function SettingsTab({ artisan, dict, lang = "en", isAdminPreview = false
                     >
                       {isUploadingBanner ? (lang === "ar" ? "جاري رفع الصورة..." : "Uploading banner...") : isSaving ? dict.studio_profile.syncing : dict.studio_profile.save_branding}
                       {isUploadingBanner ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </motion.form>
+              ) : activeSettingsTab === "availability" ? (
+                <motion.form
+                  key="availability"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  onSubmit={handleSaveAvailability}
+                  className="space-y-8"
+                >
+                  <div className="space-y-2">
+                    <h3 className="text-xl sm:text-2xl font-heading font-bold text-primary">
+                      {lang === "ar" ? "حالة المتجر واستقبال الطلبات" : "Store Availability & Vacation Mode"}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-charcoal/60 leading-relaxed font-medium">
+                      {lang === "ar"
+                        ? "تحكم في إمكانية شراء المنتجات من متجرك عندما تكون في إجازة أو لتجديد الخامات دون إخفاء متجرك من محركات البحث أو منصة جيفتيزان."
+                        : "Pause incoming orders while taking time off or restocking, without hurting your SEO rankings, search visibility, or favorites."}
+                    </p>
+                  </div>
+
+                  {/* Status Options Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                    {/* Active Option */}
+                    <div
+                      onClick={() => !isAdminPreview && setIsAcceptingOrders(true)}
+                      className={cn(
+                        "p-5 sm:p-6 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer relative flex flex-col justify-between gap-4 select-none",
+                        isAcceptingOrders
+                          ? "border-emerald-600 bg-emerald-50/50 shadow-md shadow-emerald-900/5 ring-2 ring-emerald-600/20"
+                          : "border-primary/10 bg-white hover:border-primary/20 opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border",
+                          isAcceptingOrders
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-600/20"
+                            : "bg-primary/5 text-primary border-primary/10"
+                        )}>
+                          <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                        <span className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                          isAcceptingOrders
+                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                            : "bg-charcoal/10 text-charcoal/60"
+                        )}>
+                          {lang === "ar" ? "نشط ومفتوح" : "Active & Open"}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-base sm:text-lg font-bold text-primary">
+                          {lang === "ar" ? "استقبال الطلبات مفتوح" : "Accepting Orders"}
+                        </h4>
+                        <p className="text-xs text-charcoal/60 leading-relaxed">
+                          {lang === "ar"
+                            ? "يستطيع العملاء إضافة منتجاتك إلى السلة وإتمام عمليات الشراء بشكل طبيعي."
+                            : "Clients can freely browse, add items to cart, and place orders."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Vacation / Paused Option */}
+                    <div
+                      onClick={() => !isAdminPreview && setIsAcceptingOrders(false)}
+                      className={cn(
+                        "p-5 sm:p-6 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer relative flex flex-col justify-between gap-4 select-none",
+                        !isAcceptingOrders
+                          ? "border-amber-600 bg-amber-50/60 shadow-md shadow-amber-900/5 ring-2 ring-amber-600/20"
+                          : "border-primary/10 bg-white hover:border-primary/20 opacity-70 hover:opacity-100"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className={cn(
+                          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border",
+                          !isAcceptingOrders
+                            ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20"
+                            : "bg-primary/5 text-primary border-primary/10"
+                        )}>
+                          <PauseCircle className="w-6 h-6" />
+                        </div>
+                        <span className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                          !isAcceptingOrders
+                            ? "bg-amber-100 text-amber-900 border border-amber-300"
+                            : "bg-charcoal/10 text-charcoal/60"
+                        )}>
+                          {lang === "ar" ? "إجازة مؤقتة" : "On Vacation / Paused"}
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-base sm:text-lg font-bold text-primary">
+                          {lang === "ar" ? "إيقاف استقبال الطلبات مؤقتاً" : "Pause Store Orders"}
+                        </h4>
+                        <p className="text-xs text-charcoal/60 leading-relaxed">
+                          {lang === "ar"
+                            ? "يتم تعطيل زر الشراء وإظهار تنبيه للعملاء، مع بقاء متجرك ومنتجاتك مرئية وقابلة للحفظ في المفضلة."
+                            : "Buttons are disabled with a friendly notice. Store and pieces stay visible for browsing & favorites."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Vacation Announcement Message */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black uppercase tracking-wider text-primary">
+                        {lang === "ar" ? "رسالة الإجازة للمشترين (تظهر في متجرك وصفحات منتجاتك)" : "Vacation Notice to Buyers (Displayed on your shop & products)"}
+                      </label>
+                      <span className="text-[11px] text-charcoal/40 font-mono">
+                        {vacationNotice.length}/300
+                      </span>
+                    </div>
+                    <textarea
+                      value={vacationNotice}
+                      maxLength={300}
+                      disabled={isAdminPreview}
+                      onChange={(e) => setVacationNotice(e.target.value)}
+                      placeholder={
+                        lang === "ar"
+                          ? "مثال: نأخذ استراحة قصيرة لتجديد الخامات وسنعود لاستقبال الطلبات يوم الأحد القادم بإذن الله!"
+                          : "e.g. Taking a short break to restock raw materials. We will resume taking orders next Monday!"
+                      }
+                      rows={3}
+                      className="w-full px-5 py-4 rounded-2xl bg-cream/30 border border-primary/10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all resize-none text-charcoal placeholder:text-charcoal/30"
+                    />
+                    <p className="text-[11px] text-charcoal/50">
+                      {lang === "ar"
+                        ? "نصيحة: أخبر المشترين بموعد عودتك المتوقع حتى يتمكنوا من حفظ منتجاتك ومتابعة متجرك."
+                        : "Tip: Let buyers know your expected return date so they can bookmark your pieces and follow your studio."}
+                    </p>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="flex justify-end pt-4 border-t border-primary/10">
+                    <button
+                      type="submit"
+                      disabled={isSavingAvailability || isAdminPreview}
+                      className="h-14 sm:h-16 px-8 sm:px-12 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50 active:scale-95 text-sm sm:text-base cursor-pointer"
+                    >
+                      {isSavingAvailability ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>{lang === "ar" ? "جاري الحفظ..." : "Saving..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" />
+                          <span>{lang === "ar" ? "حفظ حالة المتجر" : "Save Store Availability"}</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </motion.form>

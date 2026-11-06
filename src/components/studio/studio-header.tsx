@@ -26,8 +26,10 @@ import {
   ArrowLeft,
   ArrowRight,
   ShieldCheck,
+  Eye,
 } from "lucide-react";
 import { useNotifications } from "@/components/notification-provider";
+import { useStudio } from "@/context/studio-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -41,6 +43,14 @@ interface StudioHeaderProps {
     slug?: string | null;
     avatar?: string | null;
     status?: string | null;
+    isVerified?: boolean;
+    isAcceptingOrders?: boolean;
+    vacationNotice?: string | null;
+    user?: {
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    } | null;
   } | null;
   user: {
     name?: string | null;
@@ -61,19 +71,27 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
   const profileRef = useRef<HTMLDivElement>(null);
   const isAr = lang === "ar";
+  const { targetArtisan, isCleanMode, toggleCleanMode } = useStudio();
   const artisanUserId = searchParams?.get("artisanUserId");
-  const isAdminPreview = user?.role === "ADMIN" && Boolean(artisanUserId);
+  const isActualAdminPreview = user?.role === "ADMIN" && Boolean(artisanUserId);
+  const isAdminPreview = isActualAdminPreview && !isCleanMode;
+  const activeArtisan = (isActualAdminPreview && targetArtisan) ? targetArtisan : (artisan || targetArtisan);
+
   const isProductFormPage = Boolean(
     pathname?.includes("/studio/new-product") ||
     (pathname?.includes("/studio/products/") && pathname?.endsWith("/edit"))
   );
   const showMessagesControl = !isAdminPreview && !isProductFormPage;
 
-  const studioBaseHref = isAdminPreview
-    ? `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}`
+  const studioBaseHref = isActualAdminPreview
+    ? isCleanMode
+      ? `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}&clean=true`
+      : `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}`
     : `/${lang}/studio`;
-  const studioSettingsHref = isAdminPreview
-    ? `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}&tab=settings`
+  const studioSettingsHref = isActualAdminPreview
+    ? isCleanMode
+      ? `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}&tab=settings&clean=true`
+      : `/${lang}/studio?artisanUserId=${encodeURIComponent(artisanUserId!)}&tab=settings`
     : `/${lang}/studio?tab=settings`;
 
   // Close profile dropdown on outside click
@@ -186,10 +204,13 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
   const studioDisplayName = isAdminPreview
     ? user.name || (isAr ? "مشرف النظام" : "Platform Admin")
-    : artisan?.studioName || user.name || (isAr ? "متجر الحرفي" : "Artisan Shop");
-  const avatarImage = isAdminPreview ? user.image : artisan?.avatar || user.image;
-  const isVerified = !isAdminPreview && artisan?.status === "APPROVED";
-  const publicShopUrl = isVerified && artisan?.slug ? `/${lang}/artisans/${artisan.slug}` : null;
+    : activeArtisan?.studioName || activeArtisan?.user?.name || user.name || (isAr ? "متجر الحرفي" : "Artisan Shop");
+  const avatarImage = isAdminPreview
+    ? user.image
+    : activeArtisan?.avatar || activeArtisan?.user?.image || user.image;
+  const isVerified = !isAdminPreview && (activeArtisan?.status === "APPROVED" || Boolean(activeArtisan?.isVerified));
+  const publicShopUrl = isVerified && activeArtisan?.slug ? `/${lang}/artisans/${activeArtisan.slug}` : null;
+  const studioUserEmail = isAdminPreview ? user.email : activeArtisan?.user?.email || user.email;
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-xl border-b border-primary/10 shadow-xs pt-safe">
@@ -218,6 +239,12 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                 <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-green-50 text-green-700 border border-green-200 inline-flex items-center gap-1 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-600 animate-pulse" />
                   <span className="hidden xs:inline">{isAr ? "موثق" : "Verified"}</span>
+                </span>
+              )}
+              {activeArtisan?.isAcceptingOrders === false && (
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <span className="hidden xs:inline">{isAr ? "إجازة" : "Paused"}</span>
                 </span>
               )}
             </div>
@@ -356,7 +383,7 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                   {/* Studio Header Info */}
                   <div className="px-5 py-3 border-b border-primary/5 bg-cream/20">
                     <p className="text-xs font-black text-primary truncate">{studioDisplayName}</p>
-                    <p className="text-[11px] text-charcoal/50 truncate font-sans">{user.email}</p>
+                    <p className="text-[11px] text-charcoal/50 truncate font-sans">{studioUserEmail}</p>
                     <div className="mt-2.5 flex items-center gap-1.5">
                       {isAdminPreview ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-primary/5 text-primary border border-primary/15">
@@ -382,7 +409,38 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
                     <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary/40">
                       {isAr ? "وضع التبديل" : "Switch Mode"}
                     </div>
-                    {isAdminPreview && (
+                    {isActualAdminPreview && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileOpen(false);
+                          toggleCleanMode();
+                        }}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-2xl hover:bg-primary/5 text-primary font-bold text-xs transition-colors group cursor-pointer text-start"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                            <Eye className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold leading-tight">
+                              {isCleanMode
+                                ? (isAr ? "العودة لوضع الإدارة" : "Return to Admin Mode")
+                                : (isAr ? "معاينة تسويقية نظيفة" : "Marketing Clean View")}
+                            </p>
+                            <p className="text-[10px] text-charcoal/40 font-normal">
+                              {isCleanMode
+                                ? (isAr ? "إظهار أدوات الإدارة" : "Show auditor and management tools")
+                                : (isAr ? "إخفاء أدوات الإدارة لأخذ لقطات" : "Hide admin UI for marketing screenshots")}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
+                          {isCleanMode ? (isAr ? "نشط" : "Active") : (isAr ? "تبديل" : "Toggle")}
+                        </span>
+                      </button>
+                    )}
+                    {isActualAdminPreview && (
                       <Link
                         href={`/${lang}/admin/users`}
                         onClick={() => setIsProfileOpen(false)}
@@ -659,6 +717,29 @@ export function StudioHeader({ lang, dict, artisan, user }: StudioHeaderProps) {
 
               {/* Mode Switch & Logout */}
               <div className="pt-2 border-t border-primary/5 space-y-2">
+                {isActualAdminPreview && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      toggleCleanMode();
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-accent/10 hover:bg-accent/20 text-accent font-bold text-xs transition-colors cursor-pointer text-start"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-accent" />
+                      <span>
+                        {isCleanMode
+                          ? (isAr ? "العودة لوضع الإدارة" : "Return to Admin Mode")
+                          : (isAr ? "معاينة تسويقية نظيفة" : "Marketing Clean View")}
+                      </span>
+                    </span>
+                    <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-accent text-white">
+                      {isCleanMode ? (isAr ? "نشط" : "Active") : (isAr ? "تبديل" : "Toggle")}
+                    </span>
+                  </button>
+                )}
+
                 <Link
                   href={`/${lang}`}
                   onClick={() => setIsMobileMenuOpen(false)}

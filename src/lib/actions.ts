@@ -1023,6 +1023,8 @@ export async function createOrder(
             id: true,
             status: true,
             studioName: true,
+            isAcceptingOrders: true,
+            vacationNotice: true,
             user: { select: { name: true, email: true } },
           },
         },
@@ -1043,6 +1045,13 @@ export async function createOrder(
         if (!product || product.status !== "APPROVED" || product.artisan?.status !== "APPROVED") {
           throw new Error(
             `The item "${product?.name || rawItem?.name || "One of your items"}" is currently unavailable.`
+          );
+        }
+
+        if (product.artisan?.isAcceptingOrders === false) {
+          const shopName = product.artisan.studioName || "This shop";
+          throw new Error(
+            `"${shopName}" is temporarily taking a break and not accepting orders at this time. Please remove their items to proceed.`
           );
         }
 
@@ -2209,7 +2218,9 @@ export async function updateArtisanProfile(userId: string, data: any) {
         pickupCity: data.pickupCity || null,
         pickupDistrict: data.pickupDistrict || null,
         pickupBuilding: data.pickupBuilding || null,
-        pickupNotes: data.pickupNotes || null
+        pickupNotes: data.pickupNotes || null,
+        ...(data.isAcceptingOrders !== undefined && { isAcceptingOrders: Boolean(data.isAcceptingOrders) }),
+        ...(data.vacationNotice !== undefined && { vacationNotice: data.vacationNotice ? stripEmojis(String(data.vacationNotice)).trim() : null })
       }
     });
 
@@ -2232,7 +2243,9 @@ export async function updateArtisanProfile(userId: string, data: any) {
         bio: updated.bio,
         location: updated.location,
         avatar: updated.avatar,
-        slug: updated.slug
+        slug: updated.slug,
+        isAcceptingOrders: updated.isAcceptingOrders,
+        vacationNotice: updated.vacationNotice
       }
     };
   } catch (error: any) {
@@ -2242,6 +2255,61 @@ export async function updateArtisanProfile(userId: string, data: any) {
       return { error: "This Shop Name is already taken. Please try another one." };
     }
     return { error: error.message || "Failed to update shop profile" };
+  }
+}
+
+export async function toggleArtisanAvailabilityAction(
+  isAcceptingOrders: boolean,
+  vacationNotice?: string | null,
+  targetUserId?: string
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { error: "You must be signed in to perform this action." };
+    }
+
+    const isAdmin = session.user.role === "ADMIN";
+    const effectiveUserId = (isAdmin && targetUserId) ? targetUserId : session.user.id;
+
+    if (!isAdmin && effectiveUserId !== session.user.id) {
+      return { error: "You are not authorized to update this shop's availability." };
+    }
+
+    const cleanNotice = vacationNotice ? stripEmojis(String(vacationNotice)).trim() : null;
+
+    const updated = await prisma.artisanProfile.update({
+      where: { userId: effectiveUserId },
+      data: {
+        isAcceptingOrders: Boolean(isAcceptingOrders),
+        vacationNotice: cleanNotice,
+      },
+      select: {
+        id: true,
+        slug: true,
+        isAcceptingOrders: true,
+        vacationNotice: true,
+        studioName: true,
+      },
+    });
+
+    revalidatePath("/studio");
+    revalidatePath("/artisans");
+    if (updated.slug) {
+      revalidatePath(`/artisans/${updated.slug}`);
+      revalidatePath(`/en/artisans/${updated.slug}`);
+      revalidatePath(`/ar/artisans/${updated.slug}`);
+    }
+    await revalidateCatalog();
+
+    return {
+      success: true,
+      isAcceptingOrders: updated.isAcceptingOrders,
+      vacationNotice: updated.vacationNotice,
+    };
+  } catch (error: any) {
+    console.error("toggleArtisanAvailabilityAction error:", error);
+    return { error: error?.message || "Failed to update shop availability." };
   }
 }
 

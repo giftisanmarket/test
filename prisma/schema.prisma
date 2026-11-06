@@ -128,6 +128,8 @@ model ArtisanProfile {
   slug            String?       @unique
   status          ArtisanStatus @default(PENDING)
   isVerified      Boolean       @default(false) // Keeping this as a "verified badge" flag if needed, but status will control visibility.
+  isAcceptingOrders Boolean     @default(true)
+  vacationNotice  String?       @db.Text
   instagram       String?
   website         String?
   pinterest       String?

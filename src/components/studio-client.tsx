@@ -85,6 +85,7 @@ const SettingsTab = dynamic(() => import("./studio/settings-tab").then(mod => mo
 import { useIsNative } from "@/lib/native";
 import { useNotifications } from "./notification-provider";
 import { getEffectiveArtisanCommissionRate } from "@/lib/commission";
+import { useStudio } from "@/context/studio-context";
 
 
 interface StudioClientProps {
@@ -102,6 +103,29 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
   const router = useRouter();
   const searchParams = useSearchParams();
   const { openChat, setStudioActiveTab } = useNotifications();
+  const { isCleanMode, toggleCleanMode, setTargetArtisan } = useStudio();
+  const effectiveIsAdminPreview = isAdminPreview && !isCleanMode;
+
+  useEffect(() => {
+    if (artisan) {
+      setTargetArtisan({
+        id: artisan.id,
+        studioName: artisan.studioName,
+        slug: artisan.slug,
+        avatar: artisan.avatar,
+        status: artisan.status,
+        isVerified: Boolean(artisan.isVerified),
+        user: artisan.user
+          ? {
+              name: artisan.user.name,
+              email: artisan.user.email,
+              image: artisan.user.image,
+            }
+          : null,
+      });
+    }
+  }, [artisan, setTargetArtisan]);
+
   const [showMask, setShowMask] = useState(false);
   const tabsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -378,6 +402,24 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
   return (
     <>
       <div>
+        {isAdminPreview && !isCleanMode && (
+          <div className="bg-accent text-white py-2 px-4 text-center text-[10px] font-black uppercase tracking-widest sticky top-[calc(4rem+env(safe-area-inset-top,0px))] md:top-[calc(5rem+env(safe-area-inset-top,0px))] z-30 shadow-lg flex items-center justify-between gap-3">
+            <div className="flex-1 text-center truncate">
+              {lang === "ar"
+                ? `وضع معاينة الإدارة: تصفح متجر ${artisan.studioName || artisan.user?.name}`
+                : `ADMIN PREVIEW MODE: Viewing ${artisan.studioName || artisan.user?.name}'s Studio`}
+            </div>
+            <button
+              type="button"
+              onClick={toggleCleanMode}
+              className="px-3 py-1 rounded-full bg-white text-accent hover:bg-white/90 font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
+              title={lang === "ar" ? "إخفاء أدوات الإدارة لأخذ لقطات تسويقية" : "Hide admin tools for clean marketing screenshots"}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>{lang === "ar" ? "معاينة تسويقية نظيفة" : "Marketing Clean View"}</span>
+            </button>
+          </div>
+        )}
         <main className={cn("no-print w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 md:py-6 min-w-0", isNative && "pb-32")}>
 
           <AnimatePresence>
@@ -582,7 +624,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                   </div>
                 </div>
 
-                {isAdminPreview && (
+                {effectiveIsAdminPreview && (
                   <div className="flex flex-wrap gap-3 w-full md:w-auto justify-center sm:justify-end items-center">
                     <div className="w-full md:w-auto md:min-w-[310px] bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-3 sm:p-3.5 shadow-lg space-y-2.5">
 
@@ -772,7 +814,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     products={products}
                     dict={dict}
                     lang={lang}
-                    isAdminPreview={isAdminPreview}
+                    isAdminPreview={effectiveIsAdminPreview}
                     isShopApproved={shopStatus === "APPROVED"}
                     setSelectedProductForEdit={setSelectedProductForEdit}
                     setIsEditModalOpen={setIsEditModalOpen}
@@ -788,7 +830,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     sales={sales}
                     dict={dict}
                     lang={lang}
-                    isAdminPreview={isAdminPreview}
+                    isAdminPreview={effectiveIsAdminPreview}
                     isUpdating={isUpdating}
                     setIsUpdating={setIsUpdating}
                     updateOrderItemStatus={updateOrderItemStatus}
@@ -806,14 +848,14 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     sales={sales}
                     lang={lang}
                     artisanId={artisan.id}
-                    isAdminPreview={isAdminPreview}
+                    isAdminPreview={effectiveIsAdminPreview}
                     artisan={artisan}
                   />
                 )}
 
                 {activeTab === "logistics" && (
                   <PaymentTab
-                    isAdminPreview={isAdminPreview}
+                    isAdminPreview={effectiveIsAdminPreview}
                     artisan={artisan}
                     lang={lang}
                     dict={dict}
@@ -821,7 +863,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                 )}
 
                 {activeTab === "reviews" && <ReviewsTab reviews={reviews} dict={dict} lang={lang} />}
-                {activeTab === "settings" && <SettingsTab artisan={artisan} dict={dict} lang={lang} isAdminPreview={isAdminPreview} />}
+                {activeTab === "settings" && <SettingsTab artisan={artisan} dict={dict} lang={lang} isAdminPreview={effectiveIsAdminPreview} />}
 
               </motion.div>
             </AnimatePresence>
@@ -1174,6 +1216,25 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
           )}
         </AnimatePresence>
       </div>
+
+      {isAdminPreview && isCleanMode && (
+        <aside
+          aria-label="Marketing Mode Controls"
+          className="fixed bottom-4 end-4 z-50 print:hidden flex items-center gap-2.5 bg-primary/95 backdrop-blur-md text-white px-4 py-2 rounded-full shadow-2xl border border-white/20 transition-all"
+        >
+          <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+          <span className="font-bold text-xs">
+            {lang === "ar" ? "معاينة تسويقية نظيفة" : "Marketing Clean View"}
+          </span>
+          <button
+            type="button"
+            onClick={toggleCleanMode}
+            className="ms-1 px-2.5 py-1 rounded-full bg-white text-primary hover:bg-white/90 font-black text-[10px] uppercase tracking-wider transition-colors cursor-pointer shadow-xs"
+          >
+            {lang === "ar" ? "إنهاء المعاينة" : "Exit"}
+          </button>
+        </aside>
+      )}
     </>
   );
 }

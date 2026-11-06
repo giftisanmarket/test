@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { useRouter } from "next/navigation";
-import { Heart, Share2, Star, Truck, ShieldCheck, Clock, MapPin, ArrowRight, ArrowLeft, ChevronRight, CheckCircle2, Sparkles, Camera, ImagePlus, X, Video, Radio, MessageSquare, XCircle, ShoppingBag, Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Heart, Share2, Star, Truck, ShieldCheck, Clock, MapPin, ArrowRight, ArrowLeft, ChevronRight, CheckCircle2, Sparkles, Camera, ImagePlus, X, Video, Radio, MessageSquare, XCircle, ShoppingBag, Play, Pause, PauseCircle, Volume2, VolumeX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { cn, getOptimizedImageUrl } from "@/lib/utils";
@@ -26,6 +26,7 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
   const { data: session } = useSession();
+  const isShopPaused = product.artisan?.isAcceptingOrders === false;
   const [selectedImage, setSelectedImage] = useState(0);
   const [personalization, setPersonalization] = useState("");
   const [customImage, setCustomImage] = useState("");
@@ -271,6 +272,15 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
       );
       return false;
     }
+    if (product.artisan?.isAcceptingOrders === false) {
+      toast.error(
+        product.artisan?.vacationNotice ||
+        (lang === "ar"
+          ? "هذا المتجر في إجازة مؤقتة ولا يستقبل طلبات جديدة حالياً."
+          : "This shop is temporarily taking a break and not accepting orders right now.")
+      );
+      return false;
+    }
     if (isPersonalizationMandatory) {
       if (!wantsPersonalization || !personalization.trim()) {
         setWantsPersonalization(true);
@@ -362,6 +372,32 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
             </span>
           </nav>
         </div>
+
+        {/* Status Banner for Shop Paused / Vacation Mode */}
+        {isShopPaused && (
+          <div className="mb-8 md:mb-12 p-5 md:p-6 rounded-2xl md:rounded-[2rem] border border-amber-200 bg-amber-50/90 shadow-sm flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 text-amber-700 border border-amber-300/60 flex items-center justify-center shrink-0 shadow-xs">
+              <PauseCircle className="w-6 h-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-200/80 text-amber-900 border border-amber-300">
+                  {lang === 'ar' || isAr ? "إجازة مؤقتة" : "Shop Paused"}
+                </span>
+                <h3 className="text-base md:text-lg font-heading font-black text-amber-950">
+                  {lang === 'ar' || isAr ? "متجر الحرفي في إجازة مؤقتة" : "This shop is taking a short break"}
+                </h3>
+              </div>
+              <p className="text-xs md:text-sm text-amber-900/80 leading-relaxed font-medium">
+                {product.artisan?.vacationNotice
+                  ? product.artisan.vacationNotice
+                  : (lang === 'ar' || isAr
+                    ? "هذا المتجر متوقف مؤقتاً عن استقبال الطلبات الجديدة. يمكنك حفظ القطعة في المفضلة أو مراسلة الحرفي للاستفسار وسيعاود استقبال الطلبات قريباً."
+                    : "This studio is currently paused and not taking new orders. You can still save this creation to your favorites or message the artisan.")}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Status Banner for Shop Not Approved */}
         {product.artisan?.status !== "APPROVED" && (isAdmin || isOwner) && (
@@ -962,15 +998,19 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
               <div className="flex gap-3">
                 <button
                   onClick={() => executeAddToCart(false)}
-                  disabled={(displayStock || 0) <= 0}
+                  disabled={(displayStock || 0) <= 0 || isShopPaused}
                   className={cn(
                     "flex-1 py-5 bg-primary text-white font-bold rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 active:scale-95",
-                    (displayStock || 0) > 0 
+                    (displayStock || 0) > 0 && !isShopPaused
                       ? "hover:bg-primary-light shadow-primary/20" 
                       : "bg-charcoal/20 shadow-none !cursor-not-allowed pointer-events-auto"
                   )}
                 >
-                  {(displayStock || 0) > 0 ? `${dict.product.add_to_cart} — ${dict.product.currency} ${displayPrice}` : dict.product.sold_out}
+                  {isShopPaused
+                    ? (lang === "ar" || isAr ? "المتجر في إجازة مؤقتة" : "Shop Temporarily Paused")
+                    : (displayStock || 0) > 0
+                      ? `${dict.product.add_to_cart} — ${dict.product.currency} ${displayPrice}`
+                      : dict.product.sold_out}
                 </button>
                 <button
                   onClick={() => {
@@ -995,15 +1035,19 @@ export function ProductClient({ product, relatedProducts, dict, lang, isAdmin, i
                     window.location.href = `/${lang}/checkout`;
                   }
                 }}
-                disabled={(displayStock || 0) <= 0}
+                disabled={(displayStock || 0) <= 0 || isShopPaused}
                 className={cn(
                   "w-full py-5 bg-white border-2 border-primary text-primary font-bold rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-95",
-                  (displayStock || 0) > 0 
+                  (displayStock || 0) > 0 && !isShopPaused
                   ? "hover:bg-primary/5 shadow-xl shadow-primary/5" 
                   : "opacity-30 grayscale !cursor-not-allowed pointer-events-auto"
                 )}
               >
-                {(displayStock || 0) > 0 ? dict.product.buy_now : dict.product.sold_out}
+                {isShopPaused
+                  ? (lang === "ar" || isAr ? "المتجر في إجازة مؤقتة" : "Shop Temporarily Paused")
+                  : (displayStock || 0) > 0
+                    ? dict.product.buy_now
+                    : dict.product.sold_out}
               </button>
             </div>
 

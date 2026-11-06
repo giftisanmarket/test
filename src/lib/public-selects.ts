@@ -20,6 +20,8 @@ export const PUBLIC_ARTISAN_SELECT = {
   slug: true,
   status: true,
   isVerified: true,
+  isAcceptingOrders: true,
+  vacationNotice: true,
   instagram: true,
   website: true,
   pinterest: true,

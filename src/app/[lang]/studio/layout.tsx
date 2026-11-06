@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getDictionary, hasLocale } from "../dictionaries";
 import { StudioHeader } from "@/components/studio/studio-header";
+import { StudioProvider } from "@/context/studio-context";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -54,18 +55,20 @@ export default async function StudioLayout({
 
   return (
     <div className="min-h-screen bg-cream/30 text-charcoal font-heading selection:bg-accent/20">
-      <StudioHeader
-        lang={lang}
-        dict={dict}
-        artisan={artisanProfile}
-        user={{
-          name: session.user.name,
-          email: session.user.email,
-          image: session.user.image,
-          role: session.user.role,
-        }}
-      />
-      {children}
+      <StudioProvider initialArtisan={artisanProfile}>
+        <StudioHeader
+          lang={lang}
+          dict={dict}
+          artisan={artisanProfile}
+          user={{
+            name: session.user.name,
+            email: session.user.email,
+            image: session.user.image,
+            role: session.user.role,
+          }}
+        />
+        {children}
+      </StudioProvider>
     </div>
   );
 }

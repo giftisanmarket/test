@@ -105,6 +105,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const itemVariantId = normalizeString(product.variantId);
     const maxStock = typeof product.stock === 'number' ? product.stock : 999;
 
+    if (product?.artisan?.isAcceptingOrders === false) {
+      toast.error(
+        typeof window !== 'undefined' && (document.dir === 'rtl' || document.documentElement.lang === 'ar')
+          ? "هذا المتجر في إجازة مؤقتة ولا يستقبل طلبات جديدة حالياً."
+          : "This shop is temporarily taking a break and not accepting orders.",
+        { id: "cart-shop-paused", style: { borderRadius: '20px', background: '#1a2c2c', color: '#fff' } }
+      );
+      return;
+    }
+
     if (maxStock <= 0) {
       toast.error(
         typeof window !== 'undefined' && (document.dir === 'rtl' || document.documentElement.lang === 'ar')

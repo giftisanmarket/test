@@ -1064,7 +1064,7 @@ export function NewProductClient({ artisanId, dict, lang: propLang, initialData 
 
     setIsLoading(true);
 
-    if (!formData.name || !formData.price || !formData.images[0]) {
+    if (!formData.name?.trim() || !formData.price || !formData.description?.trim() || !formData.images[0]) {
       toast.error(dict.new_product.validation_error);
       setIsLoading(false);
       return;

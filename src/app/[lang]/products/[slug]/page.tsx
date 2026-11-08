@@ -17,11 +17,19 @@ import { PUBLIC_ARTISAN_SELECT, PUBLIC_USER_SELECT, sanitizePublicProduct } from
 
 // Cached product fetch to deduplicate queries between metadata generation and page rendering
 const getProduct = cache(async (rawSlug: string) => {
+  if (!rawSlug || rawSlug === "undefined" || rawSlug === "null") {
+    return null;
+  }
+
   let decodedSlug = rawSlug;
   try {
     decodedSlug = decodeURIComponent(rawSlug).trim();
   } catch (e) {
     console.error("Failed to decode slug:", e);
+  }
+
+  if (!decodedSlug) {
+    return null;
   }
 
   // 1. Try exact match first for UTF-8 / Arabic support

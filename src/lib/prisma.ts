@@ -10,17 +10,33 @@ if (!connectionString) {
   );
 }
 
-const adapterPool = new Pool({
-  connectionString,
-  ssl: {
-    rejectUnauthorized: false,
-  },
-  max: 4, // Restrict active connections per Next.js server instance to prevent socket exhaustion on Neon
-  idleTimeoutMillis: 30000, // Close idle pool connections after 30 seconds
-  connectionTimeoutMillis: 15000, // Allow sufficient time for Neon cold starts
-});
+type CustomPrismaClient = PrismaClient<{
+  adapter: PrismaPg;
+  omit: {
+    user: {
+      password: true;
+    };
+  };
+}>;
 
-const adapter = new PrismaPg(adapterPool);
+const globalForPrisma = globalThis as unknown as {
+  prisma: CustomPrismaClient | undefined;
+  pool: Pool | undefined;
+};
+
+const pool =
+  globalForPrisma.pool ??
+  new Pool({
+    connectionString,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+    max: 4, // Restrict active connections per Next.js server instance to prevent socket exhaustion on Neon
+    idleTimeoutMillis: 30000, // Close idle pool connections after 30 seconds
+    connectionTimeoutMillis: 15000, // Allow sufficient time for Neon cold starts
+  });
+
+const adapter = new PrismaPg(pool);
 
 const createPrismaClient = () =>
   new PrismaClient({
@@ -31,15 +47,6 @@ const createPrismaClient = () =>
       },
     },
   });
-
-type CustomPrismaClient = ReturnType<typeof createPrismaClient>;
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: CustomPrismaClient | undefined;
-  pool: Pool | undefined;
-};
-
-const pool = globalForPrisma.pool ?? adapterPool;
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 

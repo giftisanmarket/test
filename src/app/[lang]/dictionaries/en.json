@@ -1372,7 +1372,7 @@
     "listing_treasure": "Listing Product...",
     "list_product_btn": "List Product in Gallery",
     "success_message": "Your product has been submitted for review and will be published once approved!",
-    "validation_error": "Please fill in all required fields (Name, Price, and at least one Image).",
+    "validation_error": "Please fill in all required fields (Name, Price, Description, and at least one Image).",
     "personalization_prompt_required": "Please fill in the Personalization Instructions before saving.",
     "client_image_prompt_required": "Please fill in the Customer Image Upload instructions before saving.",
     "product_removed": "Product removed successfully",

@@ -2465,7 +2465,23 @@ export async function createProduct(artisanId: string, formData: FormData) {
       if (img) images.push(img as string);
     }
 
-    const slug = await generateUniqueProductSlug(data.name);
+    if (!data.name || !data.name.trim()) {
+      return { error: "Product title is required" };
+    }
+
+    if (!data.description || !data.description.trim()) {
+      return { error: "Product description is required" };
+    }
+
+    if (!data.price || isNaN(parseFloat(data.price.replace(/,/g, '.')))) {
+      return { error: "Valid product price is required" };
+    }
+
+    if (images.length === 0) {
+      return { error: "At least one product image is required" };
+    }
+
+    const slug = await generateUniqueProductSlug(data.name.trim());
     const uploadedImages = await Promise.all(
       images.map((img: string) => processImage(img))
     );
@@ -2474,9 +2490,9 @@ export async function createProduct(artisanId: string, formData: FormData) {
     const product = await prisma.product.create({
       data: {
         artisanId,
-        name: data.name,
+        name: data.name.trim(),
         slug,
-        description: data.description,
+        description: data.description.trim(),
         price: parseFloat(data.price.replace(/,/g, '.')) || 0,
         category: data.category,
         images: finalImages,
@@ -3024,16 +3040,32 @@ export async function updateProduct(productId: string, formData: FormData) {
       if (img) images.push(img as string);
     }
 
+    if (!data.name || !data.name.trim()) {
+      return { error: "Product title is required" };
+    }
+
+    if (!data.description || !data.description.trim()) {
+      return { error: "Product description is required" };
+    }
+
+    if (!data.price || isNaN(parseFloat(data.price.replace(/,/g, '.')))) {
+      return { error: "Valid product price is required" };
+    }
+
     const uploadedImages = await Promise.all(
       images.map((img: string) => processImage(img))
     );
     const finalImages = uploadedImages.filter(img => img !== null) as string[];
 
+    if (finalImages.length === 0) {
+      return { error: "At least one product image is required" };
+    }
+
     const updated = await prisma.product.update({
       where: { id: productId },
       data: {
-        name: data.name,
-        description: data.description,
+        name: data.name.trim(),
+        description: data.description.trim(),
         price: parseFloat(data.price.replace(/,/g, '.')) || 0,
         category: data.category,
         images: finalImages,
@@ -3861,6 +3893,10 @@ export async function updateProductStatus(productId: string, status: "PENDING" |
 
     if (!product) {
       return { error: "Product not found" };
+    }
+
+    if (status === "APPROVED" && (!product.description || !product.description.trim())) {
+      return { error: "Cannot approve a product with a missing or empty description. Please reject with feedback to request a description." };
     }
 
     await prisma.product.update({

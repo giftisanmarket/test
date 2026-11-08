@@ -1292,7 +1292,7 @@ export function EditProductModal({ product, isOpen, onClose, readOnly = false, d
     e.preventDefault();
     setIsLoading(true);
 
-    if (!textData.name || !textData.price || !images[0]) {
+    if (!textData.name?.trim() || !textData.price || !textData.description?.trim() || !images[0]) {
       toast.error(dict.new_product.validation_error);
       setIsLoading(false);
       return;

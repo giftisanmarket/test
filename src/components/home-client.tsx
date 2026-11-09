@@ -20,6 +20,8 @@ import { Footer } from "@/components/footer";
 interface HomeClientProps {
   allProducts?: ShelfProduct[];
   trendingProducts?: ShelfProduct[];
+  personalizedProducts?: ShelfProduct[];
+  newArrivalsProducts?: ShelfProduct[];
   bagProducts?: ShelfProduct[];
   homeDecorProducts?: ShelfProduct[];
   jewelryProducts?: ShelfProduct[];
@@ -31,13 +33,14 @@ interface HomeClientProps {
   // Backward compatibility fallbacks
   featuredProducts?: ShelfProduct[];
   products?: ShelfProduct[];
-  personalizedProducts?: ShelfProduct[];
   textileFashionProducts?: ShelfProduct[];
 }
 
 export default function HomeClient({
   allProducts = [],
   trendingProducts,
+  personalizedProducts = [],
+  newArrivalsProducts = [],
   bagProducts = [],
   homeDecorProducts = [],
   jewelryProducts = [],
@@ -116,7 +119,23 @@ export default function HomeClient({
         />
       )}
 
-      {/* 5. Artisan Spotlight: Real Egyptian Makers Behind the Products */}
+      {/* 5. High-Intent Gift Shelf: Personalizable & Custom Made-to-Order Gifts */}
+      {personalizedProducts.length > 0 && (
+        <ProductShelfRow
+          title={isArabic ? "هدايا مخصصة بالاسم والصورة" : "Personalizable & Custom Keepsakes"}
+          subtitle={
+            isArabic
+              ? "قطع تُصنع خصيصاً لك أو لمن تحب بنقش الاسم أو الرسائل الخاصة"
+              : "Made-to-order creations customized with names, dates, or your special memories"
+          }
+          viewAllHref="/gifts?personalized=true"
+          viewAllText={isArabic ? "عرض الهدايا المخصصة" : "Explore Custom Gifts"}
+          products={personalizedProducts}
+          dict={dict}
+        />
+      )}
+
+      {/* 6. Artisan Spotlight: Real Egyptian Makers Behind the Products */}
       {featuredArtisans.length > 0 && (
         <ArtisanSpotlightRow artisans={featuredArtisans} dict={dict} />
       )}
@@ -201,7 +220,23 @@ export default function HomeClient({
         />
       )}
 
-      {/* 12. Mission Statement & Value Pillars Bar */}
+      {/* 12. Discovery Shelf: Fresh From the Studios (New Arrivals) */}
+      {newArrivalsProducts.length > 0 && (
+        <ProductShelfRow
+          title={isArabic ? "وصل حديثاً من الورش الفنية" : "Fresh From the Studios"}
+          subtitle={
+            isArabic
+              ? "أحدث الإبداعات اليدوية التي أضافها الحرفيون المصريون هذا الأسبوع"
+              : "Newly crafted arrivals just added by independent Egyptian makers"
+          }
+          viewAllHref="/products?sort=newest"
+          viewAllText={isArabic ? "تصفح الجديد" : "See New Arrivals"}
+          products={newArrivalsProducts}
+          dict={dict}
+        />
+      )}
+
+      {/* 13. Mission Statement & Value Pillars Bar */}
       <MissionStatementBar dict={dict} />
 
       {/* 13. Newsletter Club */}

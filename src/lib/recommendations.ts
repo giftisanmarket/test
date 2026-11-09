@@ -4,70 +4,117 @@ export interface ScoringOptions {
   userAffinities?: Record<string, number>;
   favoriteIds?: Set<string>;
   maxPerShopInWindow?: number;
+  windowSize?: number;
+  deprioritizeIds?: Set<string>;
+  preferFreshness?: boolean;
 }
 
 /**
- * Calculates a composite Listing Quality & Affinity Score (LQS) based on Etsy's ranking formula:
- * Score = (W_quality * LQS) + (W_trust * TrustScore) + (W_affinity * UserAffinity) + (W_freshness * Recency)
+ * Calculates a composite Homepage Discovery & Conversion Score:
+ * Score = W_curated + W_traction + W_quality + W_giftability + W_affinity + D_freshness
  */
 export function scoreProduct(product: ShelfProduct, options: ScoringOptions = {}): number {
   let score = 100;
 
-  // 1. Stock availability (critical filter: prioritize in-stock goods)
+  // 1. Stock availability (hard priority for in-stock items)
   const isOutOfStock = product.stock !== undefined && product.stock <= 0;
   if (isOutOfStock) {
-    score -= 100; // Heavily de-prioritize sold-out items from discovery
+    score -= 150;
   } else {
     score += 15;
   }
 
-  // 2. Listing Quality Signals (Curation & Badges)
+  // 2. Editorial & Curation Signals (W_curated)
   if (product.isFeatured) {
-    score += 35;
+    score += 30;
   }
   if (product.badge) {
+    score += 15;
+  }
+  if (product.artisan?.isVerified) {
     score += 20;
   }
 
-  // 3. Maker Trust & Heritage Signals
-  if (product.artisan?.isVerified) {
-    score += 25; // Boost verified Egyptian artisans
+  // 3. Real Marketplace Traction & Conversion Velocity (W_traction)
+  if (product.ordersCount && product.ordersCount > 0) {
+    score += Math.min(product.ordersCount * 18, 72);
+  }
+  if (product.favoritesCount && product.favoritesCount > 0) {
+    score += Math.min(product.favoritesCount * 8, 40);
+  }
+  if (product.views && product.views > 0) {
+    score += Math.min(product.views * 0.15, 20);
   }
 
-  // 4. Personalized Category Affinity (Zero-Latency Local Profiling)
+  // 4. Review Quality & Social Proof (W_quality)
+  if (product.avgRating && (product.reviewCount || 0) > 0) {
+    if (product.avgRating >= 4.5) {
+      score += 15 + Math.min((product.reviewCount || 0) * 4, 20);
+    } else if (product.avgRating >= 4.0) {
+      score += 8 + Math.min((product.reviewCount || 0) * 2, 10);
+    }
+  }
+
+  // 5. Giftability & Listing Completeness (W_giftability)
+  if (product.canPersonalize || product.requiresClientImage) {
+    score += 12;
+  }
+  if (Array.isArray(product.images) && product.images.length >= 2) {
+    score += 8;
+  }
+  if (product.price >= 80 && product.price <= 750) {
+    score += 10;
+  }
+
+  // 6. Freshness / Cold-Start Discovery Boost (D_freshness)
+  if (product.createdAt) {
+    const createdTime = new Date(product.createdAt).getTime();
+    if (!Number.isNaN(createdTime)) {
+      const ageDays = Math.max(0, (Date.now() - createdTime) / (1000 * 60 * 60 * 24));
+      if (options.preferFreshness) {
+        // Strong recency weighting for New Arrivals shelf
+        score += Math.max(0, 60 - ageDays * 1.5);
+      } else if (ageDays <= 14) {
+        // 14-day linear cold-start boost so new artisan creations get initial impressions
+        score += Math.round(((14 - ageDays) / 14) * 18);
+      }
+    }
+  }
+
+  // 7. Personalized Category Affinity (Client-side browsing history)
   if (options.userAffinities && product.category) {
     const catKey = product.category.toLowerCase().trim();
     const affinityHits = options.userAffinities[catKey] || 0;
     if (affinityHits > 0) {
-      // Damped boost: +15 points per view, capped at +45
       score += Math.min(affinityHits * 15, 45);
     }
   }
 
-  // 5. Engagement (User has liked the item)
+  // 8. User Engagement (User has liked the item locally)
   if (options.favoriteIds && options.favoriteIds.has(product.id)) {
     score += 12;
   }
 
-  // 6. Gifting Price Sweet-spot (Egyptian marketplace gifting range: 100–600 EGP)
-  if (product.price >= 80 && product.price <= 600) {
-    score += 10;
+  // 9. Cross-Shelf Deduplication Penalty
+  // Prevents the exact same products from dominating the first slots of every shelf
+  if (options.deprioritizeIds && options.deprioritizeIds.has(product.id)) {
+    score -= 45;
   }
 
   return score;
 }
 
 /**
- * Applies Etsy's Shop Diversity Constraint:
- * Enforces that no single artisan occupies more than `maxPerShop` slots in any window of 8 items,
- * preventing a high-volume studio from dominating the user's initial screen.
+ * Applies Marketplace Shop Diversity Constraint:
+ * Enforces that no single artisan occupies more than `maxPerShopInWindow` slots in any rolling window,
+ * preventing a single high-volume studio from monopolizing a shelf.
  */
 export function rankProductsWithDiversity(
   products: ShelfProduct[],
   options: ScoringOptions = {}
 ): ShelfProduct[] {
-  const maxPerShop = options.maxPerShopInWindow || 2;
-  const windowSize = 8;
+  const maxPerShop = options.maxPerShopInWindow ?? 2;
+  const windowSize = options.windowSize ?? 8;
 
   // 1. Score all candidate products
   const scoredCandidates = products.map((product) => ({
@@ -83,12 +130,15 @@ export function rankProductsWithDiversity(
   const deferred: ShelfProduct[] = [];
   const shopCountInWindow = new Map<string, number>();
 
-  for (const item of scoredCandidates) {
-    const shopKey =
-      item.product.artisan?.studioName ||
-      item.product.artisan?.user?.name ||
-      "independent-maker";
+  const getShopKey = (p: ShelfProduct) =>
+    p.artisan?.id ||
+    p.artisan?.slug ||
+    p.artisan?.studioName ||
+    p.artisan?.user?.name ||
+    "independent-maker";
 
+  for (const item of scoredCandidates) {
+    const shopKey = getShopKey(item.product);
     const currentCount = shopCountInWindow.get(shopKey) || 0;
 
     if (currentCount < maxPerShop) {
@@ -98,10 +148,7 @@ export function rankProductsWithDiversity(
       // Slide window: reduce counts for items falling out of the window
       if (result.length > windowSize) {
         const exitingItem = result[result.length - windowSize - 1];
-        const exitingShop =
-          exitingItem.artisan?.studioName ||
-          exitingItem.artisan?.user?.name ||
-          "independent-maker";
+        const exitingShop = getShopKey(exitingItem);
         const c = shopCountInWindow.get(exitingShop) || 1;
         shopCountInWindow.set(exitingShop, Math.max(0, c - 1));
       }
@@ -110,7 +157,7 @@ export function rankProductsWithDiversity(
     }
   }
 
-  // Backfill with deferred items so no inventory is lost
+  // Second pass over deferred items so shelves still fill smoothly when fewer artisans exist in a niche category
   return [...result, ...deferred];
 }
 
@@ -129,9 +176,13 @@ export function filterProductsByEtsyTab(
       return rankProductsWithDiversity(catalog, options);
 
     case "newFinds":
-      // Newest approved additions, sorted with diversity
+      // Newest approved additions, sorted with recency weighting & diversity
       filtered = [...catalog];
-      return rankProductsWithDiversity(filtered, { ...options, maxPerShopInWindow: 2 });
+      return rankProductsWithDiversity(filtered, {
+        ...options,
+        maxPerShopInWindow: 2,
+        preferFreshness: true,
+      });
 
     case "personalized":
       // Customizable gifts: name engraving, personalized messages, custom photo uploads

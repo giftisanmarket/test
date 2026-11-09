@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Heart, ArrowRight, Video } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, ArrowRight, Video, ShieldCheck, Star } from "lucide-react";
 import { BespokeImage } from "@/components/bespoke-image";
 import { useFavorites } from "@/context/favorites-context";
 import { cn, isVideoUrl } from "@/lib/utils";
@@ -19,6 +19,12 @@ export interface ShelfProduct {
   canPersonalize?: boolean;
   requiresClientImage?: boolean;
   category?: string;
+  views?: number;
+  createdAt?: string | Date;
+  ordersCount?: number;
+  favoritesCount?: number;
+  reviewCount?: number;
+  avgRating?: number;
   artisan?: {
     id?: string;
     studioName?: string | null;
@@ -239,19 +245,31 @@ export function ProductShelfRow({
                   </h3>
 
                   {artisanName && (
-                    <p className="text-[11px] 2xl:text-xs text-charcoal/65 truncate font-medium flex items-center gap-1">
-                      <span className="text-charcoal/40 text-[10px] 2xl:text-[11px]">{isArabic ? "صنع بواسطة" : "By"}</span>
-                      {product.artisan?.slug || product.artisan?.id ? (
-                        <Link 
-                          href={`/artisans/${product.artisan.slug || product.artisan.id}`}
-                          className="hover:text-primary hover:underline underline-offset-2 transition-colors font-semibold text-charcoal/80"
-                        >
-                          {artisanName}
-                        </Link>
-                      ) : (
-                        <span className="font-semibold text-charcoal/80">{artisanName}</span>
-                      )}
-                    </p>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-[11px] 2xl:text-xs text-charcoal/65 truncate font-medium flex items-center gap-1">
+                        <span className="text-charcoal/40 text-[10px] 2xl:text-[11px]">{isArabic ? "صنع بواسطة" : "By"}</span>
+                        {product.artisan?.slug || product.artisan?.id ? (
+                          <Link 
+                            href={`/artisans/${product.artisan.slug || product.artisan.id}`}
+                            className="hover:text-primary hover:underline underline-offset-2 transition-colors font-semibold text-charcoal/80 truncate"
+                          >
+                            {artisanName}
+                          </Link>
+                        ) : (
+                          <span className="font-semibold text-charcoal/80 truncate">{artisanName}</span>
+                        )}
+                        {product.artisan?.isVerified && (
+                          <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                        )}
+                      </p>
+
+                      {product.avgRating && (product.reviewCount || 0) > 0 ? (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] 2xl:text-[11px] font-bold text-charcoal/75 shrink-0">
+                          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                          {product.avgRating.toFixed(1)}
+                        </span>
+                      ) : null}
+                    </div>
                   )}
 
                   <p className="font-heading font-bold text-primary text-xs sm:text-sm 2xl:text-base pt-0.5">

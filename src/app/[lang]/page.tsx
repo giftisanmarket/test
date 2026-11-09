@@ -4,6 +4,7 @@ import { Metadata } from "next";
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from "@/lib/constants";
 import { getDictionary, hasLocale } from "./dictionaries";
 import { notFound } from "next/navigation";
+import { rankProductsWithDiversity } from "@/lib/recommendations";
 
 export const revalidate = 60; // ISR: Cache the landing page for 60 seconds to prevent database pool exhaustion
 
@@ -75,8 +76,10 @@ const EXCLUDED_HOMEPAGE_ARTISAN_SLUGS = [
 
 const baseApprovedProductWhere = {
   status: "APPROVED" as const,
+  stock: { gt: 0 },
   artisan: {
     status: "APPROVED" as const,
+    isAcceptingOrders: true,
     slug: { notIn: EXCLUDED_HOMEPAGE_ARTISAN_SLUGS },
     NOT: [
       { studioName: { equals: "StudioPelle", mode: "insensitive" as const } }
@@ -96,6 +99,20 @@ const productSelect = {
   category: true,
   canPersonalize: true,
   requiresClientImage: true,
+  views: true,
+  createdAt: true,
+  _count: {
+    select: {
+      orderItems: true,
+      favoritedBy: true,
+      reviews: true,
+    }
+  },
+  reviews: {
+    select: {
+      rating: true,
+    }
+  },
   artisan: {
     select: {
       id: true,
@@ -159,19 +176,39 @@ function sanitizeProducts(productsList: any[]) {
         studio !== "studiopelle"
       );
     })
-    .map(p => ({
-      ...p,
-      // Keep top 2 images only to prevent huge JSON serialization overhead
-      images: Array.isArray(p.images)
-        ? p.images
-            .slice(0, 2)
-            .map((img: string) => ((img?.length || 0) > 60000 ? "" : img))
-        : [],
-      artisan: {
-        ...p.artisan,
-        avatar: (p.artisan?.avatar?.length || 0) > 60000 ? "" : p.artisan?.avatar
-      }
-    }));
+    .map(p => {
+      const { _count, reviews, createdAt, ...rest } = p;
+      const reviewList = Array.isArray(reviews) ? reviews : [];
+      const reviewCount = _count?.reviews ?? reviewList.length;
+      const avgRating =
+        reviewList.length > 0
+          ? Number(
+              (
+                reviewList.reduce((acc: number, r: any) => acc + (r.rating || 0), 0) /
+                reviewList.length
+              ).toFixed(1)
+            )
+          : undefined;
+
+      return {
+        ...rest,
+        createdAt: createdAt instanceof Date ? createdAt.toISOString() : createdAt,
+        ordersCount: _count?.orderItems ?? 0,
+        favoritesCount: _count?.favoritedBy ?? 0,
+        reviewCount,
+        avgRating,
+        // Keep top 2 images only to prevent huge JSON serialization overhead
+        images: Array.isArray(p.images)
+          ? p.images
+              .slice(0, 2)
+              .map((img: string) => ((img?.length || 0) > 60000 ? "" : img))
+          : [],
+        artisan: {
+          ...p.artisan,
+          avatar: (p.artisan?.avatar?.length || 0) > 60000 ? "" : p.artisan?.avatar
+        }
+      };
+    });
 }
 
 function sanitizeArtisans(artisansList: any[]) {
@@ -203,111 +240,135 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
   
   const dict = await getDictionary(lang as any);
 
-  // Fetch categorized product rows and featured artisans concurrently in parallel
+  // Fetch candidate product pools and featured artisans concurrently in parallel
   const [
-    allFeedProducts,
-    trendingProducts,
-    bagProducts,
-    homeDecorProducts,
-    jewelryProducts,
-    crochetApparelProducts,
-    giftSetProducts,
+    rawCatalogCandidates,
+    rawPersonalizedCandidates,
+    rawNewArrivalsCandidates,
+    rawBagCandidates,
+    rawHomeDecorCandidates,
+    rawJewelryCandidates,
+    rawCrochetApparelCandidates,
+    rawGiftSetCandidates,
     featuredArtisans,
     artisanCount
   ] = await Promise.all([
-    // 1. Catalog for Native Discovery Feed (up to 24 items)
+    // 1. Broad Marketplace Candidate Pool for Native Feed & Top Trending Ranking (up to 48 items)
+    prisma.product.findMany({
+      where: baseApprovedProductWhere,
+      select: productSelect,
+      take: 48,
+      orderBy: [
+        { isFeatured: 'desc' },
+        { views: 'desc' },
+        { createdAt: 'desc' }
+      ]
+    }),
+
+    // 2. Personalizable & Custom Made-to-Order Gifts (up to 24 candidates)
+    prisma.product.findMany({
+      where: {
+        ...baseApprovedProductWhere,
+        OR: [
+          { canPersonalize: true },
+          { requiresClientImage: true }
+        ]
+      },
+      select: productSelect,
+      take: 24,
+      orderBy: [
+        { isFeatured: 'desc' },
+        { views: 'desc' },
+        { createdAt: 'desc' }
+      ]
+    }),
+
+    // 3. Fresh From the Studios / New Arrivals Pool (up to 24 newest items)
     prisma.product.findMany({
       where: baseApprovedProductWhere,
       select: productSelect,
       take: 24,
       orderBy: [
-        { isFeatured: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 2. Top Trending for Web Shelf (up to 12 items)
-    prisma.product.findMany({
-      where: baseApprovedProductWhere,
-      select: productSelect,
-      take: 12,
-      orderBy: [
-        { isFeatured: 'desc' },
-        { createdAt: 'desc' }
-      ]
-    }),
-
-    // 3. Handcrafted Bags & Leather Goods (up to 10 items)
+    // 4. Handcrafted Bags & Leather Goods (up to 20 candidates)
     prisma.product.findMany({
       where: {
         ...baseApprovedProductWhere,
         category: { in: ["bags-and-purses", "handbags", "leatherwork"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 10,
+      take: 20,
       orderBy: [
         { isFeatured: 'desc' },
+        { views: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 4. Artisan Ceramics, Woodwork & Home Collectibles (up to 10 items)
+    // 5. Artisan Ceramics, Woodwork & Home Collectibles (up to 20 candidates)
     prisma.product.findMany({
       where: {
         ...baseApprovedProductWhere,
         category: { in: ["home-and-living", "woodwork", "ceramics", "fine-art-ceramics", "sculpture", "art-and-collectibles"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 10,
+      take: 20,
       orderBy: [
         { isFeatured: 'desc' },
+        { views: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 5. Bespoke Jewelry & Adornments (up to 12 items)
+    // 6. Bespoke Jewelry & Adornments (up to 24 candidates)
     prisma.product.findMany({
       where: {
         ...baseApprovedProductWhere,
         category: { in: ["jewelry", "necklaces", "earrings", "bracelets", "pins-clips", "brooches-pins-clips", "hair-accessories", "accessories"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 12,
+      take: 24,
       orderBy: [
         { isFeatured: 'desc' },
+        { views: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 6. Handmade Crochet & Apparel (up to 10 items)
+    // 7. Handmade Crochet & Apparel (up to 20 candidates)
     prisma.product.findMany({
       where: {
         ...baseApprovedProductWhere,
         category: { in: ["clothing", "fashion", "textiles", "wearables"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 10,
+      take: 20,
       orderBy: [
         { isFeatured: 'desc' },
+        { views: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 7. Curated Gift Sets & Keepsakes (up to 10 items)
+    // 8. Curated Gift Sets & Keepsakes (up to 20 candidates)
     prisma.product.findMany({
       where: {
         ...baseApprovedProductWhere,
         category: { in: ["gifts-sets", "gifts", "gifts-mementos", "keychains-lanyards", "toys-and-games", "weddings", "games-puzzles", "paper"], mode: "insensitive" }
       },
       select: productSelect,
-      take: 10,
+      take: 20,
       orderBy: [
         { isFeatured: 'desc' },
+        { views: 'desc' },
         { createdAt: 'desc' }
       ]
     }),
 
-    // 8. Featured Master Artisans (curated top Egyptian makers, including Charm Threads)
+    // 9. Featured Master Artisans (curated top Egyptian makers, including Charm Threads)
     prisma.artisanProfile.findMany({
       where: {
         status: "APPROVED",
@@ -343,11 +404,80 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       return curated;
     }),
 
-    // 9. Artisan Count
+    // 10. Artisan Count
     prisma.artisanProfile.count({
       where: { status: "APPROVED" }
     })
   ]);
+
+  // Stage 2 & 3: Sanitize, Score, Interleave by Artisan, and Deduplicate Across Shelves
+  const allSanitizedCatalog = sanitizeProducts(rawCatalogCandidates);
+
+  // Primary Shelf: Trending Gifts (strict maker diversity: max 1 per studio in any window of 8)
+  const rankedTrending = rankProductsWithDiversity(allSanitizedCatalog, {
+    maxPerShopInWindow: 1,
+    windowSize: 8,
+  }).slice(0, 12);
+
+  // Track top visible hero items so subsequent shelves prioritize fresh variety first
+  const seenHeroIds = new Set(rankedTrending.slice(0, 8).map((p) => p.id));
+
+  // Second Shelf: Personalizable & Custom Keepsakes
+  const rankedPersonalized = rankProductsWithDiversity(
+    sanitizeProducts(rawPersonalizedCandidates),
+    {
+      maxPerShopInWindow: 1,
+      windowSize: 6,
+      deprioritizeIds: seenHeroIds,
+    }
+  ).slice(0, 12);
+
+  rankedPersonalized.slice(0, 4).forEach((p) => seenHeroIds.add(p.id));
+
+  // Category Shelves with Rolling-Window Artisan Diversity & Cross-Shelf Deduplication
+  const rankedBags = rankProductsWithDiversity(sanitizeProducts(rawBagCandidates), {
+    maxPerShopInWindow: 2,
+    windowSize: 8,
+    deprioritizeIds: seenHeroIds,
+  }).slice(0, 12);
+
+  const rankedHomeDecor = rankProductsWithDiversity(sanitizeProducts(rawHomeDecorCandidates), {
+    maxPerShopInWindow: 2,
+    windowSize: 8,
+    deprioritizeIds: seenHeroIds,
+  }).slice(0, 12);
+
+  const rankedJewelry = rankProductsWithDiversity(sanitizeProducts(rawJewelryCandidates), {
+    maxPerShopInWindow: 2,
+    windowSize: 8,
+    deprioritizeIds: seenHeroIds,
+  }).slice(0, 12);
+
+  const rankedCrochetApparel = rankProductsWithDiversity(
+    sanitizeProducts(rawCrochetApparelCandidates),
+    {
+      maxPerShopInWindow: 2,
+      windowSize: 8,
+      deprioritizeIds: seenHeroIds,
+    }
+  ).slice(0, 12);
+
+  const rankedGiftSets = rankProductsWithDiversity(sanitizeProducts(rawGiftSetCandidates), {
+    maxPerShopInWindow: 2,
+    windowSize: 8,
+    deprioritizeIds: seenHeroIds,
+  }).slice(0, 12);
+
+  // Fresh From the Studios: Recency-weighted & strictly interleaved (1 per studio per 6 items)
+  const rankedNewArrivals = rankProductsWithDiversity(
+    sanitizeProducts(rawNewArrivalsCandidates),
+    {
+      maxPerShopInWindow: 1,
+      windowSize: 6,
+      preferFreshness: true,
+      deprioritizeIds: seenHeroIds,
+    }
+  ).slice(0, 12);
 
   const organizationJsonLd = {
     "@context": "https://schema.org",
@@ -392,13 +522,15 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
       <HomeClient
-        allProducts={sanitizeProducts(allFeedProducts)}
-        trendingProducts={sanitizeProducts(trendingProducts)}
-        bagProducts={sanitizeProducts(bagProducts)}
-        homeDecorProducts={sanitizeProducts(homeDecorProducts)}
-        jewelryProducts={sanitizeProducts(jewelryProducts)}
-        crochetApparelProducts={sanitizeProducts(crochetApparelProducts)}
-        giftSetProducts={sanitizeProducts(giftSetProducts)}
+        allProducts={allSanitizedCatalog.slice(0, 32)}
+        trendingProducts={rankedTrending}
+        personalizedProducts={rankedPersonalized}
+        newArrivalsProducts={rankedNewArrivals}
+        bagProducts={rankedBags}
+        homeDecorProducts={rankedHomeDecor}
+        jewelryProducts={rankedJewelry}
+        crochetApparelProducts={rankedCrochetApparel}
+        giftSetProducts={rankedGiftSets}
         featuredArtisans={sanitizeArtisans(featuredArtisans)}
         artisanCount={artisanCount}
         dict={dict}

@@ -58,11 +58,45 @@ export default function HomeClient({
   // Fallback for trending products if legacy props were passed
   const mainTrending = trendingProducts || featuredProducts || products || [];
 
-  // Select the 3 Hero Bento products: strictly the Most Ordered products (with Newest as tie-breaker)
+  // Select the 3 Hero Bento products:
+  // 1) Exclude مراءه-بزهور-الكروشيه-الانيقه from the Hero grid
+  // 2) Prioritize products that have been ordered before (ordersCount > 0)
+  // 3) Fallback to "Seashell bag" if fewer than 3 ordered products exist, then newest arrivals
   const heroSpotlightProducts = (() => {
+    const isExcludedFromHero = (p: ShelfProduct) => {
+      const slug = decodeURIComponent(p.slug || "").toLowerCase();
+      const name = (p.name || "").toLowerCase();
+      return (
+        slug.includes("مراءه-بزهور-الكروشيه-الانيقه") ||
+        name.includes("مراءه بزهور الكروشيه") ||
+        name.includes("مرآة بزهور الكروشيه")
+      );
+    };
+
+    const isSeashellBag = (p: ShelfProduct) => {
+      const slug = decodeURIComponent(p.slug || "").toLowerCase();
+      const name = (p.name || "").toLowerCase();
+      return name.includes("seashell") || slug.includes("seashell");
+    };
+
     const map = new Map<string, ShelfProduct>();
-    for (const p of [...allProducts, ...mainTrending, ...newArrivalsProducts]) {
-      if (p?.id && Array.isArray(p.images) && p.images[0] && !map.has(p.id)) {
+    for (const p of [
+      ...allProducts,
+      ...mainTrending,
+      ...newArrivalsProducts,
+      ...bagProducts,
+      ...homeDecorProducts,
+      ...jewelryProducts,
+      ...crochetApparelProducts,
+      ...giftSetProducts,
+    ]) {
+      if (
+        p?.id &&
+        Array.isArray(p.images) &&
+        p.images[0] &&
+        !isExcludedFromHero(p) &&
+        !map.has(p.id)
+      ) {
         map.set(p.id, p);
       }
     }
@@ -73,14 +107,45 @@ export default function HomeClient({
       return Number.isNaN(t) ? 0 : t;
     };
 
-    // Sort all products strictly by: 1) Most Ordered (ordersCount desc), 2) Newest (createdAt desc)
-    return Array.from(map.values())
+    const candidates = Array.from(map.values());
+
+    // Step 1: Products that have been ordered before (ordersCount > 0)
+    const orderedProducts = candidates
+      .filter((p) => (p.ordersCount || 0) > 0)
       .sort((a, b) => {
         const orderDiff = (b.ordersCount || 0) - (a.ordersCount || 0);
         if (orderDiff !== 0) return orderDiff;
         return getCreatedTime(b) - getCreatedTime(a);
-      })
-      .slice(0, 3);
+      });
+
+    const selected: ShelfProduct[] = [...orderedProducts.slice(0, 3)];
+    const selectedIds = new Set(selected.map((p) => p.id));
+
+    // Step 2: If fewer than 3 ordered products exist, include "Seashell bag" next
+    if (selected.length < 3) {
+      const seashellProduct = candidates.find(
+        (p) => !selectedIds.has(p.id) && isSeashellBag(p)
+      );
+      if (seashellProduct) {
+        selected.push(seashellProduct);
+        selectedIds.add(seashellProduct.id);
+      }
+    }
+
+    // Step 3: Fill any remaining slot up to 3 with the newest products
+    if (selected.length < 3) {
+      const newestRemaining = candidates
+        .filter((p) => !selectedIds.has(p.id))
+        .sort((a, b) => getCreatedTime(b) - getCreatedTime(a));
+
+      for (const p of newestRemaining) {
+        if (selected.length >= 3) break;
+        selected.push(p);
+        selectedIds.add(p.id);
+      }
+    }
+
+    return selected;
   })();
 
   useEffect(() => {

@@ -91,46 +91,85 @@ export default function Loading() {
       <NavbarSkeleton />
 
       {/* Main Content Skeleton */}
-      <div className="space-y-6 md:space-y-8 pb-16">
-        {/* Etsy-Style Hero Section Skeleton */}
-        <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16 py-2 md:py-4 2xl:py-5">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 md:gap-5 2xl:gap-6 items-stretch">
-            {/* Left Card: Main Hero Banner (Etsy Split & Mobile Arch Layout) */}
-            <div className="lg:col-span-8 rounded-2xl 2xl:rounded-3xl overflow-hidden bg-primary/10 border border-primary/10 shadow-xs">
-              {/* Mobile Layout (< sm): Arched Cutout Skeleton */}
-              <div className="sm:hidden flex flex-col w-full h-[300px] justify-between pt-6 px-4 pb-0">
-                <div className="flex flex-col items-center space-y-2 px-2">
-                  <Skeleton className="w-52 h-6 rounded-md bg-primary/20" />
-                  <Skeleton className="w-36 h-6 rounded-md bg-primary/20" />
+      <div className="space-y-4 md:space-y-6 pb-16">
+        {/* Hero Section Skeleton: 6-Col Brand Card + 6-Col 3-Product Bento Grid */}
+        <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-3 sm:px-4 md:px-8 2xl:px-12 3xl:px-16 py-2.5 sm:py-3.5 md:py-4 2xl:py-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 md:gap-5 2xl:gap-6 items-stretch">
+            {/* Left Column (6 Cols on Desktop): Brand Story + Direct Gifting Shortcuts Skeleton */}
+            <div className="lg:col-span-6 rounded-2xl 2xl:rounded-3xl overflow-hidden bg-primary/10 border border-primary/10 shadow-xs p-4 sm:p-7 md:p-8 lg:p-9 2xl:p-11 flex flex-col justify-between min-h-0 sm:min-h-[300px] lg:min-h-[370px] 2xl:min-h-[420px]">
+              {/* Headline, Subtitle & CTAs */}
+              <div className="space-y-2.5 sm:space-y-4 2xl:space-y-5 my-auto">
+                <div className="space-y-2">
+                  <Skeleton className="w-4/5 sm:w-96 h-7 sm:h-9 md:h-10 2xl:h-12 rounded-lg bg-primary/20" />
                 </div>
-
-                {/* Dome / Arch shaped image skeleton */}
-                <div className="w-full h-[190px] overflow-hidden rounded-t-[140px] bg-primary/15 animate-pulse" />
+                <div className="space-y-1.5 max-w-lg">
+                  <Skeleton className="w-full h-3.5 sm:h-4 rounded-md bg-primary/15" />
+                  <Skeleton className="w-3/4 h-3.5 sm:h-4 rounded-md bg-primary/15" />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1 sm:pt-2">
+                  <Skeleton className="w-32 sm:w-40 2xl:w-44 h-9 sm:h-11 rounded-full bg-primary/25" />
+                  <Skeleton className="w-32 sm:w-40 2xl:w-44 h-9 sm:h-11 rounded-full bg-primary/15" />
+                </div>
               </div>
 
-              {/* Desktop / Tablet Layout (sm and up): Side-by-side Split Banner */}
-              <div className="hidden sm:flex h-[260px] md:h-[275px] lg:h-[320px] xl:h-[340px] 2xl:h-[385px] 3xl:h-[425px] w-full">
-                {/* Content Half */}
-                <div className="basis-[60%] flex flex-col justify-center items-center text-center p-6 md:p-8 lg:p-9 2xl:p-12 space-y-4">
-                  <div className="space-y-2.5 w-full flex flex-col items-center">
-                    <Skeleton className="w-64 md:w-80 2xl:w-96 h-7 md:h-8 2xl:h-10 rounded-lg bg-primary/20" />
-                    <Skeleton className="w-48 md:w-60 2xl:w-72 h-7 md:h-8 2xl:h-10 rounded-lg bg-primary/20" />
-                  </div>
-                  <Skeleton className="w-28 md:w-32 2xl:w-36 h-9 2xl:h-11 rounded-full bg-primary/25" />
+              {/* Bottom Quick Picks Strip Skeleton */}
+              <div className="pt-3.5 sm:pt-6 mt-3.5 sm:mt-4 border-t border-primary/10">
+                <div className="flex items-center gap-1.5 sm:gap-2 overflow-hidden">
+                  <Skeleton className="w-16 h-3.5 rounded bg-primary/15 shrink-0" />
+                  <Skeleton className="w-16 sm:w-20 h-6 rounded-full bg-primary/15 shrink-0" />
+                  <Skeleton className="w-16 sm:w-20 h-6 rounded-full bg-primary/15 shrink-0" />
+                  <Skeleton className="w-32 sm:w-36 h-6 rounded-full bg-primary/15 shrink-0" />
+                  <Skeleton className="w-24 sm:w-28 h-6 rounded-full bg-primary/15 shrink-0" />
                 </div>
-
-                {/* Image Half */}
-                <div className="relative basis-[40%] h-full bg-primary/15 animate-pulse" />
               </div>
             </div>
 
-            {/* Right Card: Grown-up Halloween Fans Skeleton */}
-            <div className="hidden lg:flex lg:col-span-4 rounded-2xl 2xl:rounded-3xl overflow-hidden h-[260px] md:h-[275px] lg:h-[320px] xl:h-[340px] 2xl:h-[385px] 3xl:h-[425px] shadow-xs border border-primary/10 bg-primary/10 p-5 2xl:p-7 flex-col justify-end space-y-2">
-              <Skeleton className="w-4/5 h-6 2xl:h-8 rounded-lg bg-primary/20" />
-              <Skeleton className="w-20 2xl:w-24 h-4 2xl:h-5 rounded-md bg-primary/15" />
+            {/* Right Column (6 Cols on Desktop): 3-Product Bento Showcase Skeleton */}
+            <div className="lg:col-span-6 grid grid-cols-2 grid-rows-2 gap-2.5 sm:gap-4 md:gap-5 2xl:gap-6 h-[230px] sm:h-[310px] lg:h-auto lg:min-h-[370px] 2xl:min-h-[420px]">
+              {/* Bento Card 1: Tall Featured Hero Product (Spans 2 Rows on Left) */}
+              <div className="col-span-1 row-span-2 relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-primary/10 border border-primary/10 p-3 sm:p-4 flex flex-col justify-between">
+                <Skeleton className="w-16 sm:w-20 h-5 sm:h-6 rounded-full bg-white/80" />
+                <div className="space-y-1.5">
+                  <Skeleton className="w-24 sm:w-28 h-3 rounded bg-primary/15" />
+                  <Skeleton className="w-3/4 h-4 sm:h-5 rounded bg-primary/25" />
+                </div>
+              </div>
+
+              {/* Bento Card 2: Top-Right Spotlight Product */}
+              <div className="col-span-1 row-span-1 relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-primary/10 border border-primary/10 p-2.5 sm:p-3 flex flex-col justify-between">
+                <Skeleton className="w-14 sm:w-16 h-4 sm:h-5 rounded-full bg-white/80" />
+                <div className="space-y-1">
+                  <Skeleton className="hidden sm:block w-20 h-2.5 rounded bg-primary/15" />
+                  <Skeleton className="w-2/3 h-3.5 sm:h-4 rounded bg-primary/25" />
+                </div>
+              </div>
+
+              {/* Bento Card 3: Bottom-Right Spotlight Product */}
+              <div className="col-span-1 row-span-1 relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-primary/10 border border-primary/10 p-2.5 sm:p-3 flex flex-col justify-between">
+                <Skeleton className="w-14 sm:w-16 h-4 sm:h-5 rounded-full bg-white/80" />
+                <div className="space-y-1">
+                  <Skeleton className="hidden sm:block w-20 h-2.5 rounded bg-primary/15" />
+                  <Skeleton className="w-2/3 h-3.5 sm:h-4 rounded bg-primary/25" />
+                </div>
+              </div>
             </div>
           </div>
         </section>
+
+        {/* Trust Bar Skeleton */}
+        <div className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-4 md:px-8 2xl:px-12 3xl:px-16">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl 2xl:rounded-3xl bg-white/80 border border-primary/8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="w-28 h-3.5 rounded bg-primary/15" />
+                  <Skeleton className="w-36 h-2.5 rounded bg-primary/10 hidden sm:block" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Shelf 1: Trending Finds (Picks inspired by your shopping) */}
         <ProductShelfSkeleton titleWidth="w-72" />

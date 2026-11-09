@@ -16,12 +16,9 @@ export interface ScoringOptions {
 export function scoreProduct(product: ShelfProduct, options: ScoringOptions = {}): number {
   let score = 100;
 
-  // 1. Stock availability (hard priority for in-stock items)
-  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
-  if (isOutOfStock) {
-    score -= 150;
-  } else {
-    score += 15;
+  // 1. Stock availability (light boost for ready stock without hiding ordered 1-of-1 handmade pieces)
+  if (product.stock !== undefined && product.stock > 0) {
+    score += 10;
   }
 
   // 2. Editorial & Curation Signals (W_curated)
@@ -159,6 +156,89 @@ export function rankProductsWithDiversity(
 
   // Second pass over deferred items so shelves still fill smoothly when fewer artisans exist in a niche category
   return [...result, ...deferred];
+}
+
+/**
+ * Deterministic string hash (0 to 1) used to rotate qualified top artisans
+ * smoothly across time buckets without random flicker on every refresh.
+ */
+function deterministicRotationBoost(key: string, timeBucket: number, maxBoost = 18): number {
+  const input = `${key}:${timeBucket}`;
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const normalized = (hash >>> 0) / 4294967295;
+  return Math.round(normalized * maxBoost);
+}
+
+/**
+ * Quality-Gated Dynamic Artisan Spotlight Ranking:
+ * Prioritizes active, verified makers with complete visual profiles (avatar, banner, >= 3 in-stock products),
+ * real product traction, and a 6-hour rotation seed so top studios share homepage spotlight fairly.
+ */
+export function rankArtisansForSpotlight(artisans: any[], limit = 4): any[] {
+  // Rotate spotlight order every 6 hours
+  const sixHourBucket = Math.floor(Date.now() / (1000 * 60 * 60 * 6));
+
+  const scored = artisans.map((artisan) => {
+    let score = 100;
+    const products = Array.isArray(artisan.products) ? artisan.products : [];
+    const validProductsCount = products.filter(
+      (p: any) => Array.isArray(p.images) && p.images.length > 0 && p.images[0]
+    ).length;
+
+    // 1. Hard Quality Gate: Full 3-thumbnail preview grid
+    if (validProductsCount >= 3) {
+      score += 60;
+    } else if (validProductsCount === 2) {
+      score += 20;
+    } else {
+      score -= 50;
+    }
+
+    // 2. Visual Profile Completeness (Avatar & Banner)
+    if (artisan.avatar && artisan.avatar.length > 0) {
+      score += 18;
+    } else {
+      score -= 25;
+    }
+    if (artisan.bannerImage && artisan.bannerImage.length > 0) {
+      score += 10;
+    }
+
+    // 3. Maker Verification & Trust
+    if (artisan.isVerified) {
+      score += 20;
+    }
+
+    // 4. Catalog Depth & Community Followers
+    const totalProducts = artisan._count?.products ?? validProductsCount;
+    const followers = artisan._count?.followers ?? 0;
+    score += Math.min(totalProducts * 2, 16);
+    score += Math.min(followers * 4, 16);
+
+    // 5. Product Engagement Across Preview Items (Orders, Favorites, Views)
+    let engagementPts = 0;
+    for (const p of products) {
+      const orders = p._count?.orderItems ?? 0;
+      const favs = p._count?.favoritedBy ?? 0;
+      const views = p.views ?? 0;
+      engagementPts += orders * 8 + favs * 3 + Math.min(views * 0.05, 5);
+    }
+    score += Math.min(Math.round(engagementPts), 24);
+
+    // 6. Fair Rotation Bonus (0-18 pts) among qualified studios
+    if (validProductsCount >= 3) {
+      score += deterministicRotationBoost(artisan.id || artisan.slug || "", sixHourBucket, 18);
+    }
+
+    return { artisan, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, limit).map((item) => item.artisan);
 }
 
 /**

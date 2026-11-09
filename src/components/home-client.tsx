@@ -58,6 +58,31 @@ export default function HomeClient({
   // Fallback for trending products if legacy props were passed
   const mainTrending = trendingProducts || featuredProducts || products || [];
 
+  // Select the 3 Hero Bento products: strictly the Most Ordered products (with Newest as tie-breaker)
+  const heroSpotlightProducts = (() => {
+    const map = new Map<string, ShelfProduct>();
+    for (const p of [...allProducts, ...mainTrending, ...newArrivalsProducts]) {
+      if (p?.id && Array.isArray(p.images) && p.images[0] && !map.has(p.id)) {
+        map.set(p.id, p);
+      }
+    }
+
+    const getCreatedTime = (p: ShelfProduct) => {
+      if (!p.createdAt) return 0;
+      const t = new Date(p.createdAt).getTime();
+      return Number.isNaN(t) ? 0 : t;
+    };
+
+    // Sort all products strictly by: 1) Most Ordered (ordersCount desc), 2) Newest (createdAt desc)
+    return Array.from(map.values())
+      .sort((a, b) => {
+        const orderDiff = (b.ordersCount || 0) - (a.ordersCount || 0);
+        if (orderDiff !== 0) return orderDiff;
+        return getCreatedTime(b) - getCreatedTime(a);
+      })
+      .slice(0, 3);
+  })();
+
   useEffect(() => {
     if (window.location.hash === "#newsletter") {
       const element = document.getElementById("newsletter");
@@ -94,8 +119,8 @@ export default function HomeClient({
       {/* Main Header / Sticky Navbar */}
       <Navbar dict={dict} />
 
-      {/* 1. Giftisan Brand Hero: Direct Value Proposition */}
-      <Hero artisanCount={artisanCount} dict={dict} />
+      {/* 1. Giftisan Brand Hero: Direct Value Proposition + Live Product Bento */}
+      <Hero artisanCount={artisanCount} dict={dict} spotlightProducts={heroSpotlightProducts} />
 
       {/* 2. Trust Bar: High Reassurance for Buyers Directly Beneath Hero */}
       <TrustBar dict={dict} />
@@ -128,7 +153,7 @@ export default function HomeClient({
               ? "قطع تُصنع خصيصاً لك أو لمن تحب بنقش الاسم أو الرسائل الخاصة"
               : "Made-to-order creations customized with names, dates, or your special memories"
           }
-          viewAllHref="/gifts?personalized=true"
+          viewAllHref="/search?customizable=true"
           viewAllText={isArabic ? "عرض الهدايا المخصصة" : "Explore Custom Gifts"}
           products={personalizedProducts}
           dict={dict}
@@ -220,10 +245,10 @@ export default function HomeClient({
         />
       )}
 
-      {/* 12. Discovery Shelf: Fresh From the Studios (New Arrivals) */}
+      {/* 12. Discovery Shelf: Fresh From the Shops (New Arrivals) */}
       {newArrivalsProducts.length > 0 && (
         <ProductShelfRow
-          title={isArabic ? "وصل حديثاً من الورش الفنية" : "Fresh From the Studios"}
+          title={isArabic ? "وصل حديثاً من المتاجر" : "Fresh From the Shops"}
           subtitle={
             isArabic
               ? "أحدث الإبداعات اليدوية التي أضافها الحرفيون المصريون هذا الأسبوع"

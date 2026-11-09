@@ -340,11 +340,14 @@ export function RecipientGiftsClient({
         "رجالي", "مكتب", "كونكريت", "تابلوه", "جوانتي", "شتاء", "دفتر", "شطرنج"
       ];
       const himCats = [
-        "woodwork", "leatherwork", "accessories", "gadgets", "home-and-living",
-        "sculpture", "clothing", "games-puzzles"
+        "woodwork", "leatherwork", "accessories", "gadgets", "home-and-living", "home-decor",
+        "sculpture", "clothing", "mens-clothing", "games-puzzles", "wallets-clips", "laptop-cases",
+        "keychains-lanyards", "belts-suspenders", "gloves-sleeves", "desk-office", "storage-organization",
+        "art-collectibles", "painting", "drawing-illustration", "prints", "bags-purses", "backpacks"
       ];
 
-      return himCats.some(c => cat === c || cat.includes(c)) && himKeywords.some(kw => textCorpus.includes(kw));
+      return cat === "mens-clothing" || cat === "wallets-clips" || cat === "laptop-cases" || cat === "belts-suspenders" ||
+        (himCats.some(c => cat === c || cat.includes(c)) && himKeywords.some(kw => textCorpus.includes(kw)));
     }
 
     if (target === "kids") {
@@ -353,7 +356,7 @@ export function RecipientGiftsClient({
         "montessori", "board game", "game", "x o",
         "دميه", "دمية", "لعبة", "اطفال", "أطفال", "طفل", "طفلة", "بيبي", "يونيكورن", "ألعاب", "العاب"
       ];
-      const kidsCats = ["toys", "toys-and-games", "kids-and-baby", "kids-baby", "games-puzzles"];
+      const kidsCats = ["toys", "toys-and-games", "kids-and-baby", "kids-baby", "games-puzzles", "kids-crafts", "sports-outdoor"];
       const weddingExclusions = ["شبكة", "خطوبة", "زفاف", "كتب كتاب", "wedding", "engagement", "bride", "groom"];
       if (weddingExclusions.some(kw => textCorpus.includes(kw))) return false;
 
@@ -361,13 +364,17 @@ export function RecipientGiftsClient({
     }
 
     if (target === "couples") {
+      const weddingCats = [
+        "weddings", "wedding", "gifts-mementos", "wedding-decorations",
+        "wedding-accessories", "wedding-jewelry", "invitations-paper"
+      ];
       const couplesKeywords = [
         "couple", "couples", "wedding", "engagement", "bride", "groom", "marriage", "anniversary",
         "matching", "ring box", "engagement tray",
         "خطوبة", "زفاف", "عريس", "عروسة", "شبكة", "دبل", "طارة", "منديل", "صنيه شبكه", "صينية خطوبة",
-        "بصمه كتب كتاب", "تطريز", "كابلز", "couple keychains"
+        "بصمه كتب كتاب", "تطريز", "كابلز", "couple keychains", "كتب كتاب"
       ];
-      return couplesKeywords.some(kw => textCorpus.includes(kw));
+      return weddingCats.some(c => cat === c || cat.includes(c)) || couplesKeywords.some(kw => textCorpus.includes(kw));
     }
 
     if (target === "mom") {
@@ -384,8 +391,12 @@ export function RecipientGiftsClient({
         "ماما", "أم", "أمي", "ست الحبايب", "صينية", "فازة", "شمع", "شمعة", "ديكور", "خزف",
         "مفرش", "مرآة", "مراءه", "تابلوه", "فاصل كتب", "كوستر", "ميدالية وَنَس", "بوكيه"
       ];
-      const momCats = ["home-and-living", "ceramics", "fine-art-ceramics", "sculpture", "gifts-mementos", "gifts-sets"];
-      return momCats.some(c => cat === c || cat.includes(c)) && momKeywords.some(kw => textCorpus.includes(kw));
+      const momCats = [
+        "home-and-living", "home-decor", "kitchen-dining", "bedding-textiles", "candles-holders",
+        "lighting", "storage-organization", "wall-decor", "ceramics", "fine-art-ceramics",
+        "sculpture", "gifts-mementos", "gifts-sets", "scarves-wraps"
+      ];
+      return momCats.some(c => cat === c || cat.includes(c)) || momKeywords.some(kw => textCorpus.includes(kw));
     }
 
     if (target === "friends") {
@@ -400,13 +411,17 @@ export function RecipientGiftsClient({
         "كوب", "مج", "ميدالية", "كروشيه", "نوت بوك", "صديق", "صديقة", "صحبتي", "أصدقاء", "محفظة",
         "فاصل كتب", "بوك مارك", "تخرج", "دميه التخرج", "توت باج", "شنطة", "شنطه", "لعبة"
       ];
-      const friendsCats = ["accessories", "stationery", "bags-and-purses", "paper", "fine-art-ceramics", "keychains-lanyards", "games-puzzles"];
-      return (friendsCats.some(c => cat === c || cat.includes(c)) && friendsKeywords.some(kw => textCorpus.includes(kw))) ||
+      const friendsCats = [
+        "accessories", "stationery", "bags-and-purses", "bags-purses", "tote-bags", "pouches-coin-purses",
+        "paper", "journals-notebooks", "stickers-bookmarks", "fine-art-ceramics", "keychains-lanyards",
+        "games-puzzles", "greeting-cards"
+      ];
+      return (friendsCats.some(c => cat === c || cat.includes(c)) || friendsKeywords.some(kw => textCorpus.includes(kw))) ||
         name.toLowerCase().includes("friend") || name.toLowerCase().includes("صحبت") || name.toLowerCase().includes("صديق");
     }
 
     if (target === "her") {
-      if (name.includes("رجالي") || name.toLowerCase().includes("men's") || (cat === "woodwork" && name.includes("مقلمة"))) {
+      if (name.includes("رجالي") || name.toLowerCase().includes("men's") || cat === "mens-clothing" || (cat === "woodwork" && name.includes("مقلمة"))) {
         return false;
       }
       const herKeywords = [
@@ -418,8 +433,12 @@ export function RecipientGiftsClient({
         "فيونكه", "طرحة", "مشط", "توكة", "فاصل كتب"
       ];
       const herCats = [
-        "necklaces", "earrings", "bracelets", "jewelry", "bags-and-purses", "hair-accessories",
-        "pins-clips", "brooches-pins-clips", "beauty-apothecary", "gifts-mementos", "clothing"
+        "necklaces", "earrings", "bracelets", "rings", "brooches-pins", "body-jewelry", "jewelry-sets", "jewelry",
+        "bags-and-purses", "bags-purses", "handbags", "tote-bags", "clutches-evening", "pouches-coin-purses",
+        "hair-accessories", "scarves-wraps", "hats-caps", "gloves-sleeves", "sunglasses-eyewear",
+        "pins-clips", "brooches-pins-clips", "beauty-apothecary", "bath-beauty", "soaps-bath-bombs",
+        "skin-care", "hair-care", "essential-oils", "makeup-cosmetics", "candles-holders",
+        "gifts-mementos", "clothing", "womens-clothing", "dresses-skirts", "tops-blouses", "abayas-kaftans"
       ];
       return herCats.some(c => cat === c || cat.includes(c)) || herKeywords.some(kw => textCorpus.includes(kw));
     }
@@ -473,20 +492,24 @@ export function RecipientGiftsClient({
           "housewarming", "home", "living", "بيت", "مبارك البيت", "منزل", "أثاث", "ديكور",
           "فازة", "كوستر", "مبخرة", "incense", "coaster", "tableaux", "تابلوه", "ceramics", "خزف", "مفرش", "اباجورة"
         ];
-        return cat.includes("home") || keywords.some(kw => textCorpus.includes(kw));
+        const homeCats = [
+          "home-and-living", "home-decor", "kitchen-dining", "bedding-textiles", "candles-holders",
+          "lighting", "storage-organization", "wall-decor", "ceramics", "fine-art-ceramics"
+        ];
+        return homeCats.some(c => cat === c || cat.includes(c)) || keywords.some(kw => textCorpus.includes(kw));
       }
       case "baby": {
         const keywords = [
           "baby", "sebou", "سبوع", "مولود", "طفل", "طفلة", "نونو", "بيبي", "بافتة", "مهاد",
           "nursery", "doll", "دمية", "دميه", "ألعاب", "العاب", "تطريز اسم"
         ];
-        return cat.includes("kids") || cat.includes("baby") || cat.includes("toys") || keywords.some(kw => textCorpus.includes(kw));
+        return cat.includes("kids") || cat.includes("baby") || cat.includes("toys") || cat === "games-puzzles" || keywords.some(kw => textCorpus.includes(kw));
       }
       case "anniversary": {
         const keywords = [
           "anniversary", "سنوية", "ذكرى", "عيد زواج", "تاريخ", "رومانسية", "حب", "كابلز", "couples", "love", "memory"
         ];
-        return cat.includes("wedding") || cat.includes("couples") || keywords.some(kw => textCorpus.includes(kw));
+        return cat.includes("wedding") || cat.includes("couples") || cat === "gifts-mementos" || keywords.some(kw => textCorpus.includes(kw));
       }
       case "ramadan": {
         const keywords = [

@@ -3,152 +3,324 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
+import { BespokeImage } from "@/components/bespoke-image";
+import type { ShelfProduct } from "@/components/home/product-shelf-row";
 
 interface HeroProps {
   artisanCount?: number;
   dict?: any;
+  spotlightProducts?: ShelfProduct[];
 }
 
-export function Hero({ dict }: HeroProps) {
+export function Hero({ artisanCount, dict, spotlightProducts = [] }: HeroProps) {
   const isArabic = dict?.common?.home === "الرئيسية" || dict?.common?.search?.includes("ابحث");
+  const currency = dict?.product?.currency || "EGP";
 
-  // Primary Card 1 Copy (Left Split Banner)
+  // Primary Editorial Copy
   const headline = isArabic ? "هدايا مصنوعة بإيدين مصرية" : "Gifts made by real people";
   const subtitle = isArabic
-    ? "اكتشف هدايا يدوية مميزة من مبدعين وحرفيين مصريين — اتصنعت عشان تفضل في البال."
-    : "Discover handmade gifts from Egyptian artisans — made to be remembered.";
-  const cta1 = isArabic ? "تسوق الهدايا" : "Shop Gifts";
+    ? "اكتشف هدايا يدوية فريدة من مبدعين وحرفيين مصريين — تُصنع بحب وتُخصص بالاسم لتبقى في الذاكرة."
+    : "Discover one-of-a-kind treasures crafted by independent Egyptian makers — personalized and delivered to your door.";
 
-  // Card 2 Copy (Right Featured Card - Exact Etsy "Engagement Gifts" Style)
-  const card2Title = isArabic ? "هدايا الخطوبة والتخصيص" : "Engagement & Custom Gifts";
-  const card2Cta = isArabic ? "تسوق الآن" : "Shop now";
+  const primaryCta = isArabic ? "تسوق دليل الهدايا" : "Shop Gift Guide";
+  const secondaryCta = isArabic ? "هدايا مخصصة بالاسم" : "Custom & Engraved";
 
-  // Value Proposition Strip (Clean editorial without emojis)
-  const valueProps = isArabic
-    ? ["صناعة يدوية", "مخصصة بالاسم", "مبدعون مصريون", "توصيل لباب بيتك"]
-    : ["Handmade", "Personalized", "Egyptian", "Delivered to your door"];
+  // Quick High-Intent Gifting Entry Pills
+  const quickLinks = [
+    {
+      label: isArabic ? "هدايا لها" : "For Her",
+      href: "/gifts/for-her",
+    },
+    {
+      label: isArabic ? "هدايا له" : "For Him",
+      href: "/gifts/for-him",
+    },
+    {
+      label: isArabic ? "الخطوبة والزفاف" : "Engagement & Weddings",
+      href: "/gifts/wedding",
+    },
+    {
+      label: isArabic ? "أقل من ٥٠٠ ج.م" : "Under 500 EGP",
+      href: "/gifts/all?price=UNDER_500",
+    },
+  ];
+
+  // Fallback showcase items if database has fewer than 3 spotlight products
+  const fallbackCards = [
+    {
+      id: "fallback-1",
+      name: isArabic ? "هدايا مخصصة بالاسم" : "Custom Engraved Keepsakes",
+      studio: isArabic ? "صُناع جيفتيزان" : "Giftisan Makers",
+      priceLabel: isArabic ? "تخصيص فوري" : "Made to Order",
+      image: "/marketing/hero-egyptian-gifts.webp",
+      href: "/gifts?picks=true",
+      isProduct: false,
+      isVerified: true,
+    },
+    {
+      id: "fallback-2",
+      name: isArabic ? "تذكارات الخطوبة والزفاف" : "Engagement & Bridal Trays",
+      studio: isArabic ? "حرف يدوية مصرية" : "Egyptian Heritage",
+      priceLabel: isArabic ? "تسوق الآن" : "Explore",
+      image: "/images/categories/wedding.webp",
+      href: "/gifts/wedding",
+      isProduct: false,
+      isVerified: true,
+    },
+    {
+      id: "fallback-3",
+      name: isArabic ? "فخار وديكورات منزلية" : "Artisan Home & Ceramics",
+      studio: isArabic ? "ورش مستقلة" : "Local Studios",
+      priceLabel: isArabic ? "تسوق الآن" : "Explore",
+      image: "/images/categories/ceramics.webp",
+      href: "/category/home-and-living",
+      isProduct: false,
+      isVerified: true,
+    },
+  ];
+
+  const bentoItems = [0, 1, 2].map((index) => {
+    const product = spotlightProducts[index];
+    if (product && Array.isArray(product.images) && product.images[0]) {
+      const slugOrId = (product.slug || product.id).trim();
+      const studioName =
+        product.artisan?.studioName ||
+        product.artisan?.user?.name ||
+        (isArabic ? "متجر حرفي مصري" : "Egyptian Artisan");
+      return {
+        id: product.id,
+        name: product.name,
+        studio: studioName,
+        priceLabel: `${currency} ${product.price.toLocaleString()}`,
+        image: product.images[0],
+        href: `/products/${encodeURI(slugOrId)}`,
+        isProduct: true,
+        isVerified: Boolean(product.artisan?.isVerified),
+      };
+    }
+    return fallbackCards[index];
+  });
+
+  const [primaryItem, secondaryTopItem, secondaryBottomItem] = bentoItems;
 
   return (
-    <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-3 sm:px-4 md:px-8 2xl:px-12 3xl:px-16 py-2.5 sm:py-3 md:py-4 2xl:py-5 3xl:py-6">
-      {/* 2-Card Etsy Hero Grid */}
+    <section className="w-full max-w-[1600px] 2xl:max-w-[1720px] 3xl:max-w-[1840px] mx-auto px-3 sm:px-4 md:px-8 2xl:px-12 3xl:px-16 py-2.5 sm:py-3.5 md:py-4 2xl:py-5">
       <motion.div
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-5 2xl:gap-6 items-stretch"
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 md:gap-5 2xl:gap-6 items-stretch"
       >
-        {/* Left Card: 8 Columns on Desktop / Split Banner */}
-        <div className="md:col-span-8 group relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-[#0e4d4a] shadow-xs border border-primary/10 flex flex-col justify-between">
-          {/* Mobile Layout (< sm): Vertical Stack with Arched Image Window (Exact Etsy Mobile Design) */}
-          <div className="sm:hidden flex flex-col w-full h-[320px] justify-between pt-5 px-4 pb-0 text-center">
-            <div className="space-y-2.5 z-10">
-              <h1 className="font-serif text-[1.4rem] font-normal text-white leading-tight tracking-tight">
-                {headline}
-              </h1>
-              <p className="text-white/80 text-xs line-clamp-2 px-2 font-light">
-                {subtitle}
-              </p>
-              <div className="pt-1">
-                <Link
-                  href="/gifts"
-                  className="inline-flex items-center justify-center px-6 py-2 rounded-full bg-white text-[#0e4d4a] font-bold text-xs hover:bg-[#FDFCF0] shadow-sm active:scale-95 transition-all"
-                >
-                  {cta1}
-                </Link>
-              </div>
-            </div>
+        {/* Left Column (6 Cols on Desktop): Brand Story + Direct Gifting Shortcuts */}
+        <div className="lg:col-span-6 relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-[#0e4d4a] text-white shadow-xs border border-primary/10 p-4 sm:p-7 md:p-8 lg:p-9 2xl:p-11 flex flex-col justify-between min-h-0 sm:min-h-[300px] lg:min-h-[370px] 2xl:min-h-[420px]">
+          {/* Subtle Warm Radial Glow */}
+          <div className="absolute -top-24 -end-24 w-72 h-72 rounded-full bg-accent/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -start-24 w-72 h-72 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
 
-            {/* Dome / Arch shaped image container */}
-            <div className="relative w-full h-[160px] overflow-hidden rounded-t-[130px] mt-2">
-              <Image
-                src="/marketing/hero-egyptian-gifts.webp"
-                alt={headline}
-                fill
-                priority
-                className="object-cover group-hover:scale-104 transition-transform duration-700 ease-out"
-                sizes="(max-width: 640px) 100vw, 450px"
-              />
+          {/* Main Copy */}
+          <div className="relative z-10 space-y-2.5 sm:space-y-4 2xl:space-y-5 my-auto">
+            <h1 className="font-serif text-[1.5rem] sm:text-3xl md:text-4xl lg:text-[2.35rem] xl:text-[2.65rem] 2xl:text-[3.1rem] font-normal text-white leading-[1.12] tracking-tight max-w-xl">
+              {headline}
+            </h1>
+
+            <p className="text-white/80 text-xs sm:text-sm 2xl:text-base max-w-lg leading-relaxed font-light line-clamp-2 sm:line-clamp-none">
+              {subtitle}
+            </p>
+
+            {/* Primary & Secondary Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1 sm:pt-2">
+              <Link
+                href="/gifts"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 2xl:px-7 py-2 sm:py-3 rounded-full bg-white text-[#0e4d4a] font-bold text-xs sm:text-sm 2xl:text-base hover:bg-cream shadow-sm hover:shadow-md active:scale-95 transition-all"
+              >
+                <span>{primaryCta}</span>
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 rtl:rotate-180" />
+              </Link>
+
+              <Link
+                href="/search?customizable=true"
+                className="inline-flex items-center gap-1.5 px-3.5 sm:px-5 2xl:px-6 py-2 sm:py-3 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold text-xs sm:text-sm 2xl:text-base active:scale-95 transition-all backdrop-blur-xs"
+              >
+                <span>{secondaryCta}</span>
+              </Link>
             </div>
           </div>
 
-          {/* Tablet & Desktop Layout (sm and up): Split Banner Side-by-Side */}
-          <div className="hidden sm:flex h-[260px] md:h-[290px] lg:h-[320px] xl:h-[340px] 2xl:h-[385px] 3xl:h-[425px] w-full">
-            {/* Content Side (58% on sm/md, 56% on lg) */}
-            <div className="basis-[58%] lg:basis-[56%] flex flex-col justify-center items-center text-center p-5 sm:p-6 md:p-6 lg:p-8 xl:p-10 2xl:p-12 3xl:p-14 z-10 space-y-2.5 sm:space-y-3 lg:space-y-3.5 2xl:space-y-4">
-              <h1 className="font-serif text-xl sm:text-2xl md:text-[1.85rem] lg:text-[2.2rem] xl:text-[2.35rem] 2xl:text-[2.85rem] 3xl:text-[3.25rem] font-normal text-white leading-[1.12] tracking-tight max-w-[360px] 2xl:max-w-[480px] 3xl:max-w-[540px]">
-                {headline}
-              </h1>
-              <p className="text-white/80 text-xs md:text-xs lg:text-sm 2xl:text-base 3xl:text-lg max-w-[340px] 2xl:max-w-[440px] 3xl:max-w-[500px] leading-relaxed font-light line-clamp-2 lg:line-clamp-3">
-                {subtitle}
-              </p>
-              <div className="pt-0.5 sm:pt-1 2xl:pt-2">
+          {/* Bottom High-Intent Quick Occasion / Recipient Pills (Single-line horizontal swipe on mobile) */}
+          <div className="relative z-10 pt-3.5 sm:pt-6 mt-3.5 sm:mt-4 border-t border-white/10">
+            <div
+              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto sm:overflow-visible flex-nowrap sm:flex-wrap scrollbar-none -mx-1 px-1"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              <span className="text-[10px] sm:text-xs text-white/60 font-medium me-1 shrink-0">
+                {isArabic ? "تسوق سريع:" : "Quick picks:"}
+              </span>
+              {quickLinks.map((item) => (
                 <Link
-                  href="/gifts"
-                  className="inline-flex items-center justify-center px-6 sm:px-7 2xl:px-8 3xl:px-9 py-2 sm:py-2.5 2xl:py-3 3xl:py-3.5 rounded-full bg-white text-[#0e4d4a] font-bold text-xs sm:text-sm 2xl:text-base hover:bg-[#FDFCF0] hover:shadow-md transition-all duration-200 active:scale-95 shrink-0"
+                  key={item.href}
+                  href={item.href}
+                  className="px-2.5 sm:px-3 py-1 rounded-full bg-white/8 hover:bg-white/20 border border-white/12 text-[11px] sm:text-xs font-medium text-white/90 transition-colors active:scale-95 shrink-0"
                 >
-                  {cta1}
+                  {item.label}
                 </Link>
-              </div>
-            </div>
-
-            {/* Image Side (42% on sm/md, 44% on lg) */}
-            <div className="relative basis-[42%] lg:basis-[44%] h-full overflow-hidden">
-              <Image
-                src="/marketing/hero-egyptian-gifts.webp"
-                alt={headline}
-                fill
-                priority
-                className="object-cover group-hover:scale-104 transition-transform duration-700 ease-out"
-                sizes="(max-width: 768px) 45vw, (max-width: 1024px) 35vw, (max-width: 1800px) 32vw, 30vw"
-              />
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Right Card: Hidden on mobile screens for a fast, clean flow, visible on tablet & desktop (4 cols) */}
-        <Link
-          href="/gifts/for-couples"
-          className="hidden md:block md:col-span-4 group relative rounded-2xl 2xl:rounded-3xl overflow-hidden md:h-full min-h-[280px] lg:min-h-[320px] xl:min-h-[340px] 2xl:min-h-[385px] 3xl:min-h-[425px] shadow-xs border border-primary/10 cursor-pointer"
-        >
-          <Image
-            src="/images/categories/wedding.webp"
-            alt={card2Title}
-            fill
-            priority
-            className="object-cover object-center group-hover:scale-104 transition-transform duration-700 ease-out"
-            sizes="(max-width: 1024px) 33vw, 25vw"
-          />
+        {/* Right Column (6 Cols on Desktop): Live 3-Product Bento Showcase */}
+        <div className="lg:col-span-6 grid grid-cols-2 grid-rows-2 gap-2.5 sm:gap-4 md:gap-5 2xl:gap-6 h-[230px] sm:h-[310px] lg:h-auto lg:min-h-[370px] 2xl:min-h-[420px]">
+          {/* Bento Card 1: Tall Featured Hero Product (Spans 2 Rows on Left of Bento) */}
+          <Link
+            href={primaryItem.href}
+            className="col-span-1 row-span-2 group relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-cream border border-primary/10 shadow-xs hover:shadow-md transition-all duration-300"
+          >
+            {primaryItem.isProduct ? (
+              <BespokeImage
+                type="product"
+                id={primaryItem.id}
+                src={primaryItem.image}
+                alt={primaryItem.name}
+                fill
+                priority
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                sizes="(max-width: 1024px) 50vw, 25vw"
+              />
+            ) : (
+              <Image
+                src={primaryItem.image}
+                alt={primaryItem.name}
+                fill
+                priority
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                sizes="(max-width: 1024px) 50vw, 25vw"
+              />
+            )}
 
-          {/* Bottom Gradient Overlay for Legibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 via-55% to-transparent pointer-events-none" />
-
-          {/* Bottom Content */}
-          <div className="absolute bottom-4 sm:bottom-5 2xl:bottom-7 start-4 sm:start-5 2xl:start-7 end-4 sm:end-5 2xl:end-7 text-white space-y-1 2xl:space-y-1.5 z-10">
-            <h2 className="text-base sm:text-lg md:text-base lg:text-xl xl:text-2xl 2xl:text-[1.75rem] 3xl:text-3xl font-bold text-white leading-tight drop-shadow-sm font-heading">
-              {card2Title}
-            </h2>
-            <div className="pt-0.5">
-              <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm 2xl:text-base font-semibold text-white/95 group-hover:underline underline-offset-4 decoration-white transition-all">
-                <span>{card2Cta}</span>
-                <ArrowRight className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 rtl:rotate-180" />
+            {/* Top Floating Price Pill */}
+            <div className="absolute top-3 start-3 z-10">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs text-primary font-heading font-bold text-[11px] sm:text-xs 2xl:text-sm shadow-sm border border-primary/10">
+                {primaryItem.priceLabel}
               </span>
             </div>
-          </div>
-        </Link>
-      </motion.div>
 
-      {/* Value Proposition Strip: Hidden on mobile to avoid duplication with TrustBar, visible on tablet & desktop */}
-      <div className="hidden sm:block mt-3 sm:mt-3.5 2xl:mt-4 3xl:mt-5 py-2.5 sm:py-3 2xl:py-3.5 3xl:py-4 px-4 2xl:px-8 rounded-xl 2xl:rounded-2xl bg-white/70 border border-primary/5 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-around gap-4 md:gap-6 2xl:gap-8 text-xs sm:text-sm 2xl:text-base 3xl:text-lg text-charcoal/80 font-medium">
-          {valueProps.map((label, idx) => (
-            <div key={idx} className="flex items-center gap-2 2xl:gap-2.5">
-              <span className="w-1.5 h-1.5 2xl:w-2 2xl:h-2 rounded-full bg-[#D97706]" />
-              <span>{label}</span>
+            {/* Bottom Gradient & Product Metadata */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 via-45% to-transparent pointer-events-none" />
+            <div className="absolute bottom-3 sm:bottom-4 start-3 sm:start-4 end-3 sm:end-4 z-10 text-white space-y-0.5">
+              <p className="text-[10px] sm:text-[11px] text-white/80 font-medium flex items-center gap-1 truncate">
+                <span className="truncate">
+                  {isArabic ? `بواسطة ${primaryItem.studio}` : `By ${primaryItem.studio}`}
+                </span>
+                {primaryItem.isVerified && (
+                  <ShieldCheck className="w-3 h-3 text-emerald-300 shrink-0" />
+                )}
+              </p>
+              <h2 className="font-heading font-bold text-xs sm:text-sm md:text-base 2xl:text-lg text-white line-clamp-1 group-hover:underline underline-offset-2">
+                {primaryItem.name}
+              </h2>
             </div>
-          ))}
+          </Link>
+
+          {/* Bento Card 2: Top-Right Spotlight Product */}
+          <Link
+            href={secondaryTopItem.href}
+            className="col-span-1 row-span-1 group relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-cream border border-primary/10 shadow-xs hover:shadow-md transition-all duration-300"
+          >
+            {secondaryTopItem.isProduct ? (
+              <BespokeImage
+                type="product"
+                id={secondaryTopItem.id}
+                src={secondaryTopItem.image}
+                alt={secondaryTopItem.name}
+                fill
+                priority
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                sizes="(max-width: 1024px) 50vw, 25vw"
+              />
+            ) : (
+              <Image
+                src={secondaryTopItem.image}
+                alt={secondaryTopItem.name}
+                fill
+                priority
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                sizes="(max-width: 1024px) 50vw, 25vw"
+              />
+            )}
+
+            <div className="absolute top-2.5 start-2.5 z-10">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white/95 backdrop-blur-xs text-primary font-heading font-bold text-[10px] sm:text-xs shadow-sm border border-primary/10">
+                {secondaryTopItem.priceLabel}
+              </span>
+            </div>
+
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 via-50% to-transparent pointer-events-none" />
+            <div className="absolute bottom-2 sm:bottom-3 start-2.5 sm:start-3 end-2.5 sm:end-3 z-10 text-white space-y-0.5">
+              <p className="hidden sm:flex text-[10px] text-white/80 font-medium items-center gap-1 truncate">
+                <span className="truncate">
+                  {isArabic ? `بواسطة ${secondaryTopItem.studio}` : `By ${secondaryTopItem.studio}`}
+                </span>
+                {secondaryTopItem.isVerified && (
+                  <ShieldCheck className="w-3 h-3 text-emerald-300 shrink-0" />
+                )}
+              </p>
+              <h2 className="font-heading font-bold text-[11px] sm:text-sm text-white line-clamp-1 group-hover:underline underline-offset-2">
+                {secondaryTopItem.name}
+              </h2>
+            </div>
+          </Link>
+
+          {/* Bento Card 3: Bottom-Right Spotlight Product */}
+          <Link
+            href={secondaryBottomItem.href}
+            className="col-span-1 row-span-1 group relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-cream border border-primary/10 shadow-xs hover:shadow-md transition-all duration-300"
+          >
+            {secondaryBottomItem.isProduct ? (
+              <BespokeImage
+                type="product"
+                id={secondaryBottomItem.id}
+                src={secondaryBottomItem.image}
+                alt={secondaryBottomItem.name}
+                fill
+                priority
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                sizes="(max-width: 1024px) 50vw, 25vw"
+              />
+            ) : (
+              <Image
+                src={secondaryBottomItem.image}
+                alt={secondaryBottomItem.name}
+                fill
+                priority
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                sizes="(max-width: 1024px) 50vw, 25vw"
+              />
+            )}
+
+            <div className="absolute top-2 start-2 sm:top-2.5 sm:start-2.5 z-10">
+              <span className="inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full bg-white/95 backdrop-blur-xs text-primary font-heading font-bold text-[10px] sm:text-xs shadow-sm border border-primary/10">
+                {secondaryBottomItem.priceLabel}
+              </span>
+            </div>
+
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 via-50% to-transparent pointer-events-none" />
+            <div className="absolute bottom-2 sm:bottom-3 start-2.5 sm:start-3 end-2.5 sm:end-3 z-10 text-white space-y-0.5">
+              <p className="hidden sm:flex text-[10px] text-white/80 font-medium items-center gap-1 truncate">
+                <span className="truncate">
+                  {isArabic ? `بواسطة ${secondaryBottomItem.studio}` : `By ${secondaryBottomItem.studio}`}
+                </span>
+                {secondaryBottomItem.isVerified && (
+                  <ShieldCheck className="w-3 h-3 text-emerald-300 shrink-0" />
+                )}
+              </p>
+              <h2 className="font-heading font-bold text-[11px] sm:text-sm text-white line-clamp-1 group-hover:underline underline-offset-2">
+                {secondaryBottomItem.name}
+              </h2>
+            </div>
+          </Link>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

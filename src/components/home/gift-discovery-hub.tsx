@@ -6,15 +6,11 @@ import Image from "next/image";
 import { 
   Heart, 
   Sparkles, 
-  Gift, 
-  PartyPopper, 
   Cake, 
   GraduationCap, 
   Baby, 
   Home, 
-  Coins, 
   ArrowRight,
-  Smile
 } from "lucide-react";
 
 interface GiftDiscoveryHubProps {
@@ -35,8 +31,6 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "حلي، حقائب، شموع معطرة، كروشيه فاخر",
       image: "/images/gifts/gifts-for-her.webp",
       href: `/${lang}/gifts/for-her`,
-      badgeEn: "Most Popular",
-      badgeAr: "الأكثر طلباً",
     },
     {
       id: "him",
@@ -46,8 +40,6 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "جلود طبيعية، مقتنيات مكتب، وأخشاب فخمة",
       image: "/images/gifts/gifts-for-him.webp",
       href: `/${lang}/gifts/for-him`,
-      badgeEn: "Thoughtful",
-      badgeAr: "مختارات مميزة",
     },
     {
       id: "mom",
@@ -57,8 +49,6 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "تذكارات محفورة بالاسم وديكورات دافئة للبيت",
       image: "/images/categories/gift-boxes-sets.webp",
       href: `/${lang}/gifts/for-mom`,
-      badgeEn: "Heartfelt",
-      badgeAr: "من القلب",
     },
     {
       id: "couples",
@@ -68,8 +58,6 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "صواني خطوبة، طارات تطريز، وباقات للعروسين",
       image: "/images/categories/personalized.webp",
       href: `/${lang}/gifts/for-couples`,
-      badgeEn: "Keepsake",
-      badgeAr: "ذكرى خاصة",
     },
     {
       id: "friends",
@@ -79,8 +67,6 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "أكواب خزفية، كروشيه مرح، وميداليات بالاسم",
       image: "/images/hero/hero-crochet-monster.webp",
       href: `/${lang}/gifts/for-friends`,
-      badgeEn: "Fun & Unique",
-      badgeAr: "مرحة وفريدة",
     },
     {
       id: "kids",
@@ -90,8 +76,6 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "ألعاب خشبية تعليمية وعرائس كروشيه يدوية",
       image: "/images/gifts/gifts-for-kids.webp",
       href: `/${lang}/gifts/for-kids`,
-      badgeEn: "Safe & Sweet",
-      badgeAr: "آمنة ومحبوبة",
     },
   ];
 
@@ -104,7 +88,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "هدايا مفرحة ومجهزة لتسعد قلوب أصحاب العيد",
       icon: Cake,
       color: "from-amber-500/10 to-amber-600/5 text-amber-700 border-amber-200/60",
-      href: `/${lang}/gifts/all?occasion=birthday`,
+      href: `/${lang}/gifts/birthday`,
     },
     {
       id: "wedding",
@@ -114,7 +98,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "صواني شبكة، علب دبل محفورة، وتذكارات كتب الكتاب",
       icon: Heart,
       color: "from-rose-500/10 to-rose-600/5 text-rose-700 border-rose-200/60",
-      href: `/${lang}/gifts/all?occasion=wedding`,
+      href: `/${lang}/gifts/wedding`,
     },
     {
       id: "graduation",
@@ -144,7 +128,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "خزف يدوي، مجموعات كونكريت، وديكورات حائط أصيلة",
       icon: Home,
       color: "from-stone-500/10 to-stone-600/5 text-stone-700 border-stone-200/60",
-      href: `/${lang}/gifts/all?occasion=housewarming`,
+      href: `/${lang}/gifts/home-decor`,
     },
     {
       id: "anniversary",
@@ -154,7 +138,7 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       subAr: "حلي منقوشة بالتواريخ وصناديق لحفظ أجمل الذكريات",
       icon: Sparkles,
       color: "from-purple-500/10 to-purple-600/5 text-purple-800 border-purple-200/60",
-      href: `/${lang}/gifts/all?occasion=anniversary`,
+      href: `/${lang}/gifts/anniversary`,
     },
   ];
 
@@ -206,10 +190,6 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
       {/* Header & Mode Switcher */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6 md:mb-8 2xl:mb-10">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs 2xl:text-sm font-bold mb-2">
-            <Gift className="w-3.5 h-3.5 2xl:w-4 2xl:h-4" />
-            <span>{isArabic ? "دليل الهدايا الذكي" : "Gift Discovery Concierge"}</span>
-          </div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl 2xl:text-[2.6rem] 3xl:text-5xl font-serif font-bold text-primary tracking-tight">
             {isArabic ? "من تحتفل معه اليوم؟" : "Find gifts that mean more."}
           </h2>
@@ -262,10 +242,10 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
             <Link
               key={rec.id}
               href={rec.href}
-              className="w-[62vw] max-w-[240px] sm:w-auto shrink-0 snap-start sm:snap-align-none group relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-white border border-primary/10 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col h-[235px] sm:h-[260px] md:h-[280px] 2xl:h-[320px] 3xl:h-[350px]"
+              className="w-[62vw] max-w-[240px] sm:w-auto shrink-0 snap-start sm:snap-align-none group relative rounded-2xl 2xl:rounded-3xl overflow-hidden bg-white border border-primary/10 shadow-2xs hover:shadow-lg transition-all duration-300 flex flex-col h-[220px] sm:h-[245px] md:h-[260px] 2xl:h-[295px] 3xl:h-[325px]"
             >
               {/* Card Image */}
-              <div className="relative w-full h-[58%] sm:h-[60%] 2xl:h-[62%] overflow-hidden bg-cream/40">
+              <div className="relative w-full h-[66%] sm:h-[67%] 2xl:h-[68%] overflow-hidden bg-cream/40">
                 <Image
                   src={rec.image}
                   alt={isArabic ? rec.nameAr : rec.nameEn}
@@ -273,25 +253,19 @@ export function GiftDiscoveryHub({ dict }: GiftDiscoveryHubProps) {
                   className="object-cover group-hover:scale-106 transition-transform duration-500 ease-out"
                   sizes="(max-width: 640px) 65vw, (max-width: 1024px) 33vw, 16vw"
                 />
-                <span className="absolute top-2.5 start-2.5 2xl:top-3.5 2xl:start-3.5 px-2 2xl:px-2.5 py-0.5 rounded-full text-[10px] 2xl:text-xs font-bold bg-[#064E3B] text-white shadow-2xs">
-                  {isArabic ? rec.badgeAr : rec.badgeEn}
-                </span>
               </div>
 
               {/* Card Text */}
-              <div className="p-3 sm:p-3.5 2xl:p-4.5 flex flex-col justify-between flex-1 bg-white">
-                <div>
-                  <h3 className="font-heading font-bold text-xs sm:text-sm 2xl:text-base text-primary group-hover:text-accent transition-colors leading-tight">
+              <div className="p-3 sm:p-3.5 2xl:p-4 flex flex-col justify-center flex-1 bg-white">
+                <div className="flex items-center justify-between gap-1.5">
+                  <h3 className="font-heading font-bold text-xs sm:text-sm 2xl:text-base text-primary group-hover:text-accent transition-colors leading-tight truncate">
                     {isArabic ? rec.nameAr : rec.nameEn}
                   </h3>
-                  <p className="text-[10px] sm:text-[11px] 2xl:text-xs text-charcoal/60 line-clamp-2 mt-1 leading-snug">
-                    {isArabic ? rec.subAr : rec.subEn}
-                  </p>
+                  <ArrowRight className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-charcoal/40 group-hover:text-accent group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5 transition-all shrink-0" />
                 </div>
-                <div className="flex items-center gap-1 text-[11px] 2xl:text-xs font-bold text-accent pt-1 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
-                  <span>{isArabic ? "تسوق الآن" : "Shop"}</span>
-                  <ArrowRight className="w-3 h-3 2xl:w-3.5 2xl:h-3.5 rtl:rotate-180" />
-                </div>
+                <p className="text-[10px] sm:text-[11px] 2xl:text-xs text-charcoal/60 line-clamp-2 mt-1 leading-snug">
+                  {isArabic ? rec.subAr : rec.subEn}
+                </p>
               </div>
             </Link>
           ))}

@@ -561,9 +561,14 @@ export async function getProductsByCategory(category: string) {
       "Journals"
     ],
     "clothing": [
-      "Clothing", "Fashion", "Apparel", "Women's Clothing", "Men's Clothing",
-      "Boys' Clothing", "Girls' Clothing", "Gender-Neutral Adult Clothing",
-      "Gender-Neutral Kids' Clothing", "Dresses", "Robes"
+      "Clothing", "Fashion", "Apparel", "Textiles", "Wearables",
+      "Women's Clothing", "Men's Clothing", "Boys' Clothing", "Girls' Clothing",
+      "Gender-Neutral Adult Clothing", "Gender-Neutral Kids' Clothing",
+      "Scarves & Wraps", "Gloves & Sleeves", "Hats & Headwear", "Aprons", "Collars",
+      "Baby Clothing", "Baby Blankets", "Dresses", "Robes",
+      "womens-clothing", "mens-clothing", "boys-clothing", "girls-clothing",
+      "gender-neutral-adult-clothing", "gender-neutral-kids-clothing",
+      "scarves-wraps", "gloves-sleeves", "hats-headwear", "baby-clothing", "baby-blankets"
     ],
     "clothing-shoes": [
       "Clothing", "Shoes", "Fashion", "Women's Clothing", "Men's Clothing",
@@ -699,26 +704,45 @@ export async function getProductsByCategory(category: string) {
 
   const subcategories = departmentSubcategoryMap[normalizedCategory] || [];
 
-  // Generate all possible variations of the category string formats stored in the DB (e.g. "Gift Boxes & Sets", "gift-boxes-sets", "gift-boxes-&-sets", "gift boxes & sets")
+  // Generate all possible variations of the category string formats stored in the DB (including EtsyCategoryPicker slug IDs)
   const baseTargets = [category, matchedName, ...subcategories];
   const variations = Array.from(new Set(
-    baseTargets.flatMap(target => [
-      target,
-      target.toLowerCase(),
-      target.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-"),
-      target.toLowerCase().replace(/\s+/g, "-"),
-      target.toLowerCase().replace(/ & /g, " ").replace(/ /g, " "),
-      target.replace(/ & /g, " & ").replace(/  +/g, " ")
-    ])
+    baseTargets.flatMap(target => {
+      const cleanAscii = target
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/['’]/g, "");
+      return [
+        target,
+        target.toLowerCase(),
+        target.toLowerCase().replace(/ & /g, "-").replace(/ /g, "-"),
+        target.toLowerCase().replace(/\s+/g, "-"),
+        target.toLowerCase().replace(/ & /g, " ").replace(/ /g, " "),
+        target.replace(/ & /g, " & ").replace(/  +/g, " "),
+        cleanAscii.replace(/ & /g, "-").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+        cleanAscii.replace(/ & /g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      ];
+    })
   ));
 
   try {
     const products = await prisma.product.findMany({
       where: {
-        category: {
-          in: variations,
-          mode: "insensitive"
-        },
+        OR: [
+          {
+            category: {
+              in: variations,
+              mode: "insensitive"
+            }
+          },
+          {
+            subcategory: {
+              in: variations,
+              mode: "insensitive"
+            }
+          }
+        ],
         status: "APPROVED",
         artisan: {
           status: "APPROVED"

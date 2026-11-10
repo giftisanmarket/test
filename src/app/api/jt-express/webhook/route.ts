@@ -118,6 +118,22 @@ export async function POST(req: NextRequest) {
         isJtStatusDelivered(d.scanType || d.status || d.desc)
       );
 
+    const s = String(rawStatus || "").toLowerCase();
+    const isOutForDelivery =
+      s.includes("dispatch") ||
+      s.includes("out for delivery") ||
+      s.includes("خرج للتوصيل") ||
+      s.includes("派件") ||
+      detailsList.some((d: any) => {
+        const ds = String(d.scanType || d.status || d.desc || "").toLowerCase();
+        return (
+          ds.includes("dispatch") ||
+          ds.includes("out for delivery") ||
+          ds.includes("خرج للتوصيل") ||
+          ds.includes("派件")
+        );
+      });
+
     if (isDelivered) {
       const baseOrderId = businessReference
         ? String(businessReference).split("-")[0]
@@ -135,6 +151,20 @@ export async function POST(req: NextRequest) {
             "Order items updated to DELIVERED and escrow countdown initiated.",
         });
       }
+    } else if (isOutForDelivery) {
+      const baseOrderId = businessReference
+        ? String(businessReference).split("-")[0]
+        : undefined;
+      await markItemsAsOutForDelivery(
+        trackingNumber ? String(trackingNumber) : undefined,
+        baseOrderId
+      );
+      return NextResponse.json({
+        code: "1",
+        msg: "success",
+        success: true,
+        message: "Order updated to OUT_FOR_DELIVERY",
+      });
     }
 
     return NextResponse.json({
@@ -337,6 +367,42 @@ async function markItemsAsDelivered(
   revalidatePath("/ar/profile");
   revalidatePath("/en/studio");
   revalidatePath("/ar/studio");
+  return true;
+}
+
+async function markItemsAsOutForDelivery(
+  trackingNumber?: string,
+  businessReference?: string
+) {
+  const parentOrder = await prisma.order.findFirst({
+    where: {
+      OR: [
+        ...(trackingNumber ? [{ trackingNumber: { contains: trackingNumber } }] : []),
+        ...(businessReference ? [{ id: businessReference }] : []),
+      ],
+    },
+  });
+
+  if (!parentOrder || parentOrder.status === "DELIVERED") {
+    return false;
+  }
+
+  await prisma.order.update({
+    where: { id: parentOrder.id },
+    data: { status: "OUT_FOR_DELIVERY" },
+  });
+
+  await prisma.orderItem.updateMany({
+    where: {
+      orderId: parentOrder.id,
+      status: { notIn: ["DELIVERED", "CANCELLED", "REFUNDED"] },
+    },
+    data: { status: "OUT_FOR_DELIVERY" },
+  });
+
+  revalidatePath("/profile");
+  revalidatePath("/track");
+  revalidatePath("/admin/orders");
   return true;
 }
 

@@ -551,14 +551,14 @@ export function ProfileClient({ user, orders, dict, isAdminPreview = false }: Pr
                               <div 
                                 className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-accent transition-all duration-500 -z-10" 
                                 style={{
-                                  width: order.status === "DELIVERED" ? "100%" : order.status === "SHIPPED" ? "50%" : "0%"
+                                  width: order.status === "DELIVERED" ? "100%" : (order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY") ? "50%" : "0%"
                                 }}
                               />
 
                               <div className="flex flex-col items-center gap-2 bg-cream/5 px-2">
                                 <div className={cn(
                                   "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all shadow-sm",
-                                  order.status === "PROCESSING" || order.status === "SHIPPED" || order.status === "DELIVERED"
+                                  order.status === "PROCESSING" || order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY" || order.status === "DELIVERED"
                                     ? "bg-accent border-accent text-white"
                                     : "bg-white border-primary/20 text-primary/40"
                                 )}>
@@ -572,11 +572,11 @@ export function ProfileClient({ user, orders, dict, isAdminPreview = false }: Pr
                               <div className="flex flex-col items-center gap-2 bg-cream/5 px-2">
                                 <div className={cn(
                                   "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all shadow-sm",
-                                  order.status === "SHIPPED" || order.status === "DELIVERED"
+                                  order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY" || order.status === "DELIVERED"
                                     ? "bg-accent border-accent text-white"
                                     : "bg-white border-primary/20 text-primary/40"
                                 )}>
-                                  {order.status === "SHIPPED" || order.status === "DELIVERED" ? <Check className="w-4 h-4 text-white" /> : "2"}
+                                  {order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY" || order.status === "DELIVERED" ? <Check className="w-4 h-4 text-white" /> : "2"}
                                 </div>
                                 <p className="text-[10px] md:text-xs font-black uppercase tracking-wider text-primary text-center">
                                   {dict.profile?.shipped || "Shipped"}

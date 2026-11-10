@@ -9,6 +9,7 @@ import {
   queryJtOrders,
   getJtTracking,
   getJtWaybill,
+  isJtStatusDelivered,
 } from "@/lib/jt-express";
 import { matchEgyptGovernorate } from "@/lib/egypt-governorates";
 import { sendOrderStatusUpdateEmail } from "@/lib/mail";
@@ -324,20 +325,95 @@ export async function getJtWaybillAction(billCode: string) {
 }
 
 /**
- * Cancels an order on J&T Express (`orderserve/cancel`)
+ * Cancels an order on J&T Express (`orderserve/cancel`) and reverts order status
  */
 export async function cancelJtOrderAction(
-  txlogisticId: string,
+  orderIdOrTxLogisticId: string,
   reason: string = "Cancelled by Admin"
 ) {
   try {
     const session = await auth();
     if (session?.user?.role !== "ADMIN") {
-      return { error: "Unauthorized" };
+      return { error: "Unauthorized: Admin privileges required" };
     }
 
-    const res = await cancelJtOrder(txlogisticId, reason);
-    return { success: true, data: res };
+    // Find order in DB either by id or trackingNumber
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { id: orderIdOrTxLogisticId },
+          { trackingNumber: { contains: orderIdOrTxLogisticId } },
+        ],
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    const txlogisticIds = new Set<string>();
+    txlogisticIds.add(orderIdOrTxLogisticId);
+
+    if (order) {
+      txlogisticIds.add(order.id);
+      const artisanIds = new Set(
+        order.items.map((i) => i.product?.artisanId || "platform")
+      );
+      if (artisanIds.size > 1) {
+        for (const artId of artisanIds) {
+          txlogisticIds.add(`${order.id}-${artId.slice(-4)}`);
+        }
+      }
+    }
+
+    // Call J&T API cancellation for all associated txlogisticIds
+    const results: any[] = [];
+    const billCode = order?.trackingNumber
+      ? String(order.trackingNumber).split(",")[0].trim()
+      : undefined;
+    for (const txId of txlogisticIds) {
+      try {
+        const res = await cancelJtOrder(txId, reason, 1, billCode);
+        results.push(res);
+      } catch (err: any) {
+        console.warn(`[cancelJtOrder] warning for ${txId}:`, err.message);
+      }
+    }
+
+    // Revert local order state if order was found in DB
+    if (order) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: "PROCESSING",
+          trackingNumber: null,
+          carrier: null,
+        },
+      });
+
+      await prisma.orderItem.updateMany({
+        where: { orderId: order.id },
+        data: {
+          status: "PROCESSING",
+          trackingNumber: null,
+          carrier: null,
+        },
+      });
+
+      revalidatePath("/admin", "layout");
+      revalidatePath("/admin/orders");
+      revalidatePath("/studio");
+      revalidatePath("/profile");
+    }
+
+    return {
+      success: true,
+      message: "J&T Express shipment cancelled successfully",
+      data: results,
+    };
   } catch (error: any) {
     console.error("[cancelJtOrderAction Error]:", error);
     return { error: error.message || "Failed to cancel J&T Express shipment" };
@@ -372,5 +448,104 @@ export async function getJtTrackingAction(billCodes: string | string[]) {
   } catch (error: any) {
     console.error("[getJtTrackingAction Error]:", error);
     return { error: error.message || "Failed to fetch J&T Express tracking" };
+  }
+}
+
+/**
+ * Syncs order status live from J&T Express tracking API
+ */
+export async function syncJtOrderStatusAction(orderId: string) {
+  try {
+    const session = await auth();
+    if (session?.user?.role !== "ADMIN") {
+      return { error: "Unauthorized: Admin privileges required" };
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { user: true, items: { include: { product: true } } },
+    });
+
+    if (!order) {
+      return { error: "Order not found" };
+    }
+
+    if (!order.trackingNumber) {
+      return { error: "No tracking number on this order to sync" };
+    }
+
+    const firstTracking = order.trackingNumber.split(",")[0].trim();
+    const traceRes = await getJtTracking(firstTracking);
+
+    // Parse scan traces
+    let rawTraces: any[] = [];
+    if (Array.isArray(traceRes?.data)) {
+      rawTraces = traceRes.data[0]?.details || traceRes.data;
+    } else if (Array.isArray(traceRes?.data?.details)) {
+      rawTraces = traceRes.data.details;
+    } else if (Array.isArray(traceRes?.details)) {
+      rawTraces = traceRes.details;
+    }
+
+    const latestScan = rawTraces[0] || null;
+    const scanType = latestScan?.scanType || latestScan?.status || "";
+    const scanDesc =
+      latestScan?.desc ||
+      latestScan?.scandesc ||
+      latestScan?.scanTypeName ||
+      "";
+    const scanTime = latestScan?.scanTime || latestScan?.time || "";
+
+    const isDelivered =
+      isJtStatusDelivered(scanType) || isJtStatusDelivered(scanDesc);
+
+    let updatedStatus = order.status;
+    if (isDelivered && order.status !== "DELIVERED") {
+      updatedStatus = "DELIVERED";
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "DELIVERED" },
+      });
+      await prisma.orderItem.updateMany({
+        where: { orderId: order.id },
+        data: { status: "DELIVERED" },
+      });
+
+      const recipientEmail = order.user?.email || order.clientEmail;
+      if (recipientEmail) {
+        sendOrderStatusUpdateEmail(
+          recipientEmail,
+          order.user?.name || "Valued Customer",
+          order.id,
+          "DELIVERED",
+          order.items[0]?.product?.name || "Your order",
+          order.items[0]?.product?.slug || undefined,
+          order.trackingNumber,
+          order.carrier || "J&T Express"
+        ).catch(() => {});
+      }
+
+      revalidatePath("/admin", "layout");
+      revalidatePath("/admin/orders");
+      revalidatePath("/studio");
+      revalidatePath("/profile");
+    }
+
+    return {
+      success: true,
+      currentStatus: updatedStatus,
+      trackingNumber: order.trackingNumber,
+      carrier: order.carrier,
+      latestScan: {
+        scanType: scanType || "In Transit",
+        desc: scanDesc || "Tracking active with J&T Express",
+        time: scanTime,
+      },
+      tracesCount: rawTraces.length,
+      raw: traceRes,
+    };
+  } catch (error: any) {
+    console.error("[syncJtOrderStatusAction Error]:", error);
+    return { error: error.message || "Failed to sync status from J&T Express" };
   }
 }

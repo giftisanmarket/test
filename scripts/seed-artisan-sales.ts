@@ -96,7 +96,7 @@ async function main() {
                 status: orderStatus,
                 personalization: i === 0 ? "Engrave: 'With love, Nourhan'" : null,
                 trackingNumber: orderStatus !== "PENDING" ? `TRK-BST-${Date.now().toString().slice(-6)}-${i}` : null,
-                carrier: orderStatus !== "PENDING" ? "Bosta Express" : null
+                carrier: orderStatus !== "PENDING" ? "J&T Express" : null
               }
             ]
           }

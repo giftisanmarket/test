@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Truck, CheckCircle2, Clock, User, ArrowRight, Sparkles, X, Search, Edit, RefreshCw, ChevronDown, Check, MoreVertical, Mail, BarChart3, Printer, ExternalLink, Store, Phone, MapPin, RotateCcw, AlertTriangle, CreditCard, Banknote } from "lucide-react";
+import { Package, Truck, CheckCircle2, Clock, User, ArrowRight, Sparkles, X, Search, Edit, RefreshCw, ChevronDown, ChevronUp, Check, MoreVertical, Mail, BarChart3, Printer, ExternalLink, Store, Phone, MapPin, RotateCcw, AlertTriangle, CreditCard, Banknote, XCircle, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { updateOrderStatus, shipOrderWithJtExpress, getJtWaybillAction } from "@/lib/actions";
+import { updateOrderStatus, shipOrderWithJtExpress, getJtWaybillAction, cancelJtOrderAction, syncJtOrderStatusAction } from "@/lib/actions";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -67,17 +67,62 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
     return true;
   });
 
+  const [isJtLoading, setIsJtLoading] = useState(false);
+  const [isJtSyncing, setIsJtSyncing] = useState(false);
+  const [copiedTracking, setCopiedTracking] = useState(false);
+  const [showManualOverride, setShowManualOverride] = useState(false);
+
   const handleOpenEdit = (order: any) => {
     setEditingOrder(order);
     setNewStatus(order.status);
     setIsDropdownOpen(false);
+    setShowManualOverride(false);
+    setCopiedTracking(false);
     // Find tracking number and carrier if any items have them
     const itemWithTracking = order.items?.find((i: any) => i.trackingNumber);
-    setTrackingNumber(itemWithTracking?.trackingNumber || "");
-    setCarrier(itemWithTracking?.carrier || "");
+    setTrackingNumber(order.trackingNumber || itemWithTracking?.trackingNumber || "");
+    setCarrier(order.carrier || itemWithTracking?.carrier || "J&T Express");
   };
 
-  const [isJtLoading, setIsJtLoading] = useState(false);
+  const handleJtSync = async (orderId: string) => {
+    setIsJtSyncing(true);
+    try {
+      const res = await syncJtOrderStatusAction(orderId);
+      if (res.success) {
+        toast.success(
+          `J&T Sync: ${res.latestScan?.scanType || "Active"} (${res.latestScan?.desc || "Status updated"})`,
+          {
+            duration: 6000,
+            style: { borderRadius: "20px", background: "#1a4332", color: "#fff" },
+          }
+        );
+        if (res.currentStatus) {
+          setOrders((prev) =>
+            prev.map((o) => (o.id === orderId ? { ...o, status: res.currentStatus } : o))
+          );
+          if (editingOrder?.id === orderId) {
+            setEditingOrder((prev: any) => (prev ? { ...prev, status: res.currentStatus } : null));
+            setNewStatus(res.currentStatus);
+          }
+          if (selectedOrderDetails?.id === orderId) {
+            setSelectedOrderDetails((prev: any) =>
+              prev ? { ...prev, status: res.currentStatus } : null
+            );
+          }
+        }
+      } else {
+        toast.error(res.error || "Failed to sync status from J&T Express", {
+          style: { borderRadius: "20px", background: "#4a1d1d", color: "#fff" },
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An unexpected error occurred while communicating with J&T Express", {
+        style: { borderRadius: "20px", background: "#4a1d1d", color: "#fff" },
+      });
+    } finally {
+      setIsJtSyncing(false);
+    }
+  };
 
   const handleJtShip = async (orderId: string) => {
     setIsJtLoading(true);
@@ -102,6 +147,44 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
         }
       } else {
         toast.error(res.error || "Failed to create shipment on J&T Express", {
+          style: { borderRadius: '20px', background: '#4a1d1d', color: '#fff' }
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "An unexpected error occurred while communicating with J&T Express", {
+        style: { borderRadius: '20px', background: '#4a1d1d', color: '#fff' }
+      });
+    } finally {
+      setIsJtLoading(false);
+    }
+  };
+
+  const handleJtCancel = async (orderId: string) => {
+    if (!confirm("Are you sure you want to cancel this J&T Express shipment? This will cancel the courier pickup request and revert the order to processing.")) {
+      return;
+    }
+    setIsJtLoading(true);
+    try {
+      const res = await cancelJtOrderAction(orderId, "Cancelled by Admin");
+      if (res.success) {
+        toast.success("J&T Express shipment cancelled successfully", {
+          duration: 5000,
+          style: { borderRadius: '20px', background: '#1a4332', color: '#fff' }
+        });
+        setOrders(prev => prev.map(o => {
+          if (o.id === orderId) {
+            return { ...o, status: "PROCESSING", trackingNumber: null, carrier: null };
+          }
+          return o;
+        }));
+        if (editingOrder?.id === orderId) {
+          setEditingOrder(null);
+        }
+        if (selectedOrderDetails?.id === orderId) {
+          setSelectedOrderDetails((prev: any) => prev ? { ...prev, status: "PROCESSING", trackingNumber: null, carrier: null } : null);
+        }
+      } else {
+        toast.error(res.error || "Failed to cancel shipment on J&T Express", {
           style: { borderRadius: '20px', background: '#4a1d1d', color: '#fff' }
         });
       }
@@ -673,127 +756,377 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
               </div>
 
               <div className="space-y-6">
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ms-4">Order Status</label>
-                  <button
-                    type="button"
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="w-full h-14 px-6 bg-cream/30 border border-primary/5 rounded-2xl flex items-center justify-between font-bold text-primary text-sm hover:border-accent transition-all shadow-sm"
-                  >
-                    <span className="flex items-center gap-2">
-                      {newStatus === "PENDING" && <Clock className="w-4 h-4 text-yellow-600" />}
-                      {newStatus === "PROCESSING" && <RefreshCw className="w-4 h-4 text-purple-600" />}
-                      {newStatus === "SHIPPED" && <Truck className="w-4 h-4 text-blue-600" />}
-                      {newStatus === "DELIVERED" && <CheckCircle2 className="w-4 h-4 text-green-600" />}
-                      {newStatus === "REFUNDED" && <RotateCcw className="w-4 h-4 text-rose-600" />}
-                      {newStatus === "CANCELLED" && <X className="w-4 h-4 text-red-600" />}
-                      {newStatus}
-                    </span>
-                    <ChevronDown className={cn("w-4 h-4 text-primary/40 transition-transform duration-300", isDropdownOpen && "rotate-180")} />
-                  </button>
+                {/* Dynamic Fulfillment & Courier State Handler */}
+                {(() => {
+                  const activeBillCode = editingOrder.trackingNumber || trackingNumber;
+                  const isJtDispatched = Boolean(
+                    activeBillCode &&
+                    (
+                      editingOrder.carrier === "J&T Express" ||
+                      carrier === "J&T Express" ||
+                      activeBillCode.startsWith("JEG") ||
+                      editingOrder.status === "SHIPPED"
+                    )
+                  );
 
-                  <AnimatePresence>
-                    {isDropdownOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                        <motion.div
-                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-primary/5 shadow-2xl p-2 z-20 space-y-1 overflow-hidden"
-                        >
-                          {[
-                            { value: "PENDING", icon: Clock, color: "text-yellow-600", bg: "hover:bg-yellow-50/50" },
-                            { value: "PROCESSING", icon: RefreshCw, color: "text-purple-600", bg: "hover:bg-purple-50/50" },
-                            { value: "SHIPPED", icon: Truck, color: "text-blue-600", bg: "hover:bg-blue-50/50" },
-                            { value: "DELIVERED", icon: CheckCircle2, color: "text-green-600", bg: "hover:bg-green-50/50" },
-                            { value: "REFUNDED", icon: RotateCcw, color: "text-rose-600", bg: "hover:bg-rose-50/50" },
-                            { value: "CANCELLED", icon: X, color: "text-red-600", bg: "hover:bg-red-50/50" },
-                          ].map((item) => (
+                  if (isJtDispatched) {
+                    return (
+                      <div className="space-y-5">
+                        {/* J&T Express Integrated Courier Card */}
+                        <div className="bg-gradient-to-br from-blue-50/80 via-white to-blue-50/40 border border-blue-200/80 rounded-3xl p-5 space-y-4 shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                                J&amp;T
+                              </div>
+                              <div>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-primary/60">Automated Courier</p>
+                                <h4 className="text-sm font-bold text-primary">J&amp;T Express Egypt</h4>
+                              </div>
+                            </div>
+                            <span className={cn(
+                              "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                              editingOrder.status === "DELIVERED"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-blue-100 text-blue-800"
+                            )}>
+                              {editingOrder.status === "DELIVERED" ? "Delivered" : "In Transit / Dispatched"}
+                            </span>
+                          </div>
+
+                          <div className="bg-white/90 border border-blue-100 rounded-2xl p-3.5 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase tracking-widest text-blue-500">Waybill Number (AWB)</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (activeBillCode) {
+                                    navigator.clipboard.writeText(activeBillCode);
+                                    setCopiedTracking(true);
+                                    setTimeout(() => setCopiedTracking(false), 2000);
+                                    toast.success("Waybill copied to clipboard!");
+                                  }
+                                }}
+                                className="text-[10px] font-bold text-primary/60 hover:text-primary flex items-center gap-1 transition-colors"
+                              >
+                                {copiedTracking ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                                <span>{copiedTracking ? "Copied" : "Copy"}</span>
+                              </button>
+                            </div>
+                            <p className="font-mono text-base font-bold text-primary tracking-wider break-all">
+                              {activeBillCode}
+                            </p>
+                          </div>
+
+                          {/* Quick Actions Toolbar */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                             <button
-                              key={item.value}
                               type="button"
-                              onClick={() => {
-                                setNewStatus(item.value);
-                                setIsDropdownOpen(false);
-                              }}
-                              className={cn(
-                                "w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all",
-                                item.bg,
-                                newStatus === item.value ? "bg-primary/5 text-primary" : "text-primary/70"
-                              )}
+                              onClick={() => handleJtSync(editingOrder.id)}
+                              disabled={isJtSyncing}
+                              className="h-11 px-3 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs disabled:opacity-50"
                             >
-                              <span className="flex items-center gap-3">
-                                <item.icon className={cn("w-4 h-4", item.color)} />
-                                {item.value}
-                              </span>
-                              {newStatus === item.value && <Check className="w-4 h-4 text-primary" />}
+                              <RefreshCw className={cn("w-3.5 h-3.5", isJtSyncing && "animate-spin text-blue-600")} />
+                              <span>{isJtSyncing ? "Syncing J&T..." : "Sync Live Status"}</span>
                             </button>
-                          ))}
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
 
-                {newStatus === "SHIPPED" && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-5">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ms-4">Carrier</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. J&T Express, Aramex, DHL"
-                        value={carrier}
-                        onChange={(e) => setCarrier(e.target.value)}
-                        className="w-full h-14 px-6 bg-cream/30 border border-primary/5 rounded-2xl focus:outline-none focus:border-accent transition-all font-bold text-primary text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ms-4">Tracking Number</label>
-                      <input
-                        type="text"
-                        placeholder="Tracking ID"
-                        value={trackingNumber}
-                        onChange={(e) => setTrackingNumber(e.target.value)}
-                        className="w-full h-14 px-6 bg-cream/30 border border-primary/5 rounded-2xl focus:outline-none focus:border-accent transition-all font-bold text-primary text-sm"
-                      />
-                    </div>
-                  </motion.div>
-                )}
+                            <a
+                              href={`https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(activeBillCode)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="h-11 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              <span>Track on J&amp;T Site</span>
+                            </a>
+                          </div>
 
-                {/* 1-Click J&T Express Dispatch Helper */}
-                {editingOrder.status === "PENDING" && newStatus === "PENDING" ? (
-                  <div className="pt-3 border-t border-primary/10">
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 text-amber-800 text-xs">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                      <p className="leading-snug">
-                        <strong>Awaiting Payment:</strong> This order is unpaid. To dispatch with J&amp;T Express, confirm payment first by changing the status to <strong>PROCESSING</strong> or <strong>SHIPPED</strong>.
-                      </p>
+                          <button
+                            type="button"
+                            onClick={() => handleJtCancel(editingOrder.id)}
+                            disabled={isJtLoading}
+                            className="w-full h-11 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+                          >
+                            {isJtLoading ? (
+                              <>
+                                <span className="w-3.5 h-3.5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                                <span>Cancelling J&amp;T Shipment...</span>
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-3.5 h-3.5" />
+                                <span>Cancel J&amp;T Shipment &amp; Revert</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Expandable Manual Override Section */}
+                        <div className="pt-2 border-t border-primary/5">
+                          <button
+                            type="button"
+                            onClick={() => setShowManualOverride(!showManualOverride)}
+                            className="w-full flex items-center justify-between text-[11px] font-bold text-primary/60 hover:text-primary py-2 transition-colors"
+                          >
+                            <span>Manual Status Override (Advanced)</span>
+                            {showManualOverride ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+
+                          {showManualOverride && (
+                            <div className="pt-3 space-y-4">
+                              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-start gap-2">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                <p>
+                                  This shipment is managed by J&amp;T Express. Status normally syncs automatically upon courier delivery.
+                                </p>
+                              </div>
+
+                              <div className="space-y-2 relative">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ms-2">Force Status</label>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                  className="w-full h-12 px-4 bg-cream/30 border border-primary/10 rounded-xl flex items-center justify-between font-bold text-primary text-xs"
+                                >
+                                  <span>{newStatus}</span>
+                                  <ChevronDown className="w-3.5 h-3.5 text-primary/40" />
+                                </button>
+
+                                <AnimatePresence>
+                                  {isDropdownOpen && (
+                                    <>
+                                      <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                                      <motion.div
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-primary/5 shadow-2xl p-2 z-20 space-y-1"
+                                      >
+                                        {["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"].map((s) => (
+                                          <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => {
+                                              setNewStatus(s);
+                                              setIsDropdownOpen(false);
+                                            }}
+                                            className={cn(
+                                              "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all",
+                                              newStatus === s ? "bg-primary/5 text-primary" : "text-primary/70 hover:bg-cream/50"
+                                            )}
+                                          >
+                                            <span>{s}</span>
+                                            {newStatus === s && <Check className="w-3.5 h-3.5 text-primary" />}
+                                          </button>
+                                        ))}
+                                      </motion.div>
+                                    </>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Order not dispatched with J&T yet
+                  if (editingOrder.status === "PENDING") {
+                    return (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 text-amber-800 text-xs">
+                          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold">Awaiting Customer Payment</p>
+                            <p className="text-amber-700/80 text-[11px] mt-0.5">
+                              This order is unpaid. Confirm customer payment before courier dispatch.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 relative">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ms-2">Update Status</label>
+                          <button
+                            type="button"
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className="w-full h-14 px-6 bg-cream/30 border border-primary/5 rounded-2xl flex items-center justify-between font-bold text-primary text-sm hover:border-accent transition-all shadow-sm"
+                          >
+                            <span>{newStatus}</span>
+                            <ChevronDown className="w-4 h-4 text-primary/40" />
+                          </button>
+                          <AnimatePresence>
+                            {isDropdownOpen && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                                <motion.div
+                                  initial={{ opacity: 0, y: -10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -10 }}
+                                  className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-primary/5 shadow-2xl p-2 z-20 space-y-1"
+                                >
+                                  {["PENDING", "PROCESSING", "CANCELLED"].map((s) => (
+                                    <button
+                                      key={s}
+                                      type="button"
+                                      onClick={() => {
+                                        setNewStatus(s);
+                                        setIsDropdownOpen(false);
+                                      }}
+                                      className={cn(
+                                        "w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                                        newStatus === s ? "bg-primary/5 text-primary" : "text-primary/70 hover:bg-cream/50"
+                                      )}
+                                    >
+                                      <span>{s}</span>
+                                      {newStatus === s && <Check className="w-4 h-4 text-primary" />}
+                                    </button>
+                                  ))}
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Order is PROCESSING / READY TO SHIP
+                  return (
+                    <div className="space-y-5">
+                      {/* Hero 1-Click J&T Express Dispatch Card */}
+                      <div className="bg-gradient-to-br from-red-500/5 via-rose-500/5 to-amber-500/5 border border-red-200/80 rounded-3xl p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Truck className="w-4 h-4 text-red-600" />
+                            <h4 className="text-xs font-black uppercase tracking-widest text-red-900">J&amp;T Express Egypt Fulfillment</h4>
+                          </div>
+                          <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">Automated</span>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-red-100">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-primary/40">Destination</p>
+                            <p className="font-bold text-xs text-primary truncate mt-0.5">{editingOrder.shippingCity || "Cairo"}</p>
+                          </div>
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-red-100">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-primary/40">Collection</p>
+                            <p className="font-bold text-xs text-emerald-700 truncate mt-0.5">
+                              {editingOrder.orderNotes?.includes("[COD") ? `${editingOrder.totalAmount} EGP` : "Prepaid"}
+                            </p>
+                          </div>
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-red-100">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-primary/40">Items</p>
+                            <p className="font-bold text-xs text-primary truncate mt-0.5">{editingOrder.items?.length || 1} item(s)</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleJtShip(editingOrder.id)}
+                          disabled={isJtLoading}
+                          className="w-full h-12 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-bold rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
+                        >
+                          {isJtLoading ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Connecting to J&amp;T Express API...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Truck className="w-4 h-4" />
+                              <span>Dispatch with J&amp;T Express (1-Click)</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Manual / Other Carrier Section */}
+                      <div className="pt-2 border-t border-primary/5">
+                        <button
+                          type="button"
+                          onClick={() => setShowManualOverride(!showManualOverride)}
+                          className="w-full flex items-center justify-between text-[11px] font-bold text-primary/60 hover:text-primary py-2 transition-colors"
+                        >
+                          <span>Fulfill with Other Carrier / Manual Tracking</span>
+                          {showManualOverride ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+
+                        {showManualOverride && (
+                          <div className="pt-3 space-y-4">
+                            <div className="space-y-2 relative">
+                              <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ms-2">Order Status</label>
+                              <button
+                                type="button"
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="w-full h-12 px-4 bg-cream/30 border border-primary/10 rounded-xl flex items-center justify-between font-bold text-primary text-xs"
+                              >
+                                <span>{newStatus}</span>
+                                <ChevronDown className="w-3.5 h-3.5 text-primary/40" />
+                              </button>
+                              <AnimatePresence>
+                                {isDropdownOpen && (
+                                  <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                                    <motion.div
+                                      initial={{ opacity: 0, y: -10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, y: -10 }}
+                                      className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-primary/5 shadow-2xl p-2 z-20 space-y-1"
+                                    >
+                                      {["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"].map((s) => (
+                                        <button
+                                          key={s}
+                                          type="button"
+                                          onClick={() => {
+                                            setNewStatus(s);
+                                            setIsDropdownOpen(false);
+                                          }}
+                                          className={cn(
+                                            "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold transition-all",
+                                            newStatus === s ? "bg-primary/5 text-primary" : "text-primary/70 hover:bg-cream/50"
+                                          )}
+                                        >
+                                          <span>{s}</span>
+                                          {newStatus === s && <Check className="w-3.5 h-3.5 text-primary" />}
+                                        </button>
+                                      ))}
+                                    </motion.div>
+                                  </>
+                                )}
+                              </AnimatePresence>
+                            </div>
+
+                            {newStatus === "SHIPPED" && (
+                              <div className="space-y-3 pt-2">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black uppercase tracking-widest text-primary/60 ms-2">Carrier Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Aramex, DHL, In-house"
+                                    value={carrier}
+                                    onChange={(e) => setCarrier(e.target.value)}
+                                    className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl font-bold text-primary text-xs"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black uppercase tracking-widest text-primary/60 ms-2">Tracking Number</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Tracking code"
+                                    value={trackingNumber}
+                                    onChange={(e) => setTrackingNumber(e.target.value)}
+                                    className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl font-bold text-primary text-xs"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ) : editingOrder.status !== "CANCELLED" && editingOrder.status !== "DELIVERED" && (
-                  <div className="pt-3 border-t border-primary/10">
-                    <button
-                      type="button"
-                      onClick={() => handleJtShip(editingOrder.id)}
-                      disabled={isJtLoading}
-                      className="w-full h-12 bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      {isJtLoading ? (
-                        <>
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Connecting to J&amp;T Express API...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Truck className="w-4 h-4" />
-                          <span>Dispatch with J&amp;T Express (1-Click)</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               <div className="flex gap-3 sm:gap-4 pt-3 sm:pt-4">
@@ -1085,7 +1418,16 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                             </p>
                           </div>
                           {selectedOrderDetails.trackingNumber && (
-                            <div className="pt-2 flex">
+                            <div className="pt-2 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleJtSync(selectedOrderDetails.id)}
+                                disabled={isJtSyncing}
+                                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                              >
+                                <RefreshCw className={cn("w-3.5 h-3.5", isJtSyncing && "animate-spin text-blue-600")} />
+                                <span>{isJtSyncing ? "Syncing..." : "Sync Status"}</span>
+                              </button>
                               <a
                                 href={`https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(selectedOrderDetails.trackingNumber)}`}
                                 target="_blank"
@@ -1095,6 +1437,19 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                 <ExternalLink className="w-3.5 h-3.5" />
                                 Live J&amp;T Express Tracking
                               </a>
+                              <button
+                                type="button"
+                                onClick={() => handleJtCancel(selectedOrderDetails.id)}
+                                disabled={isJtLoading}
+                                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                              >
+                                {isJtLoading ? (
+                                  <span className="w-3.5 h-3.5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                                ) : (
+                                  <XCircle className="w-3.5 h-3.5" />
+                                )}
+                                <span>Cancel J&amp;T Shipment</span>
+                              </button>
                             </div>
                           )}
                         </div>

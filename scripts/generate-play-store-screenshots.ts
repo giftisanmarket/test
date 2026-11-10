@@ -59,9 +59,9 @@ const screenshots: ScreenshotConfig[] = [
     filename: "screenshot-5-protection.png",
     badge: "COMPLETE PEACE OF MIND",
     headline: "SAFE ESCROW PROTECTION",
-    subheadline: "Funds held in secure escrow until delivered and approved with Bosta tracking",
+    subheadline: "Funds held in secure escrow until delivered and approved with J&T Express tracking",
     imagePath: path.resolve("public/marketing/home-decor.webp"),
-    featureTags: ["Paymob Secured", "Bosta Delivery", "100% Escrow Guarantee"],
+    featureTags: ["Paymob Secured", "J&T Express Delivery", "100% Escrow Guarantee"],
   },
 ];
 

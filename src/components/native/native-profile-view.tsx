@@ -101,6 +101,12 @@ export function NativeProfileView({
           className: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
           icon: CheckCircle2,
         };
+      case "OUT_FOR_DELIVERY":
+        return {
+          label: isArabic ? "خرج للتوصيل" : "Out for Delivery",
+          className: "bg-indigo-50 text-indigo-700 border-indigo-200/60",
+          icon: Truck,
+        };
       case "SHIPPED":
         return {
           label: isArabic ? "تم الشحن" : "Shipped",
@@ -427,7 +433,7 @@ export function NativeProfileView({
                           )}
 
                           {/* Tracking button */}
-                          {order.status === "SHIPPED" && trackingUrl && (
+                          {(order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY") && trackingUrl && (
                             <a
                               href={trackingUrl}
                               target="_blank"

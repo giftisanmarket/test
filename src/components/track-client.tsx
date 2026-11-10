@@ -111,6 +111,7 @@ export function TrackClient({
   const getStepIndex = (status: string) => {
     const s = (status || "").toUpperCase();
     if (s === "DELIVERED") return 4;
+    if (s === "OUT_FOR_DELIVERY") return 3;
     if (s === "SHIPPED") return 2;
     if (s === "PROCESSING") return 1;
     if (s === "PENDING") return 0;
@@ -271,8 +272,10 @@ export function TrackClient({
                       <span>
                         {order.status === "DELIVERED"
                           ? (isAr ? "تم التسليم" : "Delivered")
+                          : order.status === "OUT_FOR_DELIVERY"
+                          ? (isAr ? "خرج للتوصيل اليوم" : "Out for Delivery")
                           : order.status === "SHIPPED"
-                          ? (isAr ? "في الطريق" : "In Transit")
+                          ? (isAr ? "في الطريق مع الشحن" : "In Transit")
                           : order.status === "PROCESSING"
                           ? (isAr ? "قيد التجهيز" : "Preparing")
                           : order.status === "CANCELLED"

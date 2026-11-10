@@ -324,17 +324,23 @@ export async function queryJtOrders(
 /**
  * 3. Cancel Order (`orderserve/cancel`)
  * Endpoint: POST /webopenplatformapi/api/order/cancelOrder
+ * Note: orderType: 1 means cancel by customer order number (txlogisticId).
  */
 export async function cancelJtOrder(
   txlogisticId: string,
   reason: string = "Customer cancelled order",
-  orderType: string = "2"
+  orderType: number = 1,
+  billCode?: string
 ) {
-  return postJtRequest("/webopenplatformapi/api/order/cancelOrder", {
+  const payload: Record<string, any> = {
     orderType,
     txlogisticId,
     reason,
-  });
+  };
+  if (billCode) {
+    payload.billCode = billCode;
+  }
+  return postJtRequest("/webopenplatformapi/api/order/cancelOrder", payload);
 }
 
 /**

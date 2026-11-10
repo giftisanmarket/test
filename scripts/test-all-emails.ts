@@ -64,8 +64,8 @@ async function main() {
       "SHIPPED",
       "Handcrafted Alabaster Vase",
       "handcrafted-alabaster-vase",
-      "EGY-BOSTA-9948201",
-      "Bosta Express",
+      "JEG000578454257",
+      "J&T Express",
       "en"
     );
 

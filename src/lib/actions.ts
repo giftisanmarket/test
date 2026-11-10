@@ -64,6 +64,7 @@ import {
   cancelJtOrderAction as _cancelJtOrderAction,
   queryJtOrdersAction as _queryJtOrdersAction,
   getJtTrackingAction as _getJtTrackingAction,
+  syncJtOrderStatusAction as _syncJtOrderStatusAction,
 } from "./actions/shipping-actions";
 
 import {
@@ -123,6 +124,10 @@ export async function queryJtOrdersAction(serialNumbers: string | string[]) {
 
 export async function getJtTrackingAction(billCodes: string | string[]) {
   return _getJtTrackingAction(billCodes);
+}
+
+export async function syncJtOrderStatusAction(orderId: string) {
+  return _syncJtOrderStatusAction(orderId);
 }
 
 export async function submitInquiry(data: { name: string; email: string; message: string }) {

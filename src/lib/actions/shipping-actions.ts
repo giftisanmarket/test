@@ -174,27 +174,46 @@ export async function shipOrderWithJtExpress(orderId: string) {
         }
       }
 
-      // Determine clean pickup address & sender from artisan profile (if configured)
+      // Determine clean pickup address & sender from artisan profile
       let pickupPayload: any = undefined;
       let senderPayload: any = undefined;
-      if (artisan?.pickupAddress) {
+      if (artisan) {
+        const rawPickupStreet =
+          artisan.pickupAddress ||
+          [artisan.pickupDistrict, artisan.pickupCity].filter(Boolean).join(", ") ||
+          artisan.location ||
+          process.env.JT_SENDER_ADDRESS ||
+          "Cairo, Egypt";
+
         const matchedArtisanGov = matchEgyptGovernorate(
           {},
-          artisan.pickupCity || artisan.pickupAddress
+          artisan.pickupCity || artisan.pickupDistrict || artisan.location || rawPickupStreet
         );
         const artCity =
-          matchedArtisanGov?.nameEn || artisan.pickupCity || "Cairo";
+          matchedArtisanGov?.nameEn || artisan.pickupCity || process.env.JT_SENDER_CITY || "Cairo";
+        const artDistrict =
+          artisan.pickupDistrict || artisan.location?.split(/[,،]/)[0]?.trim() || artCity;
+
+        const fullStreet = [
+          rawPickupStreet,
+          artisan.pickupBuilding ? `Building/Floor: ${artisan.pickupBuilding}` : "",
+          artisan.pickupDistrict && !rawPickupStreet.includes(artisan.pickupDistrict)
+            ? `District: ${artisan.pickupDistrict}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(", ");
+
         pickupPayload = {
-          firstLine: `${artisan.pickupAddress}${
-            artisan.pickupBuilding ? `, Building: ${artisan.pickupBuilding}` : ""
-          }${artisan.pickupDistrict ? `, District: ${artisan.pickupDistrict}` : ""}`,
+          firstLine: fullStreet,
           prov: artCity,
           city: artCity,
-          area: artisan.pickupDistrict || artCity,
-          district: artisan.pickupDistrict || undefined,
+          area: artDistrict || artCity,
+          district: artDistrict || undefined,
         };
+
         senderPayload = {
-          firstName: artisan.studioName || artisan.user?.name || "Giftisan Artisan",
+          firstName: artisan.studioName || artisan.user?.name || process.env.JT_SENDER_NAME || "Giftisan Artisan",
           phone:
             artisan.phoneNumber ||
             artisan.user?.phone ||

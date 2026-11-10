@@ -37,7 +37,11 @@ export async function shipOrderWithJtExpress(orderId: string) {
           include: {
             product: {
               include: {
-                artisan: true,
+                artisan: {
+                  include: {
+                    user: true,
+                  },
+                },
               },
             },
           },
@@ -190,9 +194,13 @@ export async function shipOrderWithJtExpress(orderId: string) {
           district: artisan.pickupDistrict || undefined,
         };
         senderPayload = {
-          firstName: artisan.studioName || artisan.name || "Giftisan Artisan",
-          phone: artisan.phone || process.env.JT_SENDER_PHONE || "01000000000",
-          email: artisan.email || undefined,
+          firstName: artisan.studioName || artisan.user?.name || "Giftisan Artisan",
+          phone:
+            artisan.phoneNumber ||
+            artisan.user?.phone ||
+            process.env.JT_SENDER_PHONE ||
+            "01000000000",
+          email: artisan.user?.email || undefined,
         };
       }
 

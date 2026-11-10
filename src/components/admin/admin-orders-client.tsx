@@ -1025,18 +1025,23 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                           type="button"
                           onClick={() => handleJtShip(editingOrder.id)}
                           disabled={isJtLoading}
-                          className="w-full h-12 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-bold rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
+                          className="w-full min-h-[48px] px-3.5 sm:px-4 py-3 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-bold rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] max-w-full"
                         >
                           {isJtLoading ? (
-                            <>
-                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
                               <span>Connecting to J&amp;T Express API...</span>
-                            </>
+                            </div>
                           ) : (
-                            <>
-                              <Truck className="w-4 h-4" />
-                              <span>Dispatch with J&amp;T Express (1-Click)</span>
-                            </>
+                            <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap leading-tight">
+                              <Truck className="w-4 h-4 shrink-0 text-white" />
+                              <span className="whitespace-normal sm:whitespace-nowrap">
+                                {isAr ? "شحن عبر J&T Express" : "Dispatch with J&T Express"}
+                              </span>
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/20 whitespace-nowrap shrink-0">
+                                1-Click
+                              </span>
+                            </div>
                           )}
                         </button>
                       </div>
@@ -1191,7 +1196,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-6 sm:gap-8">
-                  <div className="md:col-span-2 space-y-4 sm:space-y-6">
+                  <div className="md:col-span-2 space-y-4 sm:space-y-6 min-w-0">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40">{dict.admin.included_treasures}</h3>
                     <div className="space-y-3.5 sm:space-y-4">
                       {selectedOrderDetails.items?.map((item: any, idx: number) => (
@@ -1270,7 +1275,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                     </div>
                   </div>
 
-                  <div className="space-y-6 sm:space-y-8">
+                  <div className="space-y-6 sm:space-y-8 min-w-0">
                     <div className="space-y-4">
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40">{dict.admin.customer_details}</h3>
                       <div className="bg-primary/5 p-4 sm:p-6 rounded-2xl space-y-3.5 sm:space-y-4">
@@ -1465,23 +1470,28 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                       </div>
                     ) : (
                       selectedOrderDetails.status !== "CANCELLED" && (
-                        <div className="space-y-3 pt-2">
+                        <div className="space-y-3 pt-2 w-full">
                           <button
                             type="button"
                             onClick={() => handleJtShip(selectedOrderDetails.id)}
                             disabled={isJtLoading}
-                            className="w-full py-3.5 bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold rounded-xl sm:rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full min-h-[48px] sm:min-h-[52px] px-3.5 sm:px-5 py-3 sm:py-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white font-bold rounded-xl sm:rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] max-w-full"
                           >
                             {isJtLoading ? (
-                              <>
-                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
                                 <span>Dispatching to J&amp;T Express...</span>
-                              </>
+                              </div>
                             ) : (
-                              <>
-                                <Truck className="w-4 h-4" />
-                                <span>Dispatch with J&amp;T Express (1-Click)</span>
-                              </>
+                              <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap leading-tight">
+                                <Truck className="w-4 h-4 shrink-0 text-white" />
+                                <span className="whitespace-normal sm:whitespace-nowrap">
+                                  {isAr ? "شحن عبر J&T Express" : "Dispatch with J&T Express"}
+                                </span>
+                                <span className="text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full bg-white/20 whitespace-nowrap shrink-0">
+                                  1-Click
+                                </span>
+                              </div>
                             )}
                           </button>
                         </div>

@@ -192,18 +192,18 @@ export function SalesTab({
     <div className="bg-white rounded-[1.75rem] sm:rounded-[2.5rem] lg:rounded-[3rem] p-3.5 sm:p-6 md:p-8 lg:p-10 xl:p-12 border border-primary/5 shadow-xl sm:shadow-2xl shadow-primary/5 text-charcoal">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 lg:mb-10 gap-4 sm:gap-6 md:gap-8">
         <div className="space-y-1 sm:space-y-2 text-start w-full sm:w-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-heading font-bold text-primary leading-tight">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-heading font-bold text-primary leading-tight">
             {dict.studio.sales_fulfillment} <span className="serif italic font-normal text-accent">{dict.studio.sales_fulfillment_accent}</span>
           </h2>
-          <p className="text-xs sm:text-sm md:text-base text-charcoal/40 font-medium">{dict.studio.track_orders_desc}</p>
+          <p className="text-xs sm:text-sm text-charcoal/50 font-medium">{dict.studio.track_orders_desc}</p>
         </div>
 
         {sales.length > 0 && (
           <button
             onClick={exportToCSV}
-            className="w-full sm:w-auto h-11 sm:h-14 md:h-16 px-4 sm:px-8 md:px-10 bg-primary text-white font-bold rounded-xl md:rounded-full hover:bg-primary-light transition-all flex items-center justify-center gap-2.5 sm:gap-3 shadow-md sm:shadow-xl active:scale-95 duration-200 shrink-0"
+            className="w-full sm:w-auto h-10 sm:h-12 md:h-14 px-4 sm:px-6 md:px-8 bg-primary text-white font-bold rounded-xl md:rounded-full hover:bg-primary-light transition-all flex items-center justify-center gap-2.5 shadow-md active:scale-95 duration-200 shrink-0"
           >
-            <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-accent-light shrink-0" />
+            <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-accent-light shrink-0" />
             <div className="text-start">
               <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/40 leading-none mb-0.5 sm:mb-1">{dict.studio.export_sales}</p>
               <p className="text-xs sm:text-sm leading-none">{dict.studio.download_csv}</p>
@@ -347,27 +347,27 @@ export function SalesTab({
 
                     {/* Details Column */}
                     <div className="flex-1 min-w-0 space-y-2 sm:space-y-3 md:space-y-4 text-start">
-                      <div className="flex flex-col lg:flex-row lg:items-center gap-2 justify-start">
-                        <h4 className="text-sm sm:text-base md:text-2xl font-heading font-bold text-primary line-clamp-2 leading-snug" dir="auto">
-                          {item.product.name}
-                        </h4>
-                        
-                        {/* Desktop Status Badge */}
+                      <div className="flex flex-col gap-1.5 justify-start min-w-0">
+                        {/* Desktop Status Badge (Eyebrow above title) */}
                         <div className="hidden md:flex items-center gap-2 flex-wrap">
                           <span className={cn(
-                            "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest border shadow-sm",
+                            "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-wider border shadow-xs shrink-0",
                             item.status === "PENDING"    ? "bg-amber-500  text-white border-amber-400"  :
                             item.status === "PROCESSING" ? "bg-teal-500   text-white border-teal-400"   :
                             item.status === "SHIPPED"    ? "bg-blue-500   text-white border-blue-400"   :
                                                            "bg-green-500  text-white border-green-400"
                           )}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-white/60 shrink-0" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
                             {item.status === "PENDING"    ? dict.studio.status_pending :
                              item.status === "PROCESSING" ? dict.studio.status_ready :
                              item.status === "SHIPPED"    ? dict.studio.status_shipped :
                              dict.studio.status_delivered}
                           </span>
                         </div>
+
+                        <h4 className="text-sm sm:text-base md:text-lg lg:text-xl font-heading font-bold text-primary line-clamp-2 leading-snug break-words" dir="auto">
+                          {item.product.name}
+                        </h4>
                       </div>
 
                       {/* Buyer Details & Metadata */}
@@ -459,15 +459,15 @@ export function SalesTab({
                     </div>
 
                     {/* Desktop Right Column (Total & Net Earnings) */}
-                    <div className="hidden md:flex flex-col items-end gap-3 shrink-0 pt-0 text-end">
+                    <div className="hidden md:flex flex-col items-end gap-2.5 shrink-0 pt-0 text-end">
                       <div>
-                        <p className="text-[10px] font-black text-primary/20 uppercase tracking-[0.2em] mb-1">{dict.common.total_amount}</p>
-                        <p className="text-2xl lg:text-3xl font-heading font-bold text-primary">{dict.product.currency} {item.price * item.quantity}</p>
+                        <p className="text-[10px] font-black text-primary/30 uppercase tracking-[0.2em] mb-0.5">{dict.common.total_amount}</p>
+                        <p className="text-xl lg:text-2xl font-heading font-bold text-primary">{dict.product.currency} {item.price * item.quantity}</p>
                       </div>
                       
-                      <div className="flex items-center justify-center gap-2 bg-primary/5 px-4 py-2 rounded-xl border border-primary/5 max-w-full">
-                        <Coins className="w-4 h-4 text-accent shrink-0" />
-                        <p className="text-xs font-black text-primary/60 uppercase tracking-widest whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1.5 bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/5 max-w-full">
+                        <Coins className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <p className="text-[11px] sm:text-xs font-black text-primary/70 uppercase tracking-wider whitespace-nowrap">
                           {dict.studio.your_net_label} <span className="text-accent font-bold ms-1">{dict.product.currency} {(item.price * item.quantity * (1 - commissionRate)).toFixed(2)}</span>
                         </p>
                       </div>

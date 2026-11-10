@@ -793,7 +793,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
-                className="scroll-mt-32 relative z-10"
+                className="scroll-mt-44 md:scroll-mt-52 relative z-10 pt-1 sm:pt-2"
               >
                 {activeTab === "overview" && (
                   <OverviewTab

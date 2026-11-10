@@ -1876,7 +1876,7 @@ export function AdminExpensesClient({
                               type="text"
                               value={formPaidBy}
                               onChange={(e) => setFormPaidBy(e.target.value)}
-                              placeholder={isAr ? "مثال: شركة الشحن، مطبعة النور، فيسبوك..." : "e.g. Bosta, Printing Press, Facebook..."}
+                              placeholder={isAr ? "مثال: شركة الشحن، مطبعة النور، فيسبوك..." : "e.g. J&T Express, Printing Press, Facebook..."}
                               className="w-full h-11 px-4 bg-cream/30 border border-primary/10 rounded-xl text-xs font-medium text-primary focus:ring-2 focus:ring-accent/30 focus:outline-none"
                             />
                           </div>

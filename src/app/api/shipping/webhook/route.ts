@@ -11,7 +11,7 @@ import { safeCompareSecrets } from "@/lib/security";
 export async function POST(req: Request) {
   try {
     const configuredSecret =
-      process.env.SHIPPING_WEBHOOK_SECRET || process.env.BOSTA_WEBHOOK_SECRET;
+      process.env.SHIPPING_WEBHOOK_SECRET || process.env.JT_WEBHOOK_SECRET;
     if (!configuredSecret) {
       return NextResponse.json(
         { error: "Shipping webhook secret is not configured" },

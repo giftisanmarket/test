@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { sendOrderStatusUpdateEmail } from "@/lib/mail";
 import { revalidatePath } from "next/cache";
 import { escapeHtml, verifyDeliveryVerifyToken } from "@/lib/security";
+import { getJtTracking, isJtStatusDelivered } from "@/lib/jt-express";
 
 async function isVerifyAuthorized(targetId: string, sig: string | null): Promise<boolean> {
   if (verifyDeliveryVerifyToken(targetId, sig)) {
@@ -91,25 +92,40 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (orderItem.carrier?.toLowerCase() === "bosta" && orderItem.trackingNumber) {
+    if (
+      orderItem.carrier &&
+      /j&t|jt|jtexpress/i.test(orderItem.carrier) &&
+      orderItem.trackingNumber
+    ) {
       try {
-        const bostaRes = await fetch(
-          `https://api.bosta.co/shipments/track/${encodeURIComponent(orderItem.trackingNumber)}`,
-          { signal: AbortSignal.timeout(6000) }
-        );
-        if (bostaRes.ok) {
-          const bostaData = await bostaRes.json();
-          const rawState = bostaData.state?.value || bostaData.state || bostaData.status;
-          if (["Delivered", "DELIVERED", "delivered"].includes(rawState)) {
-            if (itemId) {
-              await markAsDelivered(orderItem.id);
-            } else if (orderId) {
-              await markOrderAsDelivered(orderItem.orderId);
-            }
-            return new NextResponse(renderHtmlSuccess(orderItem), {
-              headers: { "Content-Type": "text/html; charset=utf-8" },
-            });
+        const traceRes = await getJtTracking(orderItem.trackingNumber);
+        const traceData = Array.isArray(traceRes?.data)
+          ? traceRes.data[0]
+          : traceRes?.data;
+        const details = Array.isArray(traceData?.details)
+          ? traceData.details
+          : [];
+        const latestScan = details[0] || {};
+        const rawState =
+          latestScan.scanType ||
+          latestScan.status ||
+          latestScan.desc ||
+          traceData?.status;
+
+        if (
+          isJtStatusDelivered(rawState) ||
+          details.some((d: any) =>
+            isJtStatusDelivered(d.scanType || d.status || d.desc)
+          )
+        ) {
+          if (itemId) {
+            await markAsDelivered(orderItem.id);
+          } else if (orderId) {
+            await markOrderAsDelivered(orderItem.orderId);
           }
+          return new NextResponse(renderHtmlSuccess(orderItem), {
+            headers: { "Content-Type": "text/html; charset=utf-8" },
+          });
         }
       } catch {
         // Fallback to manual courier confirmation prompt

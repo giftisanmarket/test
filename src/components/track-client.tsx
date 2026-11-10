@@ -389,14 +389,14 @@ export function TrackClient({
                     )}
                   </div>
 
-                  {order.trackingNumber && order.carrier?.toLowerCase().includes("bosta") && (
+                  {order.trackingNumber && /j&t|jt/i.test(order.carrier || "") && (
                     <a
-                      href={`https://bosta.co/tracking-shipment/?track=${order.trackingNumber}`}
+                      href={`https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(order.trackingNumber)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-accent/10 hover:bg-accent text-accent hover:text-white text-xs font-bold border border-accent/20 transition-all active:scale-95"
                     >
-                      <span>{t.btn_view_courier || (isAr ? "تتبع مباشر عبر بوسطة" : "Track on Bosta")}</span>
+                      <span>{t.btn_view_courier || (isAr ? "تتبع مباشر عبر J&T Express" : "Track on J&T Express")}</span>
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   )}

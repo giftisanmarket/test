@@ -672,8 +672,8 @@ export function NativeHomeView({
             </h4>
             <p className="text-[11px] text-charcoal/60 leading-relaxed max-w-xs mx-auto">
               {isArabic
-                ? "دفع إلكتروني آمن عبر Paymob وتوصيل لباب بيتك بواسطة Bosta."
-                : "Secure checkout with Paymob and doorstep delivery across Egypt via Bosta."}
+                ? "دفع إلكتروني آمن عبر Paymob وتوصيل لباب بيتك بواسطة J&T Express."
+                : "Secure checkout with Paymob and doorstep delivery across Egypt via J&T Express."}
             </p>
           </div>
         </div>

@@ -42,7 +42,7 @@ export const EGYPT_GOVERNORATES: Governorate[] = [
 
 // Maps English zone names (as stored in DB) → Arabic display names
 const ZONE_NAME_AR: Record<string, string> = {
-  // Current Bosta-aligned names
+  // Current J&T Express-aligned names
   "cairo & giza":         "القاهرة والجيزة",
   "delta & canal cities": "الدلتا والقناة",
   "upper egypt":          "صعيد مصر",

@@ -55,8 +55,8 @@ const getTrackingUrl = (carrier?: string, trackingNumber?: string) => {
   if (name.includes("aramex")) {
     return `https://www.aramex.com/eg/en/track/results?shipmentNumber=${trackingNumber}`;
   }
-  if (name.includes("bosta")) {
-    return `https://bosta.co/track/${trackingNumber}`;
+  if (name.includes("j&t") || name.includes("jt")) {
+    return `https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(trackingNumber)}`;
   }
   return `https://www.google.com/search?q=${encodeURIComponent(carrier + " " + trackingNumber + " tracking")}`;
 };

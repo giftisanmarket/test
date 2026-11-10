@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Package, Truck, CheckCircle2, Clock, User, ArrowRight, Sparkles, X, Search, Edit, RefreshCw, ChevronDown, Check, MoreVertical, Mail, BarChart3, Printer, ExternalLink, Store, Phone, MapPin, RotateCcw, AlertTriangle, CreditCard, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { updateOrderStatus, shipOrderWithBosta, getBostaAWBAction } from "@/lib/actions";
+import { updateOrderStatus, shipOrderWithJtExpress, getJtWaybillAction } from "@/lib/actions";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
@@ -77,20 +77,20 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
     setCarrier(itemWithTracking?.carrier || "");
   };
 
-  const [isBostaLoading, setIsBostaLoading] = useState(false);
+  const [isJtLoading, setIsJtLoading] = useState(false);
 
-  const handleBostaShip = async (orderId: string) => {
-    setIsBostaLoading(true);
+  const handleJtShip = async (orderId: string) => {
+    setIsJtLoading(true);
     try {
-      const res = await shipOrderWithBosta(orderId);
+      const res = await shipOrderWithJtExpress(orderId);
       if (res.success) {
-        toast.success(`Shipment created on Bosta! Tracking: ${res.trackingNumber}`, {
+        toast.success(`Shipment created on J&T Express! Tracking: ${res.trackingNumber}`, {
           duration: 6000,
           style: { borderRadius: '20px', background: '#1a4332', color: '#fff' }
         });
         setOrders(prev => prev.map(o => {
           if (o.id === orderId) {
-            return { ...o, status: "SHIPPED", trackingNumber: res.trackingNumber, carrier: "Bosta" };
+            return { ...o, status: "SHIPPED", trackingNumber: res.trackingNumber, carrier: "J&T Express" };
           }
           return o;
         }));
@@ -98,19 +98,19 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           setEditingOrder(null);
         }
         if (selectedOrderDetails?.id === orderId) {
-          setSelectedOrderDetails((prev: any) => prev ? { ...prev, status: "SHIPPED", trackingNumber: res.trackingNumber, carrier: "Bosta" } : null);
+          setSelectedOrderDetails((prev: any) => prev ? { ...prev, status: "SHIPPED", trackingNumber: res.trackingNumber, carrier: "J&T Express" } : null);
         }
       } else {
-        toast.error(res.error || "Failed to create shipment on Bosta", {
+        toast.error(res.error || "Failed to create shipment on J&T Express", {
           style: { borderRadius: '20px', background: '#4a1d1d', color: '#fff' }
         });
       }
     } catch (err: any) {
-      toast.error(err.message || "An unexpected error occurred while communicating with Bosta", {
+      toast.error(err.message || "An unexpected error occurred while communicating with J&T Express", {
         style: { borderRadius: '20px', background: '#4a1d1d', color: '#fff' }
       });
     } finally {
-      setIsBostaLoading(false);
+      setIsJtLoading(false);
     }
   };
 
@@ -743,7 +743,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                       <label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ms-4">Carrier</label>
                       <input
                         type="text"
-                        placeholder="e.g. Bosta, Aramex, DHL"
+                        placeholder="e.g. J&T Express, Aramex, DHL"
                         value={carrier}
                         onChange={(e) => setCarrier(e.target.value)}
                         className="w-full h-14 px-6 bg-cream/30 border border-primary/5 rounded-2xl focus:outline-none focus:border-accent transition-all font-bold text-primary text-sm"
@@ -762,13 +762,13 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                   </motion.div>
                 )}
 
-                {/* 1-Click Bosta Dispatch Helper */}
+                {/* 1-Click J&T Express Dispatch Helper */}
                 {editingOrder.status === "PENDING" && newStatus === "PENDING" ? (
                   <div className="pt-3 border-t border-primary/10">
                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 text-amber-800 text-xs">
                       <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                       <p className="leading-snug">
-                        <strong>Awaiting Payment:</strong> This order is unpaid. To dispatch with Bosta, confirm payment first by changing the status to <strong>PROCESSING</strong> or <strong>SHIPPED</strong>.
+                        <strong>Awaiting Payment:</strong> This order is unpaid. To dispatch with J&amp;T Express, confirm payment first by changing the status to <strong>PROCESSING</strong> or <strong>SHIPPED</strong>.
                       </p>
                     </div>
                   </div>
@@ -776,19 +776,19 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                   <div className="pt-3 border-t border-primary/10">
                     <button
                       type="button"
-                      onClick={() => handleBostaShip(editingOrder.id)}
-                      disabled={isBostaLoading}
+                      onClick={() => handleJtShip(editingOrder.id)}
+                      disabled={isJtLoading}
                       className="w-full h-12 bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                      {isBostaLoading ? (
+                      {isJtLoading ? (
                         <>
                           <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Connecting to Bosta API...</span>
+                          <span>Connecting to J&amp;T Express API...</span>
                         </>
                       ) : (
                         <>
                           <Truck className="w-4 h-4" />
-                          <span>Dispatch with Bosta (1-Click)</span>
+                          <span>Dispatch with J&amp;T Express (1-Click)</span>
                         </>
                       )}
                     </button>
@@ -1070,7 +1070,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-blue-700">
                               <Truck className="w-4 h-4" />
-                              <span className="text-xs font-black uppercase tracking-widest">{selectedOrderDetails.carrier || "Bosta"}</span>
+                              <span className="text-xs font-black uppercase tracking-widest">{selectedOrderDetails.carrier || "J&T Express"}</span>
                             </div>
                             {selectedOrderDetails.trackingNumber && (
                               <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[9px] font-black uppercase tracking-wider">
@@ -1087,13 +1087,13 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                           {selectedOrderDetails.trackingNumber && (
                             <div className="pt-2 flex">
                               <a
-                                href={`https://bosta.co/track/${selectedOrderDetails.trackingNumber}`}
+                                href={`https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(selectedOrderDetails.trackingNumber)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
-                                Live Bosta Tracking
+                                Live J&amp;T Express Tracking
                               </a>
                             </div>
                           )}
@@ -1113,19 +1113,19 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                         <div className="space-y-3 pt-2">
                           <button
                             type="button"
-                            onClick={() => handleBostaShip(selectedOrderDetails.id)}
-                            disabled={isBostaLoading}
+                            onClick={() => handleJtShip(selectedOrderDetails.id)}
+                            disabled={isJtLoading}
                             className="w-full py-3.5 bg-gradient-to-r from-red-600 to-rose-700 text-white font-bold rounded-xl sm:rounded-2xl hover:opacity-95 transition-all shadow-md shadow-red-500/20 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                           >
-                            {isBostaLoading ? (
+                            {isJtLoading ? (
                               <>
                                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                <span>Dispatching to Bosta...</span>
+                                <span>Dispatching to J&amp;T Express...</span>
                               </>
                             ) : (
                               <>
                                 <Truck className="w-4 h-4" />
-                                <span>Dispatch with Bosta (1-Click)</span>
+                                <span>Dispatch with J&amp;T Express (1-Click)</span>
                               </>
                             )}
                           </button>

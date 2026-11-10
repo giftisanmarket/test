@@ -59,8 +59,11 @@ import {
 } from "./actions/auth-actions";
 
 import {
-  shipOrderWithBosta as _shipOrderWithBosta,
-  getBostaAWBAction as _getBostaAWBAction,
+  shipOrderWithJtExpress as _shipOrderWithJtExpress,
+  getJtWaybillAction as _getJtWaybillAction,
+  cancelJtOrderAction as _cancelJtOrderAction,
+  queryJtOrdersAction as _queryJtOrdersAction,
+  getJtTrackingAction as _getJtTrackingAction,
 } from "./actions/shipping-actions";
 
 import {
@@ -102,12 +105,24 @@ export async function convertGuestToAccount(params: { orderId: string; password:
   return _convertGuestToAccount(params);
 }
 
-export async function shipOrderWithBosta(orderId: string) {
-  return _shipOrderWithBosta(orderId);
+export async function shipOrderWithJtExpress(orderId: string) {
+  return _shipOrderWithJtExpress(orderId);
 }
 
-export async function getBostaAWBAction(deliveryIdOrTracking: string) {
-  return _getBostaAWBAction(deliveryIdOrTracking);
+export async function getJtWaybillAction(billCode: string) {
+  return _getJtWaybillAction(billCode);
+}
+
+export async function cancelJtOrderAction(txlogisticId: string, reason?: string) {
+  return _cancelJtOrderAction(txlogisticId, reason);
+}
+
+export async function queryJtOrdersAction(serialNumbers: string | string[]) {
+  return _queryJtOrdersAction(serialNumbers);
+}
+
+export async function getJtTrackingAction(billCodes: string | string[]) {
+  return _getJtTrackingAction(billCodes);
 }
 
 export async function submitInquiry(data: { name: string; email: string; message: string }) {
@@ -6583,7 +6598,7 @@ export async function getPublicTrackedOrder(
         status: statusUpper,
         isGift: order.isGift,
         giftMessage: isVerified ? order.giftMessage : null,
-        carrier: order.carrier || (order.trackingNumber ? "Bosta" : null),
+        carrier: order.carrier || (order.trackingNumber ? "J&T Express" : null),
         trackingNumber: order.trackingNumber,
         shippingMethodName: order.shippingMethod?.name || "Doorstep Courier Delivery",
         shippingCost: hideGiftPricing ? null : order.shippingCost,

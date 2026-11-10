@@ -234,7 +234,7 @@ export function AdminShippingClient({ initialMethods, dict, lang }: AdminShippin
                     <input
                       required
                       type="text"
-                      placeholder={isAr ? "مثال: القاهرة والجيزة" : "e.g. Cairo & Giza"}
+                      placeholder={isAr ? "مثال: القاهرة والجيزة والإسكندرية" : "e.g. Cairo, Giza and Alexandria"}
                       value={formData.name}
                       onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                       className="w-full h-12 sm:h-13 ps-11 pe-4 bg-cream/30 border border-primary/10 rounded-xl sm:rounded-2xl focus:outline-none focus:border-accent focus:bg-white transition-all font-bold text-primary text-sm"
@@ -306,7 +306,7 @@ export function AdminShippingClient({ initialMethods, dict, lang }: AdminShippin
             key="shipping-grid"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5"
           >
             {methods.length === 0 ? (
               <div className="col-span-full bg-white rounded-2xl sm:rounded-[2.5rem] p-8 sm:p-16 text-center border border-dashed border-primary/10">
@@ -333,27 +333,27 @@ export function AdminShippingClient({ initialMethods, dict, lang }: AdminShippin
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(idx * 0.04, 0.25) }}
                   className={cn(
-                    "group bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border transition-all duration-200 flex flex-col justify-between gap-5",
+                    "group bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border transition-all duration-200 flex flex-col justify-between gap-4 sm:gap-5 relative overflow-hidden",
                     method.isActive
                       ? "border-primary/5 shadow-lg shadow-primary/5 hover:shadow-2xl hover:shadow-primary/10 hover:border-accent/25"
                       : "opacity-65 border-primary/5 bg-white/80"
                   )}
                 >
                   {/* Top Bar: Icon + Status Badge + Quick Actions */}
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
+                  <div className="space-y-3.5">
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                         <div
                           className={cn(
-                            "w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center transition-colors shrink-0",
+                            "w-8.5 h-8.5 sm:w-9.5 sm:h-9.5 rounded-xl flex items-center justify-center transition-colors shrink-0",
                             method.isActive ? "bg-accent/10 text-accent" : "bg-primary/5 text-primary/30"
                           )}
                         >
-                          <Truck className="w-5 h-5 sm:w-6 sm:h-6" />
+                          <Truck className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                         </div>
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border",
+                            "inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-wider border shrink-0",
                             method.isActive
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
                               : "bg-primary/5 text-primary/45 border-primary/10"
@@ -361,23 +361,25 @@ export function AdminShippingClient({ initialMethods, dict, lang }: AdminShippin
                         >
                           <span
                             className={cn(
-                              "w-1.5 h-1.5 rounded-full",
+                              "w-1.5 h-1.5 rounded-full shrink-0",
                               method.isActive ? "bg-emerald-500" : "bg-primary/30"
                             )}
                           />
-                          {method.isActive
-                            ? (dict.admin?.active || (isAr ? "مفعلة" : "Active"))
-                            : (dict.admin?.inactive || (isAr ? "متوقفة" : "Inactive"))}
+                          <span>
+                            {method.isActive
+                              ? (dict.admin?.active || (isAr ? "مفعلة" : "Active"))
+                              : (dict.admin?.inactive || (isAr ? "متوقفة" : "Inactive"))}
+                          </span>
                         </span>
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           onClick={() => handleToggle(method.id, method.isActive)}
                           className={cn(
-                            "w-9 h-9 rounded-xl flex items-center justify-center transition-all border cursor-pointer active:scale-95",
+                            "w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center transition-all border cursor-pointer active:scale-95",
                             method.isActive
                               ? "bg-emerald-50 border-emerald-200/80 text-emerald-600 hover:bg-emerald-600 hover:text-white"
                               : "bg-primary/5 border-primary/10 text-primary/45 hover:bg-primary hover:text-white"
@@ -388,23 +390,23 @@ export function AdminShippingClient({ initialMethods, dict, lang }: AdminShippin
                               : (isAr ? "تفعيل المنطقة" : "Enable Zone")
                           }
                         >
-                          {method.isActive ? <CheckCircle2 className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          {method.isActive ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Power className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                         </button>
                         <button
                           type="button"
                           onClick={() => startEdit(method)}
-                          className="w-9 h-9 bg-primary/5 border border-primary/10 text-primary rounded-xl flex items-center justify-center hover:bg-primary hover:text-white transition-all cursor-pointer active:scale-95"
+                          className="w-7.5 h-7.5 sm:w-8 sm:h-8 bg-primary/5 border border-primary/10 text-primary rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-primary hover:text-white transition-all cursor-pointer active:scale-95"
                           title={isAr ? "تعديل المنطقة" : "Edit Zone"}
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(method.id)}
-                          className="w-9 h-9 bg-red-50 border border-red-100 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all cursor-pointer active:scale-95"
+                          className="w-7.5 h-7.5 sm:w-8 sm:h-8 bg-red-50 border border-red-100 text-red-600 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all cursor-pointer active:scale-95"
                           title={isAr ? "حذف المنطقة" : "Delete Zone"}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
                       </div>
                     </div>
@@ -415,32 +417,32 @@ export function AdminShippingClient({ initialMethods, dict, lang }: AdminShippin
                         <MapPin className="w-3 h-3 text-accent/70 shrink-0" />
                         <span>{isAr ? "نطاق التوصيل" : "Delivery Region"}</span>
                       </p>
-                      <h3 className="text-lg sm:text-xl font-heading font-black text-primary leading-snug break-words">
+                      <h3 className="text-base sm:text-lg lg:text-xl font-heading font-black text-primary leading-snug break-words">
                         {method.name}
                       </h3>
                     </div>
                   </div>
 
                   {/* Structured 2-Column Rate & Transit Footer */}
-                  <div className="grid grid-cols-2 gap-2.5 p-3.5 rounded-2xl bg-cream/45 border border-primary/5">
-                    <div className="min-w-0">
+                  <div className="grid grid-cols-[auto_1fr] items-center gap-2.5 p-3 rounded-xl sm:rounded-2xl bg-cream/50 border border-primary/5">
+                    <div className="min-w-0 shrink-0 pe-2.5 border-e border-primary/10">
                       <p className="text-[9px] font-black uppercase tracking-wider text-primary/40 mb-0.5 flex items-center gap-1">
                         <DollarSign className="w-3 h-3 text-accent shrink-0" />
-                        <span className="truncate">{isAr ? "رسوم الشحن" : "Flat Rate"}</span>
+                        <span>{isAr ? "رسوم الشحن" : "Flat Rate"}</span>
                       </p>
-                      <p className="text-sm sm:text-base font-black text-accent leading-tight truncate">
+                      <p className="text-sm sm:text-base font-black text-accent leading-tight whitespace-nowrap">
                         {method.price === 0
                           ? (dict.checkout?.free || (isAr ? "مجاني" : "Free"))
                           : `${method.price} ${dict.product?.currency || "EGP"}`}
                       </p>
                     </div>
 
-                    <div className="min-w-0 border-s border-primary/10 ps-3">
+                    <div className="min-w-0 ps-1">
                       <p className="text-[9px] font-black uppercase tracking-wider text-primary/40 mb-0.5 flex items-center gap-1">
                         <Clock className="w-3 h-3 text-primary/45 shrink-0" />
-                        <span className="truncate">{isAr ? "مدة التوصيل" : "Transit Time"}</span>
+                        <span className="truncate">{isAr ? "مدة التوصيل" : "Transit Window"}</span>
                       </p>
-                      <p className="text-xs sm:text-sm font-bold text-primary leading-tight truncate">
+                      <p className="text-xs sm:text-sm font-bold text-primary leading-tight truncate" title={method.estimatedDays || undefined}>
                         {method.estimatedDays || (isAr ? "غير محدد" : "Standard")}
                       </p>
                     </div>

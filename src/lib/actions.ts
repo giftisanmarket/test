@@ -1170,7 +1170,7 @@ export async function createOrder(
     }
 
     const resolvedShippingMethodId = shippingMethod?.id || null;
-    const serverShippingCost = roundCurrency(shippingMethod ? shippingMethod.price : 84);
+    const serverShippingCost = roundCurrency(shippingMethod ? shippingMethod.price : 93);
 
     // 4. Recompute authoritative Coupon discount on the server
     let resolvedCouponId: string | null = null;
@@ -5265,9 +5265,10 @@ export async function getAllShippingMethods() {
     if (methods.length === 0) {
       await prisma.shippingMethod.createMany({
         data: [
-          { name: "Cairo & Giza", price: 84, estimatedDays: "1–2 Business Days", isActive: true },
-          { name: "Delta & Canal Cities", price: 96, estimatedDays: "2–3 Business Days", isActive: true },
-          { name: "Upper Egypt", price: 108, estimatedDays: "3–5 Business Days", isActive: true }
+          { name: "Cairo, Giza and Alexandria", price: 93, estimatedDays: "1–2 Business Days", isActive: true },
+          { name: "Delta & Canal Cities", price: 106, estimatedDays: "2–3 Business Days", isActive: true },
+          { name: "Upper Egypt & Red Sea", price: 124, estimatedDays: "3–4 Business Days", isActive: true },
+          { name: "Border Governorates & Sinai", price: 137, estimatedDays: "4–6 Business Days", isActive: true }
         ]
       });
       methods = await prisma.shippingMethod.findMany({

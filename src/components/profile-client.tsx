@@ -793,6 +793,20 @@ export function ProfileClient({ user, orders, dict, isAdminPreview = false }: Pr
                             ? (claimOverrides[rawClaim.id] ? { ...rawClaim, ...claimOverrides[rawClaim.id] } : rawClaim)
                             : null;
                           const isRefundWindowExpired = itemEligibility.rejectionCode === "WINDOW_EXPIRED";
+                          const nonClaimRefundView = itemEligibility.existingClaim
+                            ? null
+                            : item.status === "REFUNDED" || order.status === "REFUNDED"
+                              ? "REFUNDED"
+                              : isRefundWindowExpired
+                                ? "EXPIRED"
+                                : itemEligibility.eligible
+                                  ? "ELIGIBLE"
+                                  : null;
+                          const showRefundActionRow =
+                            order.status !== "PENDING" &&
+                            order.status !== "CANCELLED" &&
+                            order.status !== "FAILED" &&
+                            (Boolean(itemClaim) || nonClaimRefundView !== null);
 
                           return (
                             <div key={item.id} className="border-b last:border-0 border-primary/5 pb-6 last:pb-0">
@@ -872,7 +886,7 @@ export function ProfileClient({ user, orders, dict, isAdminPreview = false }: Pr
                                     </div>
                                   )}
 
-                                  {order.status !== "PENDING" && order.status !== "CANCELLED" && order.status !== "FAILED" && (
+                                  {showRefundActionRow && (
                                     <div className="mt-3 pt-3 border-t border-primary/5 flex flex-wrap items-center justify-between gap-2">
                                       {itemClaim && (
                                         <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 w-full">
@@ -913,31 +927,31 @@ export function ProfileClient({ user, orders, dict, isAdminPreview = false }: Pr
                                         </div>
                                       )}
 
-                                      {!itemEligibility.existingClaim && (
-                                        item.status === "REFUNDED" || order.status === "REFUNDED" ? (
-                                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
-                                            <CheckCircle2 className="w-3 h-3 text-rose-600" />
-                                            <span>{isAr ? "تم استرجاع هذا المنتج" : "Item Refund Completed"}</span>
-                                          </div>
-                                        ) : isRefundWindowExpired ? (
-                                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-semibold text-charcoal/40 bg-charcoal/5 border border-primary/5">
-                                            <Clock className="w-3.5 h-3.5 text-charcoal/30" />
-                                            <span>{dict.profile?.refund_window_expired || (isAr ? "انتهت مهلة الاسترجاع (14 يوماً من الاستلام)" : "Return window closed (14 days past delivery)")}</span>
-                                          </div>
-                                        ) : itemEligibility.eligible ? (
-                                          <button
-                                            type="button"
-                                            onClick={() => openRefundModal(order, item)}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold text-charcoal/70 hover:text-red-600 hover:bg-red-50/80 border border-primary/10 hover:border-red-200 transition-all active:scale-95 cursor-pointer"
-                                          >
-                                            <AlertCircle className="w-3.5 h-3.5 text-accent" />
-                                            <span>
-                                              {itemEligibility.eligibleStage === "TRANSIT_DELAYED"
-                                                ? (isAr ? "إبلاغ عن مشكلة توصيل" : "Report Delivery Issue")
-                                                : (dict.profile?.request_refund_btn || (isAr ? "إبلاغ عن مشكلة / استرجاع" : "Report Issue / Refund"))}
-                                            </span>
-                                          </button>
-                                        ) : null
+                                      {nonClaimRefundView === "REFUNDED" && (
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
+                                          <CheckCircle2 className="w-3 h-3 text-rose-600" />
+                                          <span>{isAr ? "تم استرجاع هذا المنتج" : "Item Refund Completed"}</span>
+                                        </div>
+                                      )}
+                                      {nonClaimRefundView === "EXPIRED" && (
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-semibold text-charcoal/40 bg-charcoal/5 border border-primary/5">
+                                          <Clock className="w-3.5 h-3.5 text-charcoal/30" />
+                                          <span>{dict.profile?.refund_window_expired || (isAr ? "انتهت مهلة الاسترجاع (14 يوماً من الاستلام)" : "Return window closed (14 days past delivery)")}</span>
+                                        </div>
+                                      )}
+                                      {nonClaimRefundView === "ELIGIBLE" && (
+                                        <button
+                                          type="button"
+                                          onClick={() => openRefundModal(order, item)}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold text-charcoal/70 hover:text-red-600 hover:bg-red-50/80 border border-primary/10 hover:border-red-200 transition-all active:scale-95 cursor-pointer"
+                                        >
+                                          <AlertCircle className="w-3.5 h-3.5 text-accent" />
+                                          <span>
+                                            {itemEligibility.eligibleStage === "TRANSIT_DELAYED"
+                                              ? (isAr ? "إبلاغ عن مشكلة توصيل" : "Report Delivery Issue")
+                                              : (dict.profile?.request_refund_btn || (isAr ? "إبلاغ عن مشكلة / استرجاع" : "Report Issue / Refund"))}
+                                          </span>
+                                        </button>
                                       )}
                                     </div>
                                   )}

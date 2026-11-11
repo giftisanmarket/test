@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getEffectiveArtisanCommissionRate } from "@/lib/commission";
 import { getEscrowClearanceThresholdDate } from "@/lib/utils";
+import { OPEN_REFUND_CLAIM_STATUSES } from "@/lib/refund-policy";
 
 export interface OrderLedgerItem {
   productId: string;
@@ -354,7 +355,7 @@ export async function convertAbandonedCheckoutAndRecordLedger(
 
 /**
  * Atomically clears eligible PENDING SALE transactions older than 7 days for DELIVERED orders
- * that have NO open PENDING RefundRequests. Safe against concurrent invocations.
+ * that have NO open RefundRequests. Safe against concurrent invocations.
  */
 export async function clearEligibleArtisanEscrow(artisanId?: string): Promise<{
   clearedCount: number;
@@ -369,9 +370,9 @@ export async function clearEligibleArtisanEscrow(artisanId?: string): Promise<{
       status: "PENDING",
       createdAt: { lt: thresholdDate },
       order: {
-        status: "DELIVERED",
+        status: { in: ["DELIVERED", "REFUNDED"] },
         refundRequests: {
-          none: { status: "PENDING" },
+          none: { status: { in: [...OPEN_REFUND_CLAIM_STATUSES] } },
         },
       },
     },
@@ -428,12 +429,23 @@ export async function clearEligibleArtisanEscrow(artisanId?: string): Promise<{
   return { clearedCount, clearedTransactions };
 }
 
+export interface OrderRefundOptions {
+  restockItems?: boolean;
+  debitArtisan?: boolean;
+  refundAmount?: number;
+  claimId?: string;
+}
+
 async function reverseOrderLedgerAndStockInTx(
   tx: any,
   orderId: string,
-  targetItemStatus: "CANCELLED" | "REFUNDED"
+  targetItemStatus: "CANCELLED" | "REFUNDED",
+  options?: OrderRefundOptions
 ) {
-  // 1. Only restore stock for items that have NOT already been cancelled or refunded
+  const restockItems = options?.restockItems ?? true;
+  const debitArtisan = options?.debitArtisan ?? true;
+
+  // 1. Only mark & optionally restore stock for items that have NOT already been cancelled or refunded
   const restorableItems = await tx.orderItem.findMany({
     where: {
       orderId,
@@ -448,64 +460,121 @@ async function reverseOrderLedgerAndStockInTx(
       data: { status: targetItemStatus },
     });
 
-    for (const item of restorableItems) {
-      if (item.variantId) {
-        await tx.productVariant.update({
-          where: { id: item.variantId },
-          data: { stock: { increment: item.quantity } },
-        });
-      } else if (item.productId) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { increment: item.quantity } },
-        });
+    if (restockItems) {
+      for (const item of restorableItems) {
+        if (item.variantId) {
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: { stock: { increment: item.quantity } },
+          });
+        } else if (item.productId) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
       }
     }
   }
 
-  // 2. Atomically reverse only SALE transactions still in PENDING or CLEARED
-  const transactions = await tx.artisanTransaction.findMany({
-    where: {
-      orderId,
-      type: "SALE",
-      status: { in: ["PENDING", "CLEARED"] },
-    },
-  });
-
-  for (const t of transactions) {
-    const claimed = await tx.artisanTransaction.updateMany({
-      where: { id: t.id, status: t.status },
-      data: { status: "FAILED" },
-    });
-    if (claimed.count !== 1) continue;
-
-    const amountToDeduct = roundCurrency(Math.abs(t.amount));
-    const balance = await tx.artisanBalance.findUnique({
-      where: { artisanId: t.artisanId },
-    });
-
-    if (balance) {
-      if (t.status === "PENDING") {
-        await tx.artisanBalance.update({
-          where: { artisanId: t.artisanId },
-          data: { pending: Math.max(0, roundCurrency(balance.pending - amountToDeduct)) },
-        });
-      } else if (t.status === "CLEARED") {
-        // Allow withdrawable to go negative if artisan already withdrew prior to a Day 8-14 refund
-        await tx.artisanBalance.update({
-          where: { artisanId: t.artisanId },
-          data: { withdrawable: roundCurrency(balance.withdrawable - amountToDeduct) },
-        });
-      }
-    }
-  }
-
-  // 3. Restore coupon quota once
   const order = await tx.order.findUnique({
     where: { id: orderId },
-    select: { couponId: true },
+    select: { couponId: true, totalAmount: true, shippingCost: true },
   });
-  if (order?.couponId) {
+
+  const maxMerchandiseRefund = Math.max(
+    0,
+    roundCurrency((order?.totalAmount || 0) - (order?.shippingCost || 0))
+  );
+  const isPartialRefund =
+    targetItemStatus === "REFUNDED" &&
+    options?.refundAmount !== undefined &&
+    maxMerchandiseRefund > 0 &&
+    options.refundAmount < maxMerchandiseRefund;
+
+  // 2. Reverse SALE transactions unless the platform explicitly absorbed the refund
+  if (debitArtisan) {
+    const transactions = await tx.artisanTransaction.findMany({
+      where: {
+        orderId,
+        type: "SALE",
+        status: { in: ["PENDING", "CLEARED"] },
+      },
+    });
+
+    const partialRatio = isPartialRefund
+      ? Math.min(1, Math.max(0, (options?.refundAmount || 0) / maxMerchandiseRefund))
+      : 1;
+
+    for (const t of transactions) {
+      const fullAmount = roundCurrency(Math.abs(t.amount));
+      const amountToDeduct = isPartialRefund
+        ? roundCurrency(fullAmount * partialRatio)
+        : fullAmount;
+      if (amountToDeduct <= 0) continue;
+
+      if (isPartialRefund && t.status === "PENDING") {
+        const reducedAmount = Math.max(0, roundCurrency(fullAmount - amountToDeduct));
+        const updated = await tx.artisanTransaction.updateMany({
+          where: { id: t.id, status: "PENDING" },
+          data: reducedAmount <= 0 ? { status: "FAILED" } : { amount: reducedAmount },
+        });
+        if (updated.count !== 1) continue;
+      } else if (!isPartialRefund) {
+        const claimed = await tx.artisanTransaction.updateMany({
+          where: { id: t.id, status: t.status },
+          data: { status: "FAILED" },
+        });
+        if (claimed.count !== 1) continue;
+      }
+
+      const balance = await tx.artisanBalance.findUnique({
+        where: { artisanId: t.artisanId },
+      });
+
+      if (balance) {
+        if (t.status === "PENDING") {
+          await tx.artisanBalance.update({
+            where: { artisanId: t.artisanId },
+            data: { pending: Math.max(0, roundCurrency(balance.pending - amountToDeduct)) },
+          });
+        } else if (t.status === "CLEARED") {
+          // Allow withdrawable to go negative if artisan already withdrew prior to a Day 8-14 refund
+          await tx.artisanBalance.update({
+            where: { artisanId: t.artisanId },
+            data: { withdrawable: roundCurrency(balance.withdrawable - amountToDeduct) },
+          });
+        }
+      } else if (t.status === "CLEARED") {
+        await tx.artisanBalance.create({
+          data: {
+            artisanId: t.artisanId,
+            pending: 0,
+            withdrawable: -amountToDeduct,
+            withdrawn: 0,
+          },
+        });
+      }
+
+      if (targetItemStatus === "REFUNDED") {
+        await tx.artisanTransaction.create({
+          data: {
+            artisanId: t.artisanId,
+            orderId,
+            amount: -amountToDeduct,
+            type: "REFUND_DEBIT",
+            status: "COMPLETED",
+            description: options?.claimId
+              ? `Refund debited for dispute #${options.claimId} (${isPartialRefund ? "Partial" : "Full"} order refund)`
+              : `Refund debited for order #${orderId}`,
+          },
+        });
+      }
+    }
+  }
+
+  // 3. Restore coupon quota once on full reversal
+  if (order?.couponId && !isPartialRefund) {
     await tx.coupon.updateMany({
       where: { id: order.couponId, usedCount: { gt: 0 } },
       data: { usedCount: { decrement: 1 } },
@@ -517,6 +586,10 @@ export async function processOrderCancellationInTx(tx: any, orderId: string) {
   await reverseOrderLedgerAndStockInTx(tx, orderId, "CANCELLED");
 }
 
-export async function processOrderRefundInTx(tx: any, orderId: string) {
-  await reverseOrderLedgerAndStockInTx(tx, orderId, "REFUNDED");
+export async function processOrderRefundInTx(
+  tx: any,
+  orderId: string,
+  options?: OrderRefundOptions
+) {
+  await reverseOrderLedgerAndStockInTx(tx, orderId, "REFUNDED", options);
 }

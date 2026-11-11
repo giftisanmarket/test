@@ -611,6 +611,7 @@ export const sendOrderStatusUpdateEmail = async (
   const statusColors: Record<string, string> = {
     'PROCESSING': '#3b82f6',
     'SHIPPED': ACCENT_COLOR,
+    'OUT_FOR_DELIVERY': '#4f46e5',
     'DELIVERED': '#10b981',
     'CANCELLED': '#ef4444'
   };
@@ -618,6 +619,7 @@ export const sendOrderStatusUpdateEmail = async (
   const statusTextAr: Record<string, string> = {
     'PROCESSING': 'قيد التجهيز الآن في المتجر',
     'SHIPPED': 'تم شحنها وهي في طريقها إليك',
+    'OUT_FOR_DELIVERY': 'خرجت للتوصيل مع المندوب اليوم',
     'DELIVERED': 'تم توصيلها بنجاح',
     'CANCELLED': 'تم إلغاؤها'
   };
@@ -625,6 +627,7 @@ export const sendOrderStatusUpdateEmail = async (
   const statusTextEn: Record<string, string> = {
     'PROCESSING': 'is being prepared in the shop',
     'SHIPPED': 'has been shipped and is on its way',
+    'OUT_FOR_DELIVERY': 'is out for delivery today',
     'DELIVERED': 'has been delivered successfully',
     'CANCELLED': 'has been cancelled'
   };
@@ -644,12 +647,12 @@ export const sendOrderStatusUpdateEmail = async (
       <tr>
         <td style="background-color: #f9fafb; padding: 22px 24px; border-radius: 12px; border: 1px solid #f0ede8; text-align: center;">
           <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 6px 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9ca3af;">الحالة الحالية</p>
-          <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: ${statusColors[status] || PRIMARY_COLOR};">${status === 'PROCESSING' ? 'قيد التجهيز' : status === 'SHIPPED' ? 'تم الشحن' : status === 'DELIVERED' ? 'تم التوصيل' : 'ملغي'}</p>
+          <p style="font-family: 'IBM Plex Sans Arabic', Tahoma, Arial, sans-serif; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: ${statusColors[status] || PRIMARY_COLOR};">${status === 'PROCESSING' ? 'قيد التجهيز' : status === 'SHIPPED' ? 'تم الشحن' : status === 'OUT_FOR_DELIVERY' ? 'خرج للتوصيل' : status === 'DELIVERED' ? 'تم التوصيل' : 'ملغي'}</p>
           <p style="font-family: monospace; margin: 0; font-size: 11px; font-weight: 700; color: #9ca3af; word-break: break-all;">رقم الطلب: #${safeOrderId}</p>
         </td>
       </tr>
     </table>
-    ${status === 'SHIPPED' && safeTracking ? `
+    ${(status === 'SHIPPED' || status === 'OUT_FOR_DELIVERY') && safeTracking ? `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 18px;">
         <tr>
           <td style="background-color: #f0fdf4; border-radius: 10px; border: 1px solid #bbf7d0; padding: 16px 20px;" dir="rtl">
@@ -673,12 +676,12 @@ export const sendOrderStatusUpdateEmail = async (
       <tr>
         <td style="background-color: #f9fafb; padding: 22px 24px; border-radius: 12px; border: 1px solid #f0ede8; text-align: center;">
           <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 6px 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; color: #9ca3af;">Current Milestone</p>
-          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: ${statusColors[status] || PRIMARY_COLOR};">${safeStatus}</p>
+          <p style="font-family: Helvetica, Arial, sans-serif; margin: 0 0 10px 0; font-size: 24px; font-weight: 800; color: ${statusColors[status] || PRIMARY_COLOR};">${safeStatus.replace(/_/g, ' ')}</p>
           <p style="font-family: monospace; margin: 0; font-size: 11px; font-weight: 700; color: #9ca3af; word-break: break-all;">Ref: #${safeOrderId}</p>
         </td>
       </tr>
     </table>
-    ${status === 'SHIPPED' && safeTracking ? `
+    ${(status === 'SHIPPED' || status === 'OUT_FOR_DELIVERY') && safeTracking ? `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 18px;">
         <tr>
           <td style="background-color: #f0fdf4; border-radius: 10px; border: 1px solid #bbf7d0; padding: 16px 20px;">
@@ -1427,121 +1430,340 @@ export const sendRefundResolvedEmail = async ({
   status,
   adminNote,
   refundAmount,
+  replacementTrackingNumber,
+  replacementCarrier,
+  returnTrackingNumber,
+  returnCarrier,
   lang = 'en'
 }: {
   email: string;
   customerName: string;
   orderId: string;
-  status: 'APPROVED' | 'REJECTED' | 'REPLACEMENT_ISSUED';
+  status:
+    | 'APPROVED'
+    | 'REFUND_APPROVED'
+    | 'REFUND_PROCESSING'
+    | 'REFUNDED'
+    | 'INVESTIGATING'
+    | 'WAITING_CUSTOMER'
+    | 'WAITING_COURIER'
+    | 'RETURN_REQUESTED'
+    | 'REJECTED'
+    | 'REPLACEMENT_APPROVED'
+    | 'REPLACEMENT_SHIPPED'
+    | 'REPLACEMENT_DELIVERED'
+    | 'REPLACEMENT_ISSUED';
   adminNote?: string;
   refundAmount?: number;
+  replacementTrackingNumber?: string;
+  replacementCarrier?: string;
+  returnTrackingNumber?: string;
+  returnCarrier?: string;
   lang?: 'ar' | 'en';
 }) => {
   if (isDevOnly()) {
-    console.log(`\n--- [MAIL] DEV: REFUND RESOLVED (${lang.toUpperCase()}) ---\nTarget: ${email}\nStatus: ${status}\n-----------------------------\n`);
+    console.log(`\n--- [MAIL] DEV: REFUND RESOLVED (${lang.toUpperCase()}) ---\nTarget: ${email}\nStatus: ${status}\nTracking: ${replacementTrackingNumber || returnTrackingNumber || 'N/A'}\n-----------------------------\n`);
     return { success: true };
   }
 
   const isAr = lang === 'ar';
-  const isApproved = status === 'APPROVED';
-  const isReplacement = status === 'REPLACEMENT_ISSUED';
+  const isApproved = status === 'REFUND_APPROVED' || status === 'APPROVED';
+  const isProcessing = status === 'REFUND_PROCESSING';
+  const isRefunded = status === 'REFUNDED';
+  const isReplacementPreparing = status === 'REPLACEMENT_APPROVED';
+  const isReplacementShipped = status === 'REPLACEMENT_SHIPPED' || status === 'REPLACEMENT_ISSUED';
+  const isReplacementDelivered = status === 'REPLACEMENT_DELIVERED';
+  const isReturnRequested = status === 'RETURN_REQUESTED';
+  const isRejected = status === 'REJECTED';
   const safeCustomerName = escapeHtml(customerName);
   const safeOrderId = escapeHtml(orderId);
   const safeAdminNote = adminNote ? escapeHtml(adminNote).replace(/\r?\n/g, '<br/>') : '';
+  const safeTracking = replacementTrackingNumber ? escapeHtml(replacementTrackingNumber) : '';
+  const safeCarrier = escapeHtml(replacementCarrier || 'J&T Express');
+  const safeReturnTracking = returnTrackingNumber ? escapeHtml(returnTrackingNumber) : '';
+  const safeReturnCarrier = escapeHtml(returnCarrier || 'J&T Express');
+  const hasReturnPickupTracking = Boolean(returnTrackingNumber) && !isRefunded && !isRejected;
+  const activeTrackCode = replacementTrackingNumber || (hasReturnPickupTracking ? returnTrackingNumber : undefined);
+  const trackTarget = activeTrackCode ? encodeURIComponent(activeTrackCode) : encodeURIComponent(orderId);
 
-  const subject = isAr
-    ? isApproved
-      ? `تم قبول طلب الاسترجاع لطلبك (#${orderId}) | Giftisan`
-      : isReplacement
-      ? `تحديث بخصوص طلبك: جاري تجهيز قطعة بديلة (#${orderId}) | Giftisan`
-      : `تحديث بشأن طلب الاسترجاع لطلبك (#${orderId}) | Giftisan`
-    : isApproved
-    ? `Refund Approved for Order (#${orderId}) | Giftisan`
-    : isReplacement
-    ? `Replacement Dispatched for Order (#${orderId}) | Giftisan`
-    : `Update on Refund Claim for Order (#${orderId}) | Giftisan`;
+  const subjectMap: Record<string, { ar: string; en: string }> = {
+    REFUNDED: {
+      ar: `تم تنفيذ الاسترداد لطلبك (#${orderId}) | Giftisan`,
+      en: `Refund Processed for Order (#${orderId}) | Giftisan`,
+    },
+    REFUND_PROCESSING: {
+      ar: `جارٍ تحويل مبلغ الاسترداد لطلبك (#${orderId}) | Giftisan`,
+      en: `Refund Transfer Started for Order (#${orderId}) | Giftisan`,
+    },
+    REFUND_APPROVED: {
+      ar: `تم قبول طلب الاسترجاع لطلبك (#${orderId}) | Giftisan`,
+      en: `Refund Approved for Order (#${orderId}) | Giftisan`,
+    },
+    APPROVED: {
+      ar: `تم قبول طلب الاسترجاع لطلبك (#${orderId}) | Giftisan`,
+      en: `Refund Approved for Order (#${orderId}) | Giftisan`,
+    },
+    REPLACEMENT_APPROVED: {
+      ar: `تمت الموافقة على قطعة بديلة: جاري التجهيز (#${orderId}) | Giftisan`,
+      en: `Replacement Approved — Preparing Piece (#${orderId}) | Giftisan`,
+    },
+    REPLACEMENT_SHIPPED: {
+      ar: `تم شحن القطعة البديلة لطلبك (#${orderId}) | Giftisan`,
+      en: `Replacement Dispatched for Order (#${orderId}) | Giftisan`,
+    },
+    REPLACEMENT_DELIVERED: {
+      ar: `تم تسليم القطعة البديلة لطلبك (#${orderId}) | Giftisan`,
+      en: `Replacement Delivered for Order (#${orderId}) | Giftisan`,
+    },
+    REPLACEMENT_ISSUED: {
+      ar: `تحديث بخصوص طلبك: جاري تجهيز قطعة بديلة (#${orderId}) | Giftisan`,
+      en: `Replacement Dispatched for Order (#${orderId}) | Giftisan`,
+    },
+    WAITING_CUSTOMER: {
+      ar: `مطلوب معلومات إضافية لطلب الاسترجاع (#${orderId}) | Giftisan`,
+      en: `Additional Info Requested for Claim (#${orderId}) | Giftisan`,
+    },
+    RETURN_REQUESTED: {
+      ar: `تعليمات إرجاع المنتج لمطالبتك (#${orderId}) | Giftisan`,
+      en: `Return Instructions for Order (#${orderId}) | Giftisan`,
+    },
+    WAITING_COURIER: {
+      ar: `تحديث متابعة الشحن لمطالبتك (#${orderId}) | Giftisan`,
+      en: `Courier Follow-up on Your Claim (#${orderId}) | Giftisan`,
+    },
+    INVESTIGATING: {
+      ar: `جارٍ فحص مطالبتك للطلب (#${orderId}) | Giftisan`,
+      en: `Claim Under Investigation for Order (#${orderId}) | Giftisan`,
+    },
+    REJECTED: {
+      ar: `تحديث القرار بشأن مطالبة الطلب (#${orderId}) | Giftisan`,
+      en: `Claim Decision Update for Order (#${orderId}) | Giftisan`,
+    },
+  };
 
-  const arContent = `
-    <h1 class="heading" style="color: ${isApproved ? ACCENT_COLOR : PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">
-      ${isApproved ? 'تمت الموافقة على طلب الاسترداد' : isReplacement ? 'تمت الموافقة على إرسال قطعة بديلة' : 'تحديث بخصوص طلبك'}
-    </h1>
-    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
-      مرحباً ${safeCustomerName}، تمت مراجعة مطالبتك بخصوص الطلب <strong>#${safeOrderId}</strong> من قِبل إدارة جيفتيزان.
-    </p>
+  const subject = subjectMap[status]?.[isAr ? 'ar' : 'en'] || (isAr
+    ? `تحديث بشأن طلب الاسترجاع لطلبك (#${orderId}) | Giftisan`
+    : `Update on Refund Claim for Order (#${orderId}) | Giftisan`);
 
-    ${isApproved ? `
+  const statusHeadingAr =
+    isRefunded ? 'تم تنفيذ الاسترداد' :
+    isProcessing ? 'جارٍ تنفيذ تحويل الاسترداد' :
+    isApproved ? 'تمت الموافقة على طلب الاسترداد' :
+    isReplacementPreparing ? 'جاري تجهيز القطعة البديلة' :
+    isReplacementShipped ? 'تم شحن القطعة البديلة' :
+    isReplacementDelivered ? 'تم تسليم القطعة البديلة' :
+    status === 'WAITING_CUSTOMER' ? 'بانتظار ردك أو توضيح إضافي' :
+    status === 'RETURN_REQUESTED' ? 'مطلوب إرجاع المنتج للفحص' :
+    status === 'WAITING_COURIER' ? 'جاري المتابعة مع شركة الشحن' :
+    status === 'INVESTIGATING' ? 'المطالبة قيد التحقيق والمراجعة' :
+    'تحديث بخصوص طلبك';
+
+  const statusHeadingEn =
+    isRefunded ? 'Refund Processed' :
+    isProcessing ? 'Refund Transfer Processing' :
+    isApproved ? 'Refund Approved' :
+    isReplacementPreparing ? 'Replacement Approved — Preparing' :
+    isReplacementShipped ? 'Replacement Dispatched' :
+    isReplacementDelivered ? 'Replacement Delivered' :
+    status === 'WAITING_CUSTOMER' ? 'Additional Information Requested' :
+    status === 'RETURN_REQUESTED' ? 'Item Return Requested' :
+    status === 'WAITING_COURIER' ? 'Following Up With Courier' :
+    status === 'INVESTIGATING' ? 'Claim Under Investigation' :
+    'Claim Decision Update';
+
+  const arStatusCard = isRefunded ? `
       <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
-        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">تمت معالجة استرداد المبلغ بنجاح</p>
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">تم تأكيد تنفيذ الاسترداد</p>
+        <p style="color: #15803d; font-size: 13px; margin: 0;">${refundAmount ? `تم استرداد مبلغ <strong>${refundAmount.toLocaleString()} ج.م</strong>.` : 'تم تأكيد تنفيذ الاسترداد.'}</p>
+      </div>
+    ` : isProcessing ? `
+      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">بدأ تحويل مبلغ الاسترداد</p>
+        <p style="color: #15803d; font-size: 13px; margin: 0;">${refundAmount ? `يجري حالياً تنفيذ استرداد مبلغ <strong>${refundAmount.toLocaleString()} ج.م</strong>.` : 'يجري حالياً تنفيذ تحويل الاسترداد.'} سنخطرك فور إتمام التحويل.</p>
+      </div>
+    ` : isApproved ? `
+      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">تمت الموافقة على طلب الاسترداد</p>
         <p style="color: #15803d; font-size: 13px; margin: 0;">
-          ${refundAmount ? `سيتم تحويل مبلغ <strong>${refundAmount.toLocaleString()} ج.م</strong> ` : 'سيتم تحويل المبلغ المسترد '}إلى نفس وسيلة الدفع الأصلية (البطاقة البنكية أو المحفظة الإلكترونية) خلال 5 إلى 10 أيام عمل.
+          ${refundAmount ? `المبلغ المعتمد هو <strong>${refundAmount.toLocaleString()} ج.م</strong>. ` : 'تم اعتماد مبلغ الاسترداد. '}سنرسل تحديثاً عند تنفيذ التحويل.
         </p>
       </div>
-    ` : isReplacement ? `
+    ` : isReplacementPreparing ? `
       <div style="background-color: #eff6ff; padding: 20px; border-radius: 16px; border: 1px solid #bfdbfe; margin-bottom: 25px;">
-        <p style="color: #1e40af; font-size: 14px; font-weight: bold; margin-bottom: 8px;">جاري تصنيع وشحن قطعة بديلة</p>
+        <p style="color: #1e40af; font-size: 14px; font-weight: bold; margin-bottom: 8px;">تم إخطار الحرفي لتجهيز القطعة البديلة</p>
         <p style="color: #1d4ed8; font-size: 13px; margin: 0;">
-          تم إخطار الحرفي لتجهيز قطعة بديلة خالية من أي عيوب وشحنها لك مجاناً مع أولوية في التوصيل.
+          يقوم الحرفي الآن بتجهيز وتغليف قطعة بديلة مجاناً دون أي رسوم إضافية أو تحصيل عند الاستلام. سنرسل لك رقم التتبع فور تسليمها لشركة الشحن.
         </p>
       </div>
-    ` : `
+    ` : isReplacementShipped ? `
+      <div style="background-color: #eff6ff; padding: 20px; border-radius: 16px; border: 1px solid #bfdbfe; margin-bottom: 25px;">
+        <p style="color: #1e40af; font-size: 14px; font-weight: bold; margin-bottom: 8px;">تم شحن القطعة البديلة إليك</p>
+        <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 10px 0;">
+          انطلقت شحنتك البديلة عبر <strong>${safeCarrier}</strong> بتكلفة تحصيل عند الاستلام: <strong>0 ج.م</strong>.
+        </p>
+        ${safeTracking ? `<p style="color: #1e3a8a; font-size: 13px; margin: 0;">رقم تتبع البديل: <strong style="font-family: monospace;">${safeTracking}</strong></p>` : ''}
+      </div>
+    ` : isReplacementDelivered ? `
+      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">تم تسليم القطعة البديلة بنجاح</p>
+        <p style="color: #15803d; font-size: 13px; margin: 0;">
+          أكدت شركة الشحن استلام شحنتك البديلة${safeTracking ? ` (<strong style="font-family: monospace;">${safeTracking}</strong>)` : ''}. نأمل أن تنال إعجابك!
+        </p>
+      </div>
+    ` : isRejected ? `
       <div style="background-color: #fef2f2; padding: 20px; border-radius: 16px; border: 1px solid #fecaca; margin-bottom: 25px;">
         <p style="color: #991b1b; font-size: 14px; font-weight: bold; margin-bottom: 8px;">لم نتمكن من قبول المطالبة</p>
         <p style="color: #b91c1c; font-size: 13px; margin: 0;">
           ${safeAdminNote || 'بعد فحص تفاصيل وصور المنتج، تعذر قبول طلب الاسترداد وفقاً لسياسة الإرجاع للمنتجات المصنوعة خصيصاً.'}
         </p>
       </div>
-    `}
-
-    ${safeAdminNote && isApproved ? `
-      <p style="color: #6b7280; font-size: 13px; font-style: italic; margin-bottom: 25px;">
-        ملاحظة من الدعم: "${safeAdminNote}"
-      </p>
-    ` : ''}
-
-    <div style="text-align: center; margin-top: 25px;">
-      <a href="${BASE_URL}/profile" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 16px 36px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">عرض التفاصيل</a>
-    </div>
-  `;
-
-  const enContent = `
-    <h1 class="heading" style="color: ${isApproved ? ACCENT_COLOR : PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">
-      ${isApproved ? 'Refund Claim Approved' : isReplacement ? 'Replacement Approved' : 'Claim Decision Update'}
-    </h1>
-    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
-      Hi ${safeCustomerName}, your claim for order <strong>#${safeOrderId}</strong> has been reviewed by Giftisan support.
-    </p>
-
-    ${isApproved ? `
-      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
-        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Refund Approved & Initiated</p>
-        <p style="color: #15803d; font-size: 13px; margin: 0;">
-          ${refundAmount ? `An amount of <strong>EGP ${refundAmount.toLocaleString()}</strong> ` : 'The refund amount '}is being credited back to your original payment method (Credit/Debit card or Mobile Wallet) within 5-10 business days.
-        </p>
-      </div>
-    ` : isReplacement ? `
-      <div style="background-color: #eff6ff; padding: 20px; border-radius: 16px; border: 1px solid #bfdbfe; margin-bottom: 25px;">
-        <p style="color: #1e40af; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Replacement Initiated</p>
-        <p style="color: #1d4ed8; font-size: 13px; margin: 0;">
-          The artisan has been notified to craft and dispatch a pristine replacement piece to your address at no additional charge.
-        </p>
-      </div>
     ` : `
+      <div style="background-color: #fffbeb; padding: 20px; border-radius: 16px; border: 1px solid #fde68a; margin-bottom: 25px;">
+        <p style="color: #92400e; font-size: 14px; font-weight: bold; margin-bottom: 8px;">${statusHeadingAr}</p>
+        <p style="color: #b45309; font-size: 13px; margin: 0;">
+          ${status === 'WAITING_CUSTOMER'
+            ? 'يرجى فتح تفاصيل الشكوى في حسابك لإضافة المعلومات أو الصور المطلوبة حتى نتمكن من استكمال المراجعة.'
+            : isReturnRequested
+              ? safeReturnTracking
+                ? `تم حجز مندوب استلام المرتجع مجاناً عبر <strong>${safeReturnCarrier}</strong> (بدون تحصيل: <strong>0 ج.م</strong>). رقم تتبع المرتجع: <strong style="font-family: monospace;">${safeReturnTracking}</strong>. يرجى تجهيز وتغليف القطعة في عبوة آمنة لتسليمها للمندوب.`
+                : 'يرجى مراجعة ملاحظة الإدارة أدناه واتباع خطوات إرجاع المنتج لاستكمال إجراءات الاسترداد.'
+              : status === 'WAITING_COURIER'
+                ? 'نتابع حالياً مع شركة الشحن بخصوص شحنتك وسنوافيك بالنتيجة فور ورودها.'
+                : 'يقوم فريق الدعم لدينا حالياً بالتحقيق في مطالبتك ومراجعة كافة التفاصيل.'}
+        </p>
+      </div>
+    `;
+
+  const enStatusCard = isRefunded ? `
+      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Refund processed</p>
+        <p style="color: #15803d; font-size: 13px; margin: 0;">${refundAmount ? `EGP ${refundAmount.toLocaleString()} has been refunded.` : 'Your refund has been confirmed as processed.'}</p>
+      </div>
+    ` : isProcessing ? `
+      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Refund transfer initiated</p>
+        <p style="color: #15803d; font-size: 13px; margin: 0;">${refundAmount ? `Your refund of <strong>EGP ${refundAmount.toLocaleString()}</strong> is currently being processed. ` : 'Your refund transfer is currently being processed. '}We will confirm once it completes.</p>
+      </div>
+    ` : isApproved ? `
+      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Refund approved</p>
+        <p style="color: #15803d; font-size: 13px; margin: 0;">
+          ${refundAmount ? `The approved amount is <strong>EGP ${refundAmount.toLocaleString()}</strong>. ` : 'The refund amount has been approved. '}We will update you when the payment has been processed.
+        </p>
+      </div>
+    ` : isReplacementPreparing ? `
+      <div style="background-color: #eff6ff; padding: 20px; border-radius: 16px; border: 1px solid #bfdbfe; margin-bottom: 25px;">
+        <p style="color: #1e40af; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Replacement Approved — Workshop Preparing Piece</p>
+        <p style="color: #1d4ed8; font-size: 13px; margin: 0;">
+          The artisan has been notified to prepare and securely pack your free replacement piece (COD EGP 0). We will email you the new tracking number as soon as the courier picks it up.
+        </p>
+      </div>
+    ` : isReplacementShipped ? `
+      <div style="background-color: #eff6ff; padding: 20px; border-radius: 16px; border: 1px solid #bfdbfe; margin-bottom: 25px;">
+        <p style="color: #1e40af; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Replacement Dispatched</p>
+        <p style="color: #1d4ed8; font-size: 13px; margin: 0 0 10px 0;">
+          Your free replacement parcel is on its way via <strong>${safeCarrier}</strong> (Cash on Delivery: <strong>EGP 0</strong>).
+        </p>
+        ${safeTracking ? `<p style="color: #1e3a8a; font-size: 13px; margin: 0;">Replacement Tracking ID: <strong style="font-family: monospace;">${safeTracking}</strong></p>` : ''}
+      </div>
+    ` : isReplacementDelivered ? `
+      <div style="background-color: #f0fdf4; padding: 20px; border-radius: 16px; border: 1px solid #bbf7d0; margin-bottom: 25px;">
+        <p style="color: #166534; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Replacement Delivered</p>
+        <p style="color: #15803d; font-size: 13px; margin: 0;">
+          Your replacement parcel${safeTracking ? ` (<strong style="font-family: monospace;">${safeTracking}</strong>)` : ''} has been marked delivered. We hope you love your piece!
+        </p>
+      </div>
+    ` : isRejected ? `
       <div style="background-color: #fef2f2; padding: 20px; border-radius: 16px; border: 1px solid #fecaca; margin-bottom: 25px;">
         <p style="color: #991b1b; font-size: 14px; font-weight: bold; margin-bottom: 8px;">Claim Declined</p>
         <p style="color: #b91c1c; font-size: 13px; margin: 0;">
           ${safeAdminNote || 'Following thorough examination of the photos and order specifications, the claim could not be approved under our bespoke product policy.'}
         </p>
       </div>
-    `}
+    ` : `
+      <div style="background-color: #fffbeb; padding: 20px; border-radius: 16px; border: 1px solid #fde68a; margin-bottom: 25px;">
+        <p style="color: #92400e; font-size: 14px; font-weight: bold; margin-bottom: 8px;">${statusHeadingEn}</p>
+        <p style="color: #b45309; font-size: 13px; margin: 0;">
+          ${status === 'WAITING_CUSTOMER'
+            ? 'Please open your claim in your Giftisan profile to add the requested details or photos so we can continue resolving your case.'
+            : isReturnRequested
+              ? safeReturnTracking
+                ? `A free return courier pickup has been scheduled via <strong>${safeReturnCarrier}</strong> (COD: <strong>EGP 0</strong>). Return Tracking ID: <strong style="font-family: monospace;">${safeReturnTracking}</strong>. Please pack the item securely for courier handover.`
+                : 'Please review the support note below and follow the item return steps to complete your claim.'
+              : status === 'WAITING_COURIER'
+                ? 'We are coordinating directly with the courier regarding your parcel and will update you shortly.'
+                : 'Our support team is actively investigating your claim and reviewing all evidence.'}
+        </p>
+      </div>
+    `;
 
-    ${safeAdminNote && isApproved ? `
+  const returnPickupExtraAr = (!isReturnRequested && safeReturnTracking && !isRefunded && !isRejected) ? `
+      <div style="background-color: #eef2ff; padding: 18px; border-radius: 14px; border: 1px solid #c7d2fe; margin-bottom: 22px;">
+        <p style="color: #312e81; font-size: 13px; font-weight: bold; margin: 0 0 6px 0;">شحنة استلام المرتجع عبر ${safeReturnCarrier}</p>
+        <p style="color: #3730a3; font-size: 13px; margin: 0;">
+          تم حجز مندوب استلام المرتجع مجاناً (بدون تحصيل: <strong>0 ج.م</strong>). رقم التتبع: <strong style="font-family: monospace;">${safeReturnTracking}</strong>. يرجى تجهيز القطعة في تغليف آمن لتسليمها للمندوب.
+        </p>
+      </div>
+    ` : '';
+
+  const returnPickupExtraEn = (!isReturnRequested && safeReturnTracking && !isRefunded && !isRejected) ? `
+      <div style="background-color: #eef2ff; padding: 18px; border-radius: 14px; border: 1px solid #c7d2fe; margin-bottom: 22px;">
+        <p style="color: #312e81; font-size: 13px; font-weight: bold; margin: 0 0 6px 0;">Return Courier Pickup via ${safeReturnCarrier}</p>
+        <p style="color: #3730a3; font-size: 13px; margin: 0;">
+          A free return pickup has been scheduled (COD: <strong>EGP 0</strong>). Return Tracking ID: <strong style="font-family: monospace;">${safeReturnTracking}</strong>. Please pack the item securely for courier handover.
+        </p>
+      </div>
+    ` : '';
+
+  const actionButtonAr = (isReplacementShipped && safeTracking) || (hasReturnPickupTracking && safeReturnTracking)
+    ? `<a href="${BASE_URL}/ar/track/${trackTarget}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 16px 36px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">${hasReturnPickupTracking && !isReplacementShipped ? 'تتبع شحنة الإرجاع' : 'تتبع القطعة البديلة'}</a>`
+    : `<a href="${BASE_URL}/ar/profile" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 16px 36px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">عرض التفاصيل</a>`;
+
+  const actionButtonEn = (isReplacementShipped && safeTracking) || (hasReturnPickupTracking && safeReturnTracking)
+    ? `<a href="${BASE_URL}/en/track/${trackTarget}" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 16px 36px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">${hasReturnPickupTracking && !isReplacementShipped ? 'Track Return Pickup' : 'Track Replacement'}</a>`
+    : `<a href="${BASE_URL}/en/profile" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 16px 36px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">View in Profile</a>`;
+
+  const arContent = `
+    <h1 class="heading" style="color: ${isApproved || isRefunded || isProcessing || isReplacementDelivered ? ACCENT_COLOR : PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">
+      ${statusHeadingAr}
+    </h1>
+    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
+      مرحباً ${safeCustomerName}، تمت مراجعة مطالبتك بخصوص الطلب <strong>#${safeOrderId}</strong> من قِبل إدارة جيفتيزان.
+    </p>
+
+    ${arStatusCard}
+    ${returnPickupExtraAr}
+
+    ${safeAdminNote && !isRejected ? `
+      <p style="color: #6b7280; font-size: 13px; font-style: italic; margin-bottom: 25px;">
+        ملاحظة من الدعم: "${safeAdminNote}"
+      </p>
+    ` : ''}
+
+    <div style="text-align: center; margin-top: 25px;">
+      ${actionButtonAr}
+    </div>
+  `;
+
+  const enContent = `
+    <h1 class="heading" style="color: ${isApproved || isRefunded || isProcessing || isReplacementDelivered ? ACCENT_COLOR : PRIMARY_COLOR}; font-size: 24px; margin-bottom: 15px;">
+      ${statusHeadingEn}
+    </h1>
+    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 22px;">
+      Hi ${safeCustomerName}, your claim for order <strong>#${safeOrderId}</strong> has been updated by Giftisan support.
+    </p>
+
+    ${enStatusCard}
+    ${returnPickupExtraEn}
+
+    ${safeAdminNote && !isRejected ? `
       <p style="color: #6b7280; font-size: 13px; font-style: italic; margin-bottom: 25px;">
         Support note: "${safeAdminNote}"
       </p>
     ` : ''}
 
     <div style="text-align: center; margin-top: 25px;">
-      <a href="${BASE_URL}/profile" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 16px 36px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">View in Profile</a>
+      ${actionButtonEn}
     </div>
   `;
 
@@ -1549,6 +1771,133 @@ export const sendRefundResolvedEmail = async ({
     from: SENDER_SUPPORT,
     replyTo: SUPPORT_INBOX,
     to: email,
+    subject,
+    html: wrapEmail(isAr ? arContent : enContent, lang),
+  });
+};
+
+export const sendArtisanReplacementNoticeEmail = async ({
+  artisanEmail,
+  artisanName,
+  orderId,
+  claimId,
+  productName,
+  variantName,
+  quantity = 1,
+  personalization,
+  reason,
+  costBearer,
+  stockDeducted,
+  shippingFeeDebit = 0,
+  adminNote,
+  lang = 'en',
+}: {
+  artisanEmail: string;
+  artisanName: string;
+  orderId: string;
+  claimId: string;
+  productName: string;
+  variantName?: string | null;
+  quantity?: number;
+  personalization?: string | null;
+  reason: string;
+  costBearer: 'ARTISAN' | 'PLATFORM';
+  stockDeducted?: boolean;
+  shippingFeeDebit?: number;
+  adminNote?: string | null;
+  lang?: 'ar' | 'en';
+}) => {
+  if (isDevOnly()) {
+    console.log(`\n--- [MAIL] DEV: ARTISAN REPLACEMENT NOTICE (${lang.toUpperCase()}) ---\nTarget: ${artisanEmail}\nOrder: #${orderId} | Claim: #${claimId}\n---------------------------------\n`);
+    return { success: true };
+  }
+
+  const isAr = lang === 'ar';
+  const safeArtisanName = escapeHtml(artisanName);
+  const safeOrderId = escapeHtml(orderId);
+  const safeClaimId = escapeHtml(claimId);
+  const safeProduct = escapeHtml(productName);
+  const safeVariant = variantName ? escapeHtml(variantName) : '';
+  const safePersonalization = personalization ? escapeHtml(personalization) : '';
+  const safeAdminNote = adminNote ? escapeHtml(adminNote).replace(/\r?\n/g, '<br/>') : '';
+  const safeReason = escapeHtml(reason.replaceAll('_', ' '));
+
+  const subject = isAr
+    ? `مطلوب تجهيز قطعة بديلة للطلب #${orderId} | استوديو جيفتيزان`
+    : `Action Required: Prepare Replacement for Order #${orderId} | Giftisan Studio`;
+
+  const arContent = `
+    <h1 class="heading" style="color: ${PRIMARY_COLOR}; font-size: 24px; margin-bottom: 14px;">
+      طلب تجهيز قطعة بديلة
+    </h1>
+    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 20px;">
+      مرحباً ${safeArtisanName}، اعتمدت إدارة جيفتيزان إرسال قطعة بديلة مجانية للعميل بخصوص الطلب <strong>#${safeOrderId}</strong> (مطالبة <code>#${safeClaimId}</code>).
+    </p>
+
+    <div style="background-color: #eff6ff; padding: 20px; border-radius: 16px; border: 1px solid #bfdbfe; margin-bottom: 22px;">
+      <p style="margin: 0 0 8px 0; color: #1e3a8a; font-size: 14px;"><strong>المنتج:</strong> ${safeProduct} (×${quantity})${safeVariant ? ` — ${safeVariant}` : ''}</p>
+      <p style="margin: 0 0 8px 0; color: #1e40af; font-size: 13px;"><strong>السبب:</strong> ${safeReason}</p>
+      ${safePersonalization ? `<p style="margin: 0 0 8px 0; color: #1e40af; font-size: 13px;"><strong>التخصيص المطلوب:</strong> "${safePersonalization}"</p>` : ''}
+      <p style="margin: 0 0 8px 0; color: #1e40af; font-size: 13px;"><strong>المخزون:</strong> ${stockDeducted ? 'تم خصم وحدة بديلة من المخزون تلقائياً.' : 'يرجى تجهيز القطعة من الورشة (لم يتم خصم المخزون تلقائياً).'}</p>
+      <p style="margin: 0; color: #1e40af; font-size: 13px;"><strong>تكلفة الشحن:</strong> ${costBearer === 'ARTISAN' && shippingFeeDebit > 0 ? `تم خصم ${shippingFeeDebit.toLocaleString()} ج.م من رصيدك كرسوم شحن البديل.` : costBearer === 'PLATFORM' ? 'تتحمل المنصة رسوم شحن البديل بالكامل.' : 'بدون رسوم شحن إضافية مخصومة.'}</p>
+    </div>
+
+    ${safeAdminNote ? `
+      <div style="background-color: #fffbeb; padding: 16px; border-radius: 12px; border: 1px solid #fde68a; margin-bottom: 22px;">
+        <p style="color: #92400e; font-size: 12px; font-weight: bold; margin: 0 0 6px 0;">تعليمات الإدارة والتغليف:</p>
+        <p style="color: #78350f; font-size: 13px; margin: 0;">${safeAdminNote}</p>
+      </div>
+    ` : ''}
+
+    <p style="color: #6b7280; font-size: 13px; line-height: 1.7; margin-bottom: 24px;">
+      يبقى رصيد هذا الطلب معلقاً في الضمان مؤقتاً حتى يتم شحن القطعة البديلة وتأكيد تسليمها. بمجرد تغليف البديل جيداً، افتح تبويب المبيعات في الاستوديو لطلب بوليصة J&amp;T Express.
+    </p>
+
+    <div style="text-align: center;">
+      <a href="${BASE_URL}/ar/studio?tab=sales" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 15px 34px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">
+        فتح الاستوديو وتجهيز البديل
+      </a>
+    </div>
+  `;
+
+  const enContent = `
+    <h1 class="heading" style="color: ${PRIMARY_COLOR}; font-size: 24px; margin-bottom: 14px;">
+      Action Required: Prepare Replacement Piece
+    </h1>
+    <p style="color: #4b5563; font-size: 15px; line-height: 1.8; margin-bottom: 20px;">
+      Hi ${safeArtisanName}, Giftisan support approved a free replacement for order <strong>#${safeOrderId}</strong> (Claim <code>#${safeClaimId}</code>).
+    </p>
+
+    <div style="background-color: #eff6ff; padding: 20px; border-radius: 16px; border: 1px solid #bfdbfe; margin-bottom: 22px;">
+      <p style="margin: 0 0 8px 0; color: #1e3a8a; font-size: 14px;"><strong>Item:</strong> ${safeProduct} (×${quantity})${safeVariant ? ` — ${safeVariant}` : ''}</p>
+      <p style="margin: 0 0 8px 0; color: #1e40af; font-size: 13px;"><strong>Claim Reason:</strong> ${safeReason}</p>
+      ${safePersonalization ? `<p style="margin: 0 0 8px 0; color: #1e40af; font-size: 13px;"><strong>Personalization:</strong> "${safePersonalization}"</p>` : ''}
+      <p style="margin: 0 0 8px 0; color: #1e40af; font-size: 13px;"><strong>Inventory:</strong> ${stockDeducted ? '1 replacement unit has been deducted from catalog stock.' : 'Prepare from workshop (catalog stock was not deducted).'}</p>
+      <p style="margin: 0; color: #1e40af; font-size: 13px;"><strong>Reshipment Cost:</strong> ${costBearer === 'ARTISAN' && shippingFeeDebit > 0 ? `EGP ${shippingFeeDebit.toLocaleString()} debited from your ledger for replacement shipping.` : costBearer === 'PLATFORM' ? 'Platform covers replacement shipping.' : 'No extra shipping fee debited.'}</p>
+    </div>
+
+    ${safeAdminNote ? `
+      <div style="background-color: #fffbeb; padding: 16px; border-radius: 12px; border: 1px solid #fde68a; margin-bottom: 22px;">
+        <p style="color: #92400e; font-size: 12px; font-weight: bold; margin: 0 0 6px 0;">Admin &amp; Packaging Instructions:</p>
+        <p style="color: #78350f; font-size: 13px; margin: 0;">${safeAdminNote}</p>
+      </div>
+    ` : ''}
+
+    <p style="color: #6b7280; font-size: 13px; line-height: 1.7; margin-bottom: 24px;">
+      Escrow payout for this order remains temporarily paused until the replacement parcel is delivered. Once packed safely with protective layers, open Studio Sales to dispatch the J&amp;T Express replacement pickup.
+    </p>
+
+    <div style="text-align: center;">
+      <a href="${BASE_URL}/en/studio?tab=sales" style="background-color: ${PRIMARY_COLOR}; color: white; padding: 15px 34px; text-decoration: none; border-radius: 14px; font-weight: 800; font-size: 14px; display: inline-block;">
+        Open Studio Sales &amp; Dispatch
+      </a>
+    </div>
+  `;
+
+  return sendOperationalEmail({
+    from: SENDER_STUDIO,
+    replyTo: SUPPORT_INBOX,
+    to: artisanEmail,
     subject,
     html: wrapEmail(isAr ? arContent : enContent, lang),
   });

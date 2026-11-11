@@ -8,7 +8,7 @@ import { AuthError, CredentialsSignin } from "next-auth";
 import { slugify, stripEmojis, hasEmoji } from "@/lib/utils";
 import cloudinary from "@/lib/cloudinary";
 import sharp from "sharp";
-import { sendWelcomeEmail, sendOrderNotification, sendMessageNotification, sendVerificationEmail, sendOrderStatusUpdateEmail, sendPasswordResetEmail, sendInquiryNotification, sendArtisanApprovalEmail, sendArtisanOutreachEmail, sendCustomEmail, sendProductStatusUpdateEmail, sendPayoutRequestEmail, sendPayoutApprovedEmail, sendPayoutDeclinedEmail, sendRefundRequestSubmittedEmail, sendRefundResolvedEmail, sendAbandonedCheckoutNotification, sendBuyerOrderReceiptEmail } from "@/lib/mail";
+import { sendWelcomeEmail, sendOrderNotification, sendMessageNotification, sendVerificationEmail, sendOrderStatusUpdateEmail, sendPasswordResetEmail, sendInquiryNotification, sendArtisanApprovalEmail, sendArtisanOutreachEmail, sendCustomEmail, sendProductStatusUpdateEmail, sendPayoutRequestEmail, sendPayoutApprovedEmail, sendPayoutDeclinedEmail, sendRefundRequestSubmittedEmail, sendRefundResolvedEmail, sendArtisanReplacementNoticeEmail, sendAbandonedCheckoutNotification, sendBuyerOrderReceiptEmail } from "@/lib/mail";
 import { generateVerificationToken, generatePasswordResetToken } from "@/lib/tokens";
 import { cookies, headers } from "next/headers";
 import { createPaymobIntention, PAYMOB_PUBLIC_KEY } from "@/lib/paymob";
@@ -34,6 +34,20 @@ import {
   sanitizePublicArtisan,
   sanitizePublicProduct,
 } from "@/lib/public-selects";
+import { getJtParcelTraces } from "@/lib/jt-express";
+import {
+  BLOCKING_REFUND_CLAIM_STATUSES,
+  CUSTOMER_UPDATABLE_CLAIM_STATUSES,
+  OPEN_REFUND_CLAIM_STATUSES,
+  type RefundCostBearer,
+  evaluateRefundEligibility,
+  getOrderRemainingRefundableAmount,
+  requiresAdminNoteForAction,
+  requiresPhotoProof,
+  roundRefundCurrency,
+  shouldDefaultDeductReplacementStock,
+  shouldDefaultRestockOnRefund,
+} from "@/lib/refund-policy";
 
 export async function revalidateCatalog(slug?: string) {
   try {
@@ -65,6 +79,11 @@ import {
   queryJtOrdersAction as _queryJtOrdersAction,
   getJtTrackingAction as _getJtTrackingAction,
   syncJtOrderStatusAction as _syncJtOrderStatusAction,
+  dispatchReplacementShipmentAction as _dispatchReplacementShipmentAction,
+  syncReplacementTrackingAction as _syncReplacementTrackingAction,
+  dispatchReturnPickupAction as _dispatchReturnPickupAction,
+  syncReturnTrackingAction as _syncReturnTrackingAction,
+  cancelClaimJtShipmentAction as _cancelClaimJtShipmentAction,
 } from "./actions/shipping-actions";
 
 import {
@@ -128,6 +147,44 @@ export async function getJtTrackingAction(billCodes: string | string[]) {
 
 export async function syncJtOrderStatusAction(orderId: string) {
   return _syncJtOrderStatusAction(orderId);
+}
+
+export async function dispatchReplacementShipmentAction(params: {
+  claimId: string;
+  mode?: "JT_EXPRESS" | "MANUAL";
+  trackingNumber?: string;
+  carrier?: string;
+  note?: string;
+  lang?: "ar" | "en";
+}) {
+  return _dispatchReplacementShipmentAction(params);
+}
+
+export async function syncReplacementTrackingAction(claimId: string, lang: "ar" | "en" = "en") {
+  return _syncReplacementTrackingAction(claimId, lang);
+}
+
+export async function dispatchReturnPickupAction(params: {
+  claimId: string;
+  mode?: "JT_EXPRESS" | "MANUAL";
+  trackingNumber?: string;
+  carrier?: string;
+  note?: string;
+  lang?: "ar" | "en";
+}) {
+  return _dispatchReturnPickupAction(params);
+}
+
+export async function syncReturnTrackingAction(claimId: string, lang: "ar" | "en" = "en") {
+  return _syncReturnTrackingAction(claimId, lang);
+}
+
+export async function cancelClaimJtShipmentAction(params: {
+  claimId: string;
+  kind: "REPLACEMENT" | "RETURN";
+  reason?: string;
+}) {
+  return _cancelClaimJtShipmentAction(params);
 }
 
 export async function submitInquiry(data: { name: string; email: string; message: string }) {
@@ -1741,12 +1798,14 @@ export async function getUserOrders(userId: string) {
       where: { userId },
       include: {
         refundRequests: {
-          orderBy: { createdAt: "desc" }
+          orderBy: { createdAt: "desc" },
+          include: { events: { orderBy: { createdAt: "asc" } } }
         },
         items: {
           include: {
             refundRequests: {
-              orderBy: { createdAt: "desc" }
+              orderBy: { createdAt: "desc" },
+              include: { events: { orderBy: { createdAt: "asc" } } }
             },
             product: {
               include: {
@@ -1764,13 +1823,25 @@ export async function getUserOrders(userId: string) {
         createdAt: "desc"
       }
     });
-    return orders.map((order) => ({
-      ...order,
-      items: order.items.map((item) => ({
-        ...item,
-        product: item.product ? sanitizePublicProduct(item.product) : item.product,
-      })),
-    }));
+    return orders.map((order) => {
+      const latestItemDelivery = order.items.reduce<Date | null>(
+        (latest, item) => item.deliveredAt && (!latest || item.deliveredAt > latest) ? item.deliveredAt : latest,
+        null
+      );
+      const deliveredAt =
+        (order.status || "").toUpperCase() === "DELIVERED"
+          ? latestItemDelivery || order.updatedAt
+          : null;
+
+      return {
+        ...order,
+        deliveredAt,
+        items: order.items.map((item) => ({
+          ...item,
+          product: item.product ? sanitizePublicProduct(item.product) : item.product,
+        })),
+      };
+    });
   } catch (error) {
     console.error("Get orders error:", error);
     return [];
@@ -2590,6 +2661,47 @@ export async function getArtisanSales(artisanId: string) {
       if (!artisan || artisan.id !== artisanId) return [];
     }
 
+    const replacementClaimSelect = {
+      id: true,
+      orderId: true,
+      orderItemId: true,
+      reason: true,
+      details: true,
+      images: true,
+      preferredAction: true,
+      status: true,
+      adminNote: true,
+      costBearer: true,
+      replacementStockDeducted: true,
+      replacementTrackingNumber: true,
+      replacementCarrier: true,
+      replacementShippedAt: true,
+      replacementDeliveredAt: true,
+      returnTrackingNumber: true,
+      returnCarrier: true,
+      returnShippedAt: true,
+      returnReceivedAt: true,
+      createdAt: true,
+      updatedAt: true,
+      events: {
+        orderBy: { createdAt: "asc" as const },
+        select: {
+          id: true,
+          fromStatus: true,
+          toStatus: true,
+          note: true,
+          createdAt: true,
+        },
+      },
+    };
+
+    const replacementStatuses = [
+      "REPLACEMENT_APPROVED" as const,
+      "REPLACEMENT_SHIPPED" as const,
+      "REPLACEMENT_DELIVERED" as const,
+      "REPLACEMENT_ISSUED" as const,
+    ];
+
     const sales = await prisma.orderItem.findMany({
       where: {
         product: {
@@ -2605,6 +2717,16 @@ export async function getArtisanSales(artisanId: string) {
         }
       },
       include: {
+        refundRequests: {
+          where: {
+            OR: [
+              { status: { in: replacementStatuses } },
+              { returnTrackingNumber: { not: null } },
+            ],
+          },
+          orderBy: { createdAt: "desc" },
+          select: replacementClaimSelect,
+        },
         order: {
           select: {
             id: true,
@@ -2617,6 +2739,17 @@ export async function getArtisanSales(artisanId: string) {
             giftMessage: true,
             discountApplied: true,
             orderNotes: true,
+            refundRequests: {
+              where: {
+                orderItemId: null,
+                OR: [
+                  { status: { in: replacementStatuses } },
+                  { returnTrackingNumber: { not: null } },
+                ],
+              },
+              orderBy: { createdAt: "desc" },
+              select: replacementClaimSelect,
+            },
             user: {
               select: {
                 id: true,
@@ -2642,7 +2775,7 @@ export async function getArtisanSales(artisanId: string) {
           createdAt: 'desc'
         }
       },
-      take: 50
+      take: 100
     });
 
     if (isAdmin) return sales;
@@ -2694,7 +2827,7 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
       return { error: "You must be signed in to perform this action" };
     }
 
-    const allowedStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
+    const allowedStatuses = ["PENDING", "PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "REFUNDED"];
     if (!allowedStatuses.includes(status)) {
       return { error: "Invalid order item status" };
     }
@@ -2729,6 +2862,8 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
       where: { id: itemId },
       data: {
         status: status,
+        ...(status === "SHIPPED" || status === "OUT_FOR_DELIVERY" ? { shippedAt: orderItem.shippedAt || new Date() } : {}),
+        ...(status === "DELIVERED" ? { deliveredAt: orderItem.deliveredAt || new Date() } : {}),
         trackingNumber: trackingNumber || undefined,
         carrier: carrier || undefined,
       },
@@ -2747,17 +2882,23 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
       where: { orderId: updatedItem.orderId }
     });
 
-    const allDelivered = allOrderItems.every(item => item.status === "DELIVERED");
-    const allShippedOrDelivered = allOrderItems.every(item => item.status === "SHIPPED" || item.status === "DELIVERED");
+    const activeOrderItems = allOrderItems.filter(item => item.status !== "CANCELLED" && item.status !== "REFUNDED");
+    const allDelivered = activeOrderItems.length > 0 && activeOrderItems.every(item => item.status === "DELIVERED");
+    const anyOutForDelivery = activeOrderItems.some(item => item.status === "OUT_FOR_DELIVERY");
+    const allShippedOrBeyond = activeOrderItems.length > 0 && activeOrderItems.every(item =>
+      item.status === "SHIPPED" || item.status === "OUT_FOR_DELIVERY" || item.status === "DELIVERED"
+    );
 
     let newOrderStatus = "PROCESSING";
     if (allDelivered) {
       newOrderStatus = "DELIVERED";
-    } else if (allShippedOrDelivered) {
+    } else if (anyOutForDelivery) {
+      newOrderStatus = "OUT_FOR_DELIVERY";
+    } else if (allShippedOrBeyond) {
       newOrderStatus = "SHIPPED";
     }
 
-    if (newOrderStatus !== updatedItem.order.status && updatedItem.order.status !== "CANCELLED" && updatedItem.order.status !== "REFUNDED") {
+    if (activeOrderItems.length > 0 && newOrderStatus !== updatedItem.order.status && updatedItem.order.status !== "CANCELLED" && updatedItem.order.status !== "REFUNDED") {
       await prisma.order.update({
         where: { id: updatedItem.orderId },
         data: { status: newOrderStatus }
@@ -2800,7 +2941,15 @@ export async function updateOrderItemStatus(itemId: string, status: string, trac
     }
 
     revalidatePath("/studio");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     revalidatePath("/profile");
+    revalidatePath("/en/profile");
+    revalidatePath("/ar/profile");
+    revalidatePath("/en/admin/orders");
+    revalidatePath("/ar/admin/orders");
+    revalidatePath("/en/track");
+    revalidatePath("/ar/track");
     return { success: true };
   } catch (error: any) {
     console.error("CRITICAL Update status error:", error.message || error);
@@ -2874,7 +3023,7 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
       return { error: "Unauthorized: Admin privileges required" };
     }
 
-    const allowedStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"];
+    const allowedStatuses = ["PENDING", "PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "REFUNDED"];
     if (!allowedStatuses.includes(status)) {
       return { error: "Invalid order status" };
     }
@@ -2883,6 +3032,10 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
       where: { id: orderId },
       include: {
         user: true,
+        refundRequests: {
+          where: { status: { in: [...OPEN_REFUND_CLAIM_STATUSES] } },
+          select: { id: true },
+        },
         items: {
           include: {
             product: true
@@ -2893,6 +3046,12 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
 
     if (!order) {
       return { error: "Order not found" };
+    }
+
+    if (status === "REFUNDED" && order.refundRequests.length > 0) {
+      return {
+        error: "This order has an open refund claim. Resolve it from Admin > Refunds & Claims so the ticket, payment reference, and stock are tracked accurately.",
+      };
     }
 
     const wasAlreadyDelivered = order.status === "DELIVERED";
@@ -2916,14 +3075,36 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
         if (isUnvoiding) {
           await processOrderUncancellationInTx(tx, order);
         }
+        const isJtCarrier = /j&t|jt/i.test(carrier || order.carrier || "");
+        const hasPartialOrMultiParcelJt = isJtCarrier && Boolean(trackingNumber) && (
+          trackingNumber!.includes(",") ||
+          order.items.some((item) => item.trackingNumber && item.trackingNumber !== trackingNumber) ||
+          (order.items.some((item) => Boolean(item.trackingNumber)) &&
+            order.items.some((item) => !item.trackingNumber && !["CANCELLED", "REFUNDED"].includes(item.status)))
+        );
+        const itemWhere = {
+          orderId,
+          ...(isUnvoiding ? {} : { status: { notIn: ["CANCELLED", "REFUNDED"] } }),
+        };
         await tx.orderItem.updateMany({
-          where: { orderId },
+          where: itemWhere,
           data: {
             status,
-            ...(trackingNumber ? { trackingNumber } : {}),
+            ...(trackingNumber && !hasPartialOrMultiParcelJt ? { trackingNumber } : {}),
             ...(carrier ? { carrier } : {})
           }
         });
+        if (status === "SHIPPED" || status === "OUT_FOR_DELIVERY") {
+          await tx.orderItem.updateMany({
+            where: { ...itemWhere, shippedAt: null },
+            data: { shippedAt: new Date() },
+          });
+        } else if (status === "DELIVERED") {
+          await tx.orderItem.updateMany({
+            where: { ...itemWhere, deliveredAt: null },
+            data: { deliveredAt: new Date() },
+          });
+        }
       }
     });
 
@@ -2960,7 +3141,15 @@ export async function updateOrderStatus(orderId: string, status: string, trackin
     revalidatePath("/admin", "layout");
     revalidatePath("/admin/orders");
     revalidatePath("/studio");
+    revalidatePath("/en/studio");
+    revalidatePath("/ar/studio");
     revalidatePath("/profile");
+    revalidatePath("/en/profile");
+    revalidatePath("/ar/profile");
+    revalidatePath("/en/admin/orders");
+    revalidatePath("/ar/admin/orders");
+    revalidatePath("/en/track");
+    revalidatePath("/ar/track");
     return { success: true };
   } catch (error: any) {
     console.error("Update order status error:", error);
@@ -5515,11 +5704,24 @@ export async function submitRefundRequestAction({
     return { error: lang === 'ar' ? "يرجى تسجيل الدخول أولاً" : "Please sign in to submit a claim" };
   }
 
+  // Exchanges / replacements are temporarily paused; only refund requests are accepted for now.
+  if (preferredAction === 'REPLACEMENT') {
+    return {
+      error:
+        lang === 'ar'
+          ? "خدمة الاستبدال متوقفة مؤقتاً حالياً؛ المتاح الآن هو طلب استرداد المبلغ فقط."
+          : "Exchanges and replacements are temporarily paused. Only refund requests are accepted right now.",
+    };
+  }
+
   try {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
         user: true,
+        refundRequests: {
+          select: { id: true, orderItemId: true, status: true },
+        },
         items: {
           include: {
             product: true
@@ -5532,34 +5734,48 @@ export async function submitRefundRequestAction({
       return { error: lang === 'ar' ? "الطلب غير موجود أو غير مصرح به" : "Order not found or unauthorized" };
     }
 
-    // Eligibility Guard: Check Order Status
-    if (order.status === "PENDING") {
+    const targetItem = orderItemId
+      ? order.items.find((i) => i.id === orderItemId)
+      : (order.items.length === 1 ? order.items[0] : null);
+
+    if (orderItemId && !targetItem) {
+      return { error: lang === 'ar' ? "المنتج المحدد غير موجود ضمن هذا الطلب" : "Selected item was not found in this order" };
+    }
+
+    const deliveredAt =
+      (order.status || "").toUpperCase() === "DELIVERED"
+        ? targetItem?.deliveredAt || order.updatedAt
+        : null;
+
+    const eligibility = evaluateRefundEligibility({
+      order: { ...order, deliveredAt },
+      item: targetItem,
+      lang,
+    });
+
+    if (!eligibility.eligible) {
       return {
-        error: lang === 'ar'
-          ? "هذا الطلب بانتظار الدفع، يمكنك إلغاؤه مباشرة دون الحاجة لطلب استرجاع."
-          : "This order is awaiting payment. You can cancel it directly without submitting a claim."
+        error:
+          eligibility.message ||
+          (lang === 'ar' ? "هذا الطلب غير مؤهل لتقديم طلب استرجاع حالياً." : "This order is not eligible for a refund claim."),
       };
     }
 
-    if (order.status === "CANCELLED") {
+    if (!eligibility.allowedReasons.includes(reason)) {
       return {
-        error: lang === 'ar'
-          ? "هذا الطلب ملغي بالفعل."
-          : "This order has already been cancelled."
+        error:
+          lang === 'ar'
+            ? "سبب الاسترجاع المختار غير متاح في مرحلة الطلب الحالية."
+            : "The selected claim reason is not applicable at this stage of your order.",
       };
     }
 
-    // Check 14-day dispute window if delivered
-    if (order.status === "DELIVERED") {
-      const fourteenDaysInMs = 14 * 24 * 60 * 60 * 1000;
-      const orderAge = new Date().getTime() - new Date(order.updatedAt).getTime();
-      if (orderAge > fourteenDaysInMs) {
-        return {
-          error: lang === 'ar'
-            ? "تجاوز هذا الطلب مهلة الاسترجاع المسموحة (14 يوماً من تاريخ الاستلام)."
-            : "This order has exceeded the 14-day dispute and return window from delivery date."
-        };
-      }
+    if (!details || !details.trim()) {
+      return { error: lang === 'ar' ? "يرجى شرح تفاصيل المشكلة" : "Please explain the issue in detail" };
+    }
+
+    if (images.length > 5) {
+      return { error: lang === 'ar' ? "يمكنك إرفاق 5 صور كحد أقصى" : "You can upload a maximum of 5 images" };
     }
 
     // Process and upload images
@@ -5569,34 +5785,89 @@ export async function submitRefundRequestAction({
       if (processed) uploadedImages.push(processed);
     }
 
-    // Check if there is an existing pending refund request for this order/orderItem
-    const existing = await prisma.refundRequest.findFirst({
-      where: {
-        orderId,
-        orderItemId: orderItemId || null,
-        status: "PENDING"
-      }
-    });
-
-    if (existing) {
-      return { error: lang === 'ar' ? "يوجد طلب قيد المراجعة بالفعل لهذا المنتج" : "A claim is already pending review for this item" };
+    if (requiresPhotoProof(reason) && uploadedImages.length === 0) {
+      return {
+        error:
+          lang === 'ar'
+            ? "يرجى إرفاق صورة واضحة واحدة على الأقل لإثبات التلف أو العيب."
+            : "Please upload at least one clear photo showing the damage or defect.",
+      };
     }
 
-    const targetItem = orderItemId ? order.items.find(i => i.id === orderItemId) : (order.items.length === 1 ? order.items[0] : null);
-
-    const refundRequest = await prisma.refundRequest.create({
-      data: {
-        orderId,
-        orderItemId: orderItemId || null,
-        userId: session.user.id,
-        reason,
-        details,
-        images: uploadedImages,
-        preferredAction,
-        status: "PENDING",
-        refundAmount: targetItem ? targetItem.price * targetItem.quantity : order.totalAmount
+    const userId = session.user.id;
+    const itemGross = targetItem ? targetItem.price * targetItem.quantity : 0;
+    const orderMerchandiseGross = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const itemDiscountShare = targetItem && orderMerchandiseGross > 0
+      ? ((itemGross / orderMerchandiseGross) * (order.discountApplied || 0))
+      : 0;
+    const requestedAmount = targetItem
+      ? Math.max(0, Math.round((itemGross - itemDiscountShare) * 100) / 100)
+      : order.totalAmount;
+    const targetClaimScope = targetItem
+      ? [{ orderItemId: targetItem.id }, { orderItemId: null }]
+      : [{ orderItemId: null }];
+    const refundRequest = await prisma.$transaction(async (tx) => {
+      const existing = await tx.refundRequest.findFirst({
+        where: {
+          orderId,
+          status: { in: [...BLOCKING_REFUND_CLAIM_STATUSES] },
+          OR: targetClaimScope,
+        },
+        select: { id: true },
+      });
+      if (existing) {
+        throw new Error(
+          lang === 'ar'
+            ? "توجد مطالبة مفتوحة بالفعل لهذا المنتج. يمكنك إضافة معلومات إضافية من تفاصيل الشكوى."
+            : "An active case already exists for this item. You can add information to that case instead."
+        );
       }
-    });
+
+      const rejectedCount = await tx.refundRequest.count({
+        where: {
+          orderId,
+          status: "REJECTED",
+          OR: targetClaimScope,
+        },
+      });
+      if (rejectedCount >= 2) {
+        throw new Error(
+          lang === 'ar'
+            ? "تم استنفاد الحد الأقصى لمحاولات تقديم الشكاوى لهذا المنتج. يرجى التواصل مع الدعم."
+            : "Maximum claim attempts reached for this item. Please contact support for further review."
+        );
+      }
+
+      const created = await tx.refundRequest.create({
+        data: {
+          orderId,
+          orderItemId: targetItem?.id || orderItemId || null,
+          userId,
+          reason,
+          details: details.trim(),
+          images: uploadedImages,
+          preferredAction,
+          status: "PENDING",
+          refundAmount: requestedAmount,
+        },
+      });
+      await tx.refundRequestEvent.create({
+        data: {
+          refundRequestId: created.id,
+          actorUserId: userId,
+          toStatus: "PENDING",
+          note: "Customer submitted a case.",
+        },
+      });
+      return tx.refundRequest.findUnique({
+        where: { id: created.id },
+        include: { events: { orderBy: { createdAt: "asc" } } },
+      });
+    }, { isolationLevel: "Serializable" });
+
+    if (!refundRequest) {
+      return { error: lang === 'ar' ? "تعذر إنشاء طلب الاسترجاع" : "Failed to create refund claim" };
+    }
 
     // Send confirmation email
     const email = order.user?.email || order.clientEmail;
@@ -5633,6 +5904,95 @@ export async function submitRefundRequestAction({
   }
 }
 
+export async function addRefundClaimInfoAction({
+  requestId,
+  note,
+  images = [],
+  lang = 'en',
+}: {
+  requestId: string;
+  note: string;
+  images?: string[];
+  lang?: 'ar' | 'en';
+}) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: lang === 'ar' ? "يرجى تسجيل الدخول أولاً" : "Please sign in first" };
+  }
+
+  const userId = session.user.id;
+  const trimmedNote = (note || "").trim();
+  if (!trimmedNote && images.length === 0) {
+    return { error: lang === 'ar' ? "يرجى كتابة توضيح أو إرفاق صورة على الأقل" : "Please enter an update or attach at least one photo" };
+  }
+  if (images.length > 5) {
+    return { error: lang === 'ar' ? "يمكنك إرفاق 5 صور كحد أقصى في كل تحديث" : "You can upload up to 5 images per update" };
+  }
+
+  try {
+    const claim = await prisma.refundRequest.findUnique({
+      where: { id: requestId },
+      select: { id: true, userId: true, status: true, images: true },
+    });
+
+    if (!claim || claim.userId !== userId) {
+      return { error: lang === 'ar' ? "المطالبة غير موجودة أو غير مصرح بها" : "Claim not found or unauthorized" };
+    }
+
+    if (!(CUSTOMER_UPDATABLE_CLAIM_STATUSES as readonly string[]).includes(claim.status)) {
+      return { error: lang === 'ar' ? "لا يمكن إضافة معلومات بعد اعتماد القرار النهائي" : "Additional updates cannot be added after final resolution." };
+    }
+
+    if (claim.images.length + images.length > 10) {
+      return { error: lang === 'ar' ? "الحد الأقصى للصور المرفقة لهذه المطالبة هو 10 صور" : "A maximum of 10 total images is allowed per claim" };
+    }
+
+    const uploadedImages: string[] = [];
+    for (const img of images) {
+      const processed = await processImage(img);
+      if (processed) uploadedImages.push(processed);
+    }
+
+    if (!trimmedNote && uploadedImages.length === 0) {
+      return { error: lang === 'ar' ? "تعذر معالجة الصور المرفقة، يرجى إضافة نص توضيحي" : "Please provide text details or valid image files" };
+    }
+
+    const nextStatus = claim.status === "WAITING_CUSTOMER" ? "INVESTIGATING" : claim.status;
+    const eventNote = trimmedNote || (lang === 'ar' ? "أضاف العميل صوراً إضافية للمطالبة." : "Customer uploaded additional photo evidence.");
+
+    const updatedClaim = await prisma.$transaction(async (tx) => {
+      await tx.refundRequest.update({
+        where: { id: requestId },
+        data: {
+          status: nextStatus,
+          ...(uploadedImages.length > 0 ? { images: [...claim.images, ...uploadedImages] } : {}),
+        },
+      });
+      await tx.refundRequestEvent.create({
+        data: {
+          refundRequestId: requestId,
+          actorUserId: userId,
+          fromStatus: claim.status,
+          toStatus: nextStatus,
+          note: eventNote,
+        },
+      });
+      return tx.refundRequest.findUnique({
+        where: { id: requestId },
+        include: { events: { orderBy: { createdAt: "asc" } } },
+      });
+    });
+
+    revalidatePath(`/${lang}/profile`);
+    revalidatePath(`/${lang}/admin/refunds`);
+    revalidatePath(`/${lang}/admin/orders`);
+    return { success: true, claim: updatedClaim };
+  } catch (error: any) {
+    console.error("addRefundClaimInfo error:", error);
+    return { error: error.message || "Failed to update claim" };
+  }
+}
+
 export async function getAdminRefundRequestsAction() {
   const session = await auth();
   if (session?.user?.role !== "ADMIN") {
@@ -5642,11 +6002,31 @@ export async function getAdminRefundRequestsAction() {
   try {
     const claims = await prisma.refundRequest.findMany({
       include: {
+        events: { orderBy: { createdAt: "asc" } },
         user: true,
         order: {
           include: {
+            coupon: true,
+            refundRequests: {
+              select: {
+                id: true,
+                status: true,
+                refundAmount: true,
+              },
+            },
+            transactions: {
+              where: { type: "SALE" },
+              select: {
+                id: true,
+                artisanId: true,
+                amount: true,
+                status: true,
+                createdAt: true,
+              },
+            },
             items: {
               include: {
+                variant: true,
                 product: {
                   include: {
                     artisan: {
@@ -5662,6 +6042,7 @@ export async function getAdminRefundRequestsAction() {
         },
         orderItem: {
           include: {
+            variant: true,
             product: {
               include: {
                 artisan: {
@@ -5690,11 +6071,40 @@ export async function resolveRefundRequestAction({
   requestId,
   action,
   adminNote,
+  refundMethod,
+  refundReference,
+  refundAmount,
+  restockItems,
+  costBearer,
+  deductReplacementStock,
+  replacementShippingFee,
+  replacementCarrier,
+  replacementTrackingNumber,
   lang = 'en'
 }: {
   requestId: string;
-  action: 'APPROVE' | 'REJECT' | 'REPLACEMENT';
+  action:
+    | 'INVESTIGATING'
+    | 'WAITING_CUSTOMER'
+    | 'WAITING_COURIER'
+    | 'RETURN_REQUESTED'
+    | 'APPROVE'
+    | 'START_REFUND'
+    | 'MARK_REFUNDED'
+    | 'REJECT'
+    | 'REPLACEMENT'
+    | 'DISPATCH_REPLACEMENT'
+    | 'MARK_REPLACEMENT_DELIVERED';
   adminNote?: string;
+  refundMethod?: string;
+  refundReference?: string;
+  refundAmount?: number;
+  restockItems?: boolean;
+  costBearer?: RefundCostBearer;
+  deductReplacementStock?: boolean;
+  replacementShippingFee?: number;
+  replacementCarrier?: string;
+  replacementTrackingNumber?: string;
   lang?: 'ar' | 'en';
 }) {
   const session = await auth();
@@ -5702,8 +6112,31 @@ export async function resolveRefundRequestAction({
     return { error: "Unauthorized" };
   }
 
-  if (!["APPROVE", "REJECT", "REPLACEMENT"].includes(action)) {
+  const actions = [
+    "INVESTIGATING",
+    "WAITING_CUSTOMER",
+    "WAITING_COURIER",
+    "RETURN_REQUESTED",
+    "APPROVE",
+    "START_REFUND",
+    "MARK_REFUNDED",
+    "REJECT",
+    "REPLACEMENT",
+    "DISPATCH_REPLACEMENT",
+    "MARK_REPLACEMENT_DELIVERED",
+  ] as const;
+  if (!actions.includes(action)) {
     return { error: "Invalid refund resolution action" };
+  }
+
+  // Exchanges / replacements are temporarily paused; prevent new replacement approvals.
+  if ((action as string) === "REPLACEMENT") {
+    return {
+      error:
+        lang === "ar"
+          ? "اعتماد الاستبدال متوقف مؤقتاً حالياً؛ المتاح الآن هو الاسترداد المالي فقط."
+          : "Replacement approvals are temporarily paused. Refunds only are enabled right now.",
+    };
   }
 
   try {
@@ -5714,11 +6147,24 @@ export async function resolveRefundRequestAction({
         order: {
           include: {
             user: true,
+            coupon: true,
+            refundRequests: {
+              select: {
+                id: true,
+                status: true,
+                refundAmount: true,
+              },
+            },
             items: {
               include: {
+                variant: true,
                 product: {
                   include: {
-                    artisan: true
+                    artisan: {
+                      include: {
+                        user: true
+                      }
+                    }
                   }
                 }
               }
@@ -5727,9 +6173,14 @@ export async function resolveRefundRequestAction({
         },
         orderItem: {
           include: {
+            variant: true,
             product: {
               include: {
-                artisan: true
+                artisan: {
+                  include: {
+                    user: true
+                  }
+                }
               }
             }
           }
@@ -5741,25 +6192,272 @@ export async function resolveRefundRequestAction({
       return { error: "Refund claim or associated order not found" };
     }
 
-    if (claim.status !== "PENDING") {
-      return { error: "This refund claim has already been resolved and cannot be modified." };
+    const triageStatuses = ["PENDING", "INVESTIGATING", "WAITING_CUSTOMER", "WAITING_COURIER", "RETURN_REQUESTED"];
+    const canTransition = action === "MARK_REFUNDED"
+      ? ["REFUND_PROCESSING", "APPROVED"].includes(claim.status)
+      : action === "START_REFUND"
+        ? ["REFUND_APPROVED", "APPROVED"].includes(claim.status)
+        : action === "DISPATCH_REPLACEMENT"
+          ? claim.status === "REPLACEMENT_APPROVED"
+          : action === "MARK_REPLACEMENT_DELIVERED"
+            ? ["REPLACEMENT_SHIPPED", "REPLACEMENT_APPROVED"].includes(claim.status)
+            : action === "APPROVE" || action === "REJECT" || action === "INVESTIGATING" || action === "WAITING_CUSTOMER" || action === "RETURN_REQUESTED"
+              ? [...triageStatuses, "REFUND_APPROVED", "APPROVED", "REPLACEMENT_APPROVED"].includes(claim.status)
+              : triageStatuses.includes(claim.status);
+    if (!canTransition) {
+      return { error: "This case cannot move to that status from its current state." };
     }
 
+    const trimmedNote = adminNote?.trim() || "";
+    if (requiresAdminNoteForAction(action) && !trimmedNote) {
+      return {
+        error: lang === 'ar'
+          ? "يرجى كتابة توضيح أو تعليمات في ملاحظة الإدارة قبل تنفيذ هذا الإجراء."
+          : "Please enter a clear explanation or instructions in Admin Note before performing this action.",
+      };
+    }
+
+    const resolvedMethod = refundMethod?.trim() || claim.refundMethod || "";
+    const resolvedReference = refundReference?.trim() || claim.refundReference || "";
+    if (action === "START_REFUND" && (!resolvedMethod || !resolvedReference)) {
+      return { error: "Record the refund method and payment provider/reference before marking the refund as processing." };
+    }
+    if (action === "MARK_REFUNDED" && (!resolvedReference || !resolvedMethod)) {
+      return { error: "Record the payment method and refund reference before confirming the refund." };
+    }
+
+    const resolvedRepTracking = replacementTrackingNumber?.trim() || claim.replacementTrackingNumber || "";
+    const resolvedRepCarrier = replacementCarrier?.trim() || claim.replacementCarrier || "J&T Express";
+    if (action === "DISPATCH_REPLACEMENT" && (!resolvedRepTracking || !resolvedRepCarrier)) {
+      return {
+        error: lang === 'ar'
+          ? "يرجى إدخال شركة الشحن ورقم تتبع القطعة البديلة."
+          : "Record the replacement carrier and tracking number before marking as dispatched.",
+      };
+    }
+
+    const isMonetaryAction = action === "APPROVE" || action === "START_REFUND" || action === "MARK_REFUNDED";
+    const maxRefundable = getOrderRemainingRefundableAmount(claim.order, claim.id);
+    let resolvedRefundAmount = claim.refundAmount ?? 0;
+    if (isMonetaryAction) {
+      const candidateAmount =
+        refundAmount !== undefined && refundAmount !== null && !Number.isNaN(Number(refundAmount))
+          ? roundRefundCurrency(Number(refundAmount))
+          : roundRefundCurrency(Number(claim.refundAmount || 0));
+
+      if (!Number.isFinite(candidateAmount) || candidateAmount <= 0) {
+        return {
+          error: lang === 'ar'
+            ? "يجب أن يكون مبلغ الاسترداد أكبر من صفر."
+            : "Refund amount must be greater than zero.",
+        };
+      }
+      if (candidateAmount > maxRefundable + 0.01) {
+        return {
+          error: lang === 'ar'
+            ? `لا يمكن أن يتجاوز مبلغ الاسترداد المبلغ المتاح للطلب (EGP ${maxRefundable.toLocaleString()}).`
+            : `Refund amount cannot exceed the remaining refundable order total (EGP ${maxRefundable.toLocaleString()}).`,
+        };
+      }
+      resolvedRefundAmount = Math.min(candidateAmount, maxRefundable);
+    }
+
+    const targetItemForDefaults = claim.orderItem || (claim.orderItemId ? claim.order.items.find(i => i.id === claim.orderItemId) : null);
+    const effectiveRestock =
+      typeof restockItems === "boolean"
+        ? restockItems
+        : shouldDefaultRestockOnRefund({ reason: claim.reason, item: targetItemForDefaults });
+    const effectiveBearer: RefundCostBearer = costBearer === "PLATFORM" ? "PLATFORM" : "ARTISAN";
+
+    const availableStockForItem = targetItemForDefaults?.variant
+      ? targetItemForDefaults.variant.stock
+      : targetItemForDefaults?.product?.stock ?? 0;
+    const effectiveDeductReplacementStock =
+      action === "REPLACEMENT"
+        ? typeof deductReplacementStock === "boolean"
+          ? deductReplacementStock
+          : shouldDefaultDeductReplacementStock({
+              item: targetItemForDefaults,
+              availableStock: availableStockForItem,
+            })
+        : false;
+    const parsedShippingFee = roundRefundCurrency(Number(replacementShippingFee || 0));
+    const resolvedReplacementShippingFee =
+      action === "REPLACEMENT" && Number.isFinite(parsedShippingFee) && parsedShippingFee > 0
+        ? parsedShippingFee
+        : 0;
+
     const statusMap = {
-      APPROVE: "APPROVED" as const,
+      INVESTIGATING: "INVESTIGATING" as const,
+      WAITING_CUSTOMER: "WAITING_CUSTOMER" as const,
+      WAITING_COURIER: "WAITING_COURIER" as const,
+      RETURN_REQUESTED: "RETURN_REQUESTED" as const,
+      APPROVE: "REFUND_APPROVED" as const,
+      START_REFUND: "REFUND_PROCESSING" as const,
+      MARK_REFUNDED: "REFUNDED" as const,
       REJECT: "REJECTED" as const,
-      REPLACEMENT: "REPLACEMENT_ISSUED" as const,
+      REPLACEMENT: "REPLACEMENT_APPROVED" as const,
+      DISPATCH_REPLACEMENT: "REPLACEMENT_SHIPPED" as const,
+      MARK_REPLACEMENT_DELIVERED: "REPLACEMENT_DELIVERED" as const,
     };
 
     const newStatus = statusMap[action];
+    const nextAdminNote = trimmedNote || (["START_REFUND", "MARK_REFUNDED", "DISPATCH_REPLACEMENT", "MARK_REPLACEMENT_DELIVERED"].includes(action) ? claim.adminNote : null);
+
+    let auditMeta = "";
+    if (action === "APPROVE") {
+      auditMeta = `[Approved: EGP ${resolvedRefundAmount.toLocaleString()}]`;
+    } else if (action === "START_REFUND") {
+      auditMeta = `[Processing: EGP ${resolvedRefundAmount.toLocaleString()} | ${resolvedMethod} | Ref: ${resolvedReference}]`;
+    } else if (action === "MARK_REFUNDED") {
+      auditMeta = `[Refunded: EGP ${resolvedRefundAmount.toLocaleString()} | ${resolvedMethod} | Ref: ${resolvedReference} | Bearer: ${effectiveBearer === "PLATFORM" ? "Platform" : "Artisan"} | Restocked: ${effectiveRestock ? "Yes" : "No"}]`;
+    } else if (action === "REPLACEMENT") {
+      auditMeta = `[Replacement Approved | Bearer: ${effectiveBearer === "PLATFORM" ? "Platform" : "Artisan"} | Stock Deducted: ${effectiveDeductReplacementStock ? "Yes" : "No"}${resolvedReplacementShippingFee > 0 ? ` | Shipping Debit: EGP ${resolvedReplacementShippingFee.toLocaleString()}` : ""}]`;
+    } else if (action === "DISPATCH_REPLACEMENT") {
+      auditMeta = `[Dispatched via ${resolvedRepCarrier} | Tracking: ${resolvedRepTracking} | COD: EGP 0]`;
+    } else if (action === "MARK_REPLACEMENT_DELIVERED") {
+      auditMeta = `[Replacement confirmed delivered${claim.replacementTrackingNumber ? ` (${claim.replacementTrackingNumber})` : ""}]`;
+    }
+
+    const replacementItems = targetItemForDefaults
+      ? [targetItemForDefaults]
+      : claim.order.items.filter((i) => !["CANCELLED", "REFUNDED"].includes(i.status));
+    const shouldRestoreUnshippedReplacementStock =
+      claim.status === "REPLACEMENT_APPROVED" &&
+      Boolean(claim.replacementStockDeducted) &&
+      ["APPROVE", "INVESTIGATING", "WAITING_CUSTOMER", "RETURN_REQUESTED", "REJECT"].includes(action);
+    const eventNote = [
+      trimmedNote,
+      auditMeta,
+      shouldRestoreUnshippedReplacementStock ? "[Restored unshipped replacement stock]" : "",
+    ].filter(Boolean).join(" ") || null;
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Atomically claim the PENDING refund request to prevent concurrent double-refunds
+      if (action === "REPLACEMENT" && effectiveDeductReplacementStock) {
+        for (const repItem of replacementItems) {
+          if (repItem.variantId) {
+            const dec = await tx.productVariant.updateMany({
+              where: { id: repItem.variantId, stock: { gte: repItem.quantity } },
+              data: { stock: { decrement: repItem.quantity } },
+            });
+            if (dec.count === 0) {
+              throw new Error(
+                lang === "ar"
+                  ? `المخزون المتاح غير كافٍ للخصم للمنتج "${repItem.product?.name}". ألغِ خيار خصم المخزون إذا كان الحرفي سيصنعها بالطلب.`
+                  : `Insufficient variant stock on "${repItem.product?.name}" to deduct replacement inventory. Uncheck "Deduct ready stock" if crafting to order.`
+              );
+            }
+          } else if (repItem.productId) {
+            const dec = await tx.product.updateMany({
+              where: { id: repItem.productId, stock: { gte: repItem.quantity } },
+              data: { stock: { decrement: repItem.quantity } },
+            });
+            if (dec.count === 0) {
+              throw new Error(
+                lang === "ar"
+                  ? `المخزون المتاح غير كافٍ للخصم للمنتج "${repItem.product?.name}". ألغِ خيار خصم المخزون إذا كان الحرفي سيصنعها بالطلب.`
+                  : `Insufficient stock on "${repItem.product?.name}" to deduct replacement inventory. Uncheck "Deduct ready stock" if crafting to order.`
+              );
+            }
+          }
+        }
+      }
+
+      if (shouldRestoreUnshippedReplacementStock) {
+        for (const repItem of replacementItems) {
+          if (repItem.variantId) {
+            await tx.productVariant.update({
+              where: { id: repItem.variantId },
+              data: { stock: { increment: repItem.quantity } },
+            });
+          } else if (repItem.productId) {
+            await tx.product.update({
+              where: { id: repItem.productId },
+              data: { stock: { increment: repItem.quantity } },
+            });
+          }
+        }
+      }
+
+      if (action === "REPLACEMENT" && effectiveBearer === "ARTISAN" && resolvedReplacementShippingFee > 0) {
+        const involvedArtisanIds = Array.from(
+          new Set(replacementItems.map((i) => i.product?.artisanId).filter((id): id is string => Boolean(id)))
+        );
+        if (involvedArtisanIds.length > 0) {
+          const perArtisanFee = roundRefundCurrency(resolvedReplacementShippingFee / involvedArtisanIds.length);
+          for (let idx = 0; idx < involvedArtisanIds.length; idx++) {
+            const artisanId = involvedArtisanIds[idx];
+            const feeShare = idx === involvedArtisanIds.length - 1
+              ? Math.max(0, roundRefundCurrency(resolvedReplacementShippingFee - perArtisanFee * (involvedArtisanIds.length - 1)))
+              : perArtisanFee;
+            if (feeShare <= 0) continue;
+
+            const pendingSale = await tx.artisanTransaction.findFirst({
+              where: { orderId: claim.orderId, artisanId, type: "SALE", status: "PENDING" },
+            });
+            let remainingFee = feeShare;
+            if (pendingSale && pendingSale.amount > 0) {
+              const reducePending = Math.min(pendingSale.amount, remainingFee);
+              const nextSaleAmount = roundRefundCurrency(pendingSale.amount - reducePending);
+              await tx.artisanTransaction.update({
+                where: { id: pendingSale.id },
+                data: nextSaleAmount <= 0 ? { status: "FAILED", amount: 0 } : { amount: nextSaleAmount },
+              });
+              await tx.artisanBalance.upsert({
+                where: { artisanId },
+                update: { pending: { decrement: reducePending } },
+                create: { artisanId, pending: 0, withdrawable: 0, withdrawn: 0 },
+              });
+              remainingFee = roundRefundCurrency(remainingFee - reducePending);
+            }
+            if (remainingFee > 0) {
+              await tx.artisanBalance.upsert({
+                where: { artisanId },
+                update: { withdrawable: { decrement: remainingFee } },
+                create: { artisanId, pending: 0, withdrawable: -remainingFee, withdrawn: 0 },
+              });
+            }
+            await tx.artisanTransaction.create({
+              data: {
+                artisanId,
+                orderId: claim.orderId,
+                amount: -feeShare,
+                type: "REFUND_DEBIT",
+                status: "COMPLETED",
+                description: `Replacement shipping fee for claim #${claim.id}`,
+              },
+            });
+          }
+        }
+      }
+
       const claimed = await tx.refundRequest.updateMany({
-        where: { id: requestId, status: "PENDING" },
+        where: { id: requestId, status: claim.status },
         data: {
           status: newStatus,
-          adminNote: adminNote || null
+          adminNote: nextAdminNote,
+          ...(isMonetaryAction ? { refundAmount: resolvedRefundAmount } : {}),
+          ...(action === "START_REFUND" || action === "MARK_REFUNDED"
+            ? { refundMethod: resolvedMethod, refundReference: resolvedReference }
+            : {}),
+          ...(action === "MARK_REFUNDED" ? { refundProcessedAt: new Date() } : {}),
+          ...(action === "REPLACEMENT"
+            ? {
+                costBearer: effectiveBearer,
+                replacementStockDeducted: effectiveDeductReplacementStock,
+              }
+            : {}),
+          ...(shouldRestoreUnshippedReplacementStock ? { replacementStockDeducted: false } : {}),
+          ...(action === "DISPATCH_REPLACEMENT"
+            ? {
+                replacementCarrier: resolvedRepCarrier,
+                replacementTrackingNumber: resolvedRepTracking,
+                replacementShippedAt: new Date(),
+              }
+            : {}),
+          ...(action === "MARK_REPLACEMENT_DELIVERED"
+            ? { replacementDeliveredAt: new Date() }
+            : {}),
         }
       });
 
@@ -5767,12 +6465,12 @@ export async function resolveRefundRequestAction({
         throw new Error("This refund claim has already been resolved.");
       }
 
-      const updatedClaim = await tx.refundRequest.findUnique({
-        where: { id: requestId }
+      await tx.refundRequestEvent.create({
+        data: { refundRequestId: requestId, actorUserId: session.user.id, fromStatus: claim.status, toStatus: newStatus, note: eventNote }
       });
 
-      // 2. Financial Debit & Status Synchronization on APPROVE
-      if (action === "APPROVE") {
+      // Only confirm the accounting and inventory effects after the external refund has actually been processed.
+      if (action === "MARK_REFUNDED") {
         if (claim.orderItemId) {
           // A. Item-Level Refund
           await tx.orderItem.update({
@@ -5780,9 +6478,8 @@ export async function resolveRefundRequestAction({
             data: { status: "REFUNDED" }
           });
 
-          // Restore item stock
-          const targetItem = claim.orderItem || claim.order.items.find(i => i.id === claim.orderItemId);
-          if (targetItem) {
+          const targetItem = targetItemForDefaults;
+          if (targetItem && effectiveRestock) {
             if (targetItem.variantId) {
               await tx.productVariant.update({
                 where: { id: targetItem.variantId },
@@ -5796,12 +6493,12 @@ export async function resolveRefundRequestAction({
             }
           }
 
-          // Check if all items in the order are now refunded
+          // Check if all non-cancelled items in the order are now refunded
           const remainingUnrefunded = await tx.orderItem.count({
             where: {
               orderId: claim.orderId,
               id: { not: claim.orderItemId },
-              status: { not: "REFUNDED" }
+              status: { notIn: ["CANCELLED", "REFUNDED"] }
             }
           });
 
@@ -5810,26 +6507,28 @@ export async function resolveRefundRequestAction({
               where: { id: claim.orderId },
               data: { status: "REFUNDED" }
             });
-
-            // Mark SALE transactions as FAILED so escrow cron doesn't process them
-            await tx.artisanTransaction.updateMany({
-              where: {
-                orderId: claim.orderId,
-                type: "SALE",
-                status: "PENDING"
-              },
-              data: { status: "FAILED" }
-            });
           }
 
-          // Debit specific artisan
-          if (targetItem?.product?.artisan) {
+          // Debit specific artisan only when cost bearer is ARTISAN (respecting partial refunds and shop-sponsored coupons)
+          if (effectiveBearer === "ARTISAN" && targetItem?.product?.artisan) {
             const artisan = targetItem.product.artisan;
-            const itemTotal = targetItem.price * targetItem.quantity;
+            const itemTotal = roundRefundCurrency(targetItem.price * targetItem.quantity);
+            let netItemTotal = itemTotal;
+            if (claim.order.coupon?.artisanId === artisan.id && (claim.order.discountApplied || 0) > 0) {
+              const artisanSponsoredTotal = claim.order.items
+                .filter((i) => i.product?.artisanId === artisan.id)
+                .reduce((sum, i) => sum + i.price * i.quantity, 0);
+              if (artisanSponsoredTotal > 0) {
+                const itemDiscountShare = roundRefundCurrency((itemTotal / artisanSponsoredTotal) * (claim.order.discountApplied || 0));
+                netItemTotal = Math.max(0, roundRefundCurrency(itemTotal - itemDiscountShare));
+              }
+            }
             const commission = getEffectiveArtisanCommissionRate(artisan);
-            const artisanShare = Math.round(itemTotal * (1 - commission) * 100) / 100;
+            const fullArtisanShare = Math.max(0, roundRefundCurrency(netItemTotal * (1 - commission)));
+            const partialRatio = netItemTotal > 0 ? Math.min(1, resolvedRefundAmount / netItemTotal) : 1;
+            const artisanDebit = roundRefundCurrency(fullArtisanShare * partialRatio);
 
-            // Check if there are sale transactions for this order
+            // Query existing SALE transactions BEFORE mutating their status
             const saleTxs = await tx.artisanTransaction.findMany({
               where: {
                 orderId: claim.orderId,
@@ -5842,75 +6541,76 @@ export async function resolveRefundRequestAction({
             const pendingSaleTx = saleTxs.find(t => t.status === "PENDING");
             const hasPendingSale = Boolean(pendingSaleTx);
 
-            // Sync this artisan's PENDING SALE transaction so escrow cron never over-clears
-            const remainingArtisanItems = await tx.orderItem.count({
-              where: {
-                orderId: claim.orderId,
-                id: { not: claim.orderItemId },
-                status: { not: "REFUNDED" },
-                product: { artisanId: artisan.id }
-              }
-            });
-
-            if (remainingArtisanItems === 0) {
-              await tx.artisanTransaction.updateMany({
+            if (artisanDebit > 0) {
+              const remainingArtisanItems = await tx.orderItem.count({
                 where: {
                   orderId: claim.orderId,
-                  artisanId: artisan.id,
-                  type: "SALE",
-                  status: "PENDING"
-                },
-                data: { status: "FAILED" }
+                  id: { not: claim.orderItemId },
+                  status: { notIn: ["CANCELLED", "REFUNDED"] },
+                  product: { artisanId: artisan.id }
+                }
               });
-            } else if (pendingSaleTx) {
-              const reducedSaleAmount = Math.max(0, Math.round((Math.abs(pendingSaleTx.amount) - artisanShare) * 100) / 100);
-              await tx.artisanTransaction.update({
-                where: { id: pendingSaleTx.id },
-                data: reducedSaleAmount <= 0 ? { status: "FAILED" } : { amount: reducedSaleAmount }
-              });
-            }
 
-            const balance = await tx.artisanBalance.findUnique({
-              where: { artisanId: artisan.id }
-            });
-
-            if (balance) {
-              if (hasPendingSale) {
-                const newPending = Math.max(0, Math.round((balance.pending - artisanShare) * 100) / 100);
-                await tx.artisanBalance.update({
-                  where: { artisanId: artisan.id },
-                  data: { pending: newPending }
+              if (remainingArtisanItems === 0 && partialRatio >= 1) {
+                await tx.artisanTransaction.updateMany({
+                  where: {
+                    orderId: claim.orderId,
+                    artisanId: artisan.id,
+                    type: "SALE",
+                    status: "PENDING"
+                  },
+                  data: { status: "FAILED" }
                 });
-              } else {
-                // Allow withdrawable to go negative on CLEARED post-escrow refunds so future sales recover the debt
-                const newWithdrawable = Math.round((balance.withdrawable - artisanShare) * 100) / 100;
-                await tx.artisanBalance.update({
-                  where: { artisanId: artisan.id },
-                  data: { withdrawable: newWithdrawable }
+              } else if (pendingSaleTx) {
+                const reducedSaleAmount = Math.max(0, roundRefundCurrency(Math.abs(pendingSaleTx.amount) - artisanDebit));
+                await tx.artisanTransaction.update({
+                  where: { id: pendingSaleTx.id },
+                  data: reducedSaleAmount <= 0 ? { status: "FAILED" } : { amount: reducedSaleAmount }
                 });
               }
-            } else if (!hasPendingSale && saleTxs.length > 0) {
-              await tx.artisanBalance.create({
+
+              const balance = await tx.artisanBalance.findUnique({
+                where: { artisanId: artisan.id }
+              });
+
+              if (balance) {
+                if (hasPendingSale) {
+                  const newPending = Math.max(0, roundRefundCurrency(balance.pending - artisanDebit));
+                  await tx.artisanBalance.update({
+                    where: { artisanId: artisan.id },
+                    data: { pending: newPending }
+                  });
+                } else {
+                  // Allow withdrawable to go negative on CLEARED post-escrow refunds so future sales recover the debt
+                  const newWithdrawable = roundRefundCurrency(balance.withdrawable - artisanDebit);
+                  await tx.artisanBalance.update({
+                    where: { artisanId: artisan.id },
+                    data: { withdrawable: newWithdrawable }
+                  });
+                }
+              } else if (!hasPendingSale && saleTxs.length > 0) {
+                await tx.artisanBalance.create({
+                  data: {
+                    artisanId: artisan.id,
+                    pending: 0,
+                    withdrawable: -artisanDebit,
+                    withdrawn: 0
+                  }
+                });
+              }
+
+              // Create REFUND_DEBIT transaction log
+              await tx.artisanTransaction.create({
                 data: {
                   artisanId: artisan.id,
-                  pending: 0,
-                  withdrawable: -artisanShare,
-                  withdrawn: 0
+                  orderId: claim.orderId,
+                  amount: -artisanDebit,
+                  type: "REFUND_DEBIT",
+                  status: "COMPLETED",
+                  description: `Refund debited for dispute #${claim.id} ("${targetItem.product.name}" Qty: ${targetItem.quantity}${partialRatio < 1 ? " - Partial" : ""})`
                 }
               });
             }
-
-            // Create REFUND_DEBIT transaction log
-            await tx.artisanTransaction.create({
-              data: {
-                artisanId: artisan.id,
-                orderId: claim.orderId,
-                amount: -artisanShare,
-                type: "REFUND_DEBIT",
-                status: "COMPLETED",
-                description: `Refund debited for dispute #${claim.id} ("${targetItem.product.name}" Qty: ${targetItem.quantity})`
-              }
-            });
           }
         } else {
           // B. Full-Order Refund (all items via shared atomic service)
@@ -5919,26 +6619,79 @@ export async function resolveRefundRequestAction({
             data: { status: "REFUNDED" }
           });
 
-          await processOrderRefundInTx(tx, claim.orderId);
+          await processOrderRefundInTx(tx, claim.orderId, {
+            restockItems: effectiveRestock,
+            debitArtisan: effectiveBearer === "ARTISAN",
+            refundAmount: resolvedRefundAmount,
+            claimId: claim.id,
+          });
         }
       }
 
-      return updatedClaim;
+      return tx.refundRequest.findUnique({
+        where: { id: requestId },
+        include: { events: { orderBy: { createdAt: "asc" } } },
+      });
     });
 
-    // Send resolution email to customer
+    // Send resolution/status update email to customer
     const customerEmail = claim.user?.email || claim.order?.clientEmail;
     const customerName = claim.user?.name || "Valued Client";
-    if (customerEmail) {
+    if (
+      customerEmail &&
+      [
+        "WAITING_CUSTOMER",
+        "WAITING_COURIER",
+        "RETURN_REQUESTED",
+        "REFUND_APPROVED",
+        "REFUND_PROCESSING",
+        "REFUNDED",
+        "REJECTED",
+        "REPLACEMENT_APPROVED",
+        "REPLACEMENT_SHIPPED",
+        "REPLACEMENT_DELIVERED",
+        "REPLACEMENT_ISSUED",
+      ].includes(newStatus)
+    ) {
       await sendRefundResolvedEmail({
         email: customerEmail,
         customerName,
         orderId: claim.orderId,
         status: newStatus,
-        adminNote,
-        refundAmount: claim.refundAmount || undefined,
+        adminNote: nextAdminNote || undefined,
+        refundAmount: result?.refundAmount ?? (isMonetaryAction ? resolvedRefundAmount : claim.refundAmount) ?? undefined,
+        replacementTrackingNumber: result?.replacementTrackingNumber || claim.replacementTrackingNumber || undefined,
+        replacementCarrier: result?.replacementCarrier || claim.replacementCarrier || undefined,
         lang
       });
+    }
+
+    // Notify artisan(s) when a replacement is approved so workshop can prepare & dispatch
+    if (action === "REPLACEMENT") {
+      const notifiedArtisanEmails = new Set<string>();
+      for (const repItem of replacementItems) {
+        const artisan = repItem.product?.artisan;
+        const artisanEmail = artisan?.user?.email;
+        if (!artisanEmail || notifiedArtisanEmails.has(artisanEmail)) continue;
+        notifiedArtisanEmails.add(artisanEmail);
+
+        await sendArtisanReplacementNoticeEmail({
+          artisanEmail,
+          artisanName: artisan.studioName || artisan.user?.name || "Artisan",
+          orderId: claim.orderId,
+          claimId: claim.id,
+          productName: repItem.product?.name || "Handcrafted Creation",
+          variantName: repItem.variant?.name || null,
+          quantity: repItem.quantity || 1,
+          personalization: repItem.personalization || null,
+          reason: claim.reason,
+          costBearer: effectiveBearer,
+          stockDeducted: effectiveDeductReplacementStock,
+          shippingFeeDebit: effectiveBearer === "ARTISAN" ? resolvedReplacementShippingFee : 0,
+          adminNote: nextAdminNote || null,
+          lang,
+        }).catch((err) => console.error("[Artisan Replacement Notice Email Error]:", err));
+      }
     }
 
     revalidatePath(`/${lang}/admin`);
@@ -5946,6 +6699,7 @@ export async function resolveRefundRequestAction({
     revalidatePath(`/${lang}/admin/orders`);
     revalidatePath(`/${lang}/profile`);
     revalidatePath(`/${lang}/studio`);
+    revalidatePath(`/${lang}/track`);
     return { success: true, claim: result };
   } catch (error: any) {
     console.error("resolveRefundRequest error:", error);
@@ -6505,7 +7259,7 @@ export async function getPublicTrackedOrder(
       return { success: false, error: "Please enter a valid order number or tracking code." };
     }
 
-    // Try finding by order ID, or tracking number
+    // Try finding by order ID, item tracking number, or replacement tracking number
     const order = await prisma.order.findFirst({
       where: {
         OR: [
@@ -6513,11 +7267,45 @@ export async function getPublicTrackedOrder(
           { id: { equals: cleanQuery, mode: "insensitive" } },
           { trackingNumber: cleanQuery },
           { trackingNumber: { equals: cleanQuery, mode: "insensitive" } },
-          { items: { some: { trackingNumber: cleanQuery } } }
+          { items: { some: { trackingNumber: cleanQuery } } },
+          { refundRequests: { some: { replacementTrackingNumber: cleanQuery } } },
+          { refundRequests: { some: { returnTrackingNumber: cleanQuery } } },
         ]
       },
       include: {
         shippingMethod: true,
+        refundRequests: {
+          where: {
+            OR: [
+              {
+                status: {
+                  in: [
+                    "REPLACEMENT_APPROVED",
+                    "REPLACEMENT_SHIPPED",
+                    "REPLACEMENT_DELIVERED",
+                    "REPLACEMENT_ISSUED",
+                  ],
+                },
+              },
+              { returnTrackingNumber: { not: null } },
+            ],
+          },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            status: true,
+            orderItemId: true,
+            replacementTrackingNumber: true,
+            replacementCarrier: true,
+            replacementShippedAt: true,
+            replacementDeliveredAt: true,
+            returnTrackingNumber: true,
+            returnCarrier: true,
+            returnShippedAt: true,
+            returnReceivedAt: true,
+            createdAt: true,
+          },
+        },
         items: {
           include: {
             variant: true,
@@ -6595,17 +7383,89 @@ export async function getPublicTrackedOrder(
     const estimatedDeliveryMin = new Date(createdAtDate.getTime() + estimatedDaysMin * 24 * 60 * 60 * 1000);
     const estimatedDeliveryMax = new Date(createdAtDate.getTime() + (estimatedDaysMin + 2) * 24 * 60 * 60 * 1000);
 
+    const itemJtCodes = order.items
+      .filter((item) => item.trackingNumber && (!item.carrier || /j&t|jt/i.test(item.carrier)))
+      .map((item) => item.trackingNumber!);
+    const orderJtCodes =
+      order.trackingNumber && (!order.carrier || /j&t|jt/i.test(order.carrier))
+        ? order.trackingNumber.split(",").map((code) => code.trim()).filter(Boolean)
+        : [];
+    const replacementJtCodes = (order.refundRequests || [])
+      .filter((r) => r.replacementTrackingNumber && (!r.replacementCarrier || /j&t|jt/i.test(r.replacementCarrier)))
+      .map((r) => r.replacementTrackingNumber!);
+    const returnJtCodes = (order.refundRequests || [])
+      .filter((r) => r.returnTrackingNumber && (!r.returnCarrier || /j&t|jt/i.test(r.returnCarrier)))
+      .map((r) => r.returnTrackingNumber!);
+    const jtBillCodes = Array.from(new Set(itemJtCodes.length > 0 ? itemJtCodes : orderJtCodes));
+    const forwardAndRepCodes =
+      statusUpper !== "CANCELLED" && statusUpper !== "REFUNDED"
+        ? [...jtBillCodes, ...replacementJtCodes]
+        : [];
+    const allJtCodes = Array.from(new Set([...forwardAndRepCodes, ...returnJtCodes]));
+    const allTraces =
+      allJtCodes.length > 0
+        ? await getJtParcelTraces(allJtCodes).catch(() => [])
+        : [];
+    const courierTraces = allTraces.filter((t) => jtBillCodes.includes(t.billCode));
+    const replacementTraces = allTraces.filter((t) => replacementJtCodes.includes(t.billCode));
+    const returnTraces = allTraces.filter((t) => returnJtCodes.includes(t.billCode));
+
+    let effectiveStatus = statusUpper;
+    if (courierTraces.length > 0 && statusUpper !== "CANCELLED" && statusUpper !== "REFUNDED" && statusUpper !== "DELIVERED") {
+      const hasAllDelivered =
+        courierTraces.length === jtBillCodes.length &&
+        courierTraces.every((t) => t.delivered) &&
+        !order.items.some((item) => !["CANCELLED", "REFUNDED"].includes((item.status || "").toUpperCase()) && !item.trackingNumber);
+      const hasOutForDelivery = courierTraces.some((t) => t.outForDelivery);
+      const hasTransitEvents = courierTraces.some((t) => t.events.length > 0);
+
+      if (hasAllDelivered) {
+        effectiveStatus = "DELIVERED";
+      } else if (hasOutForDelivery && statusUpper !== "OUT_FOR_DELIVERY") {
+        effectiveStatus = "OUT_FOR_DELIVERY";
+      } else if (hasTransitEvents && (statusUpper === "PENDING" || statusUpper === "PROCESSING")) {
+        effectiveStatus = "SHIPPED";
+      }
+    }
+
     return {
       success: true,
       order: {
         id: order.id,
         createdAt: order.createdAt.toISOString(),
         updatedAt: order.updatedAt.toISOString(),
-        status: statusUpper,
+        status: effectiveStatus,
         isGift: order.isGift,
         giftMessage: isVerified ? order.giftMessage : null,
         carrier: order.carrier || (order.trackingNumber ? "J&T Express" : null),
         trackingNumber: order.trackingNumber,
+        courierTraces,
+        replacementTraces,
+        returnTraces,
+        replacements: (order.refundRequests || [])
+          .filter((rep) => !rep.returnTrackingNumber || rep.replacementTrackingNumber || rep.status.startsWith("REPLACEMENT"))
+          .map((rep) => ({
+            id: rep.id,
+            status: rep.status,
+            orderItemId: rep.orderItemId,
+            trackingNumber: rep.replacementTrackingNumber,
+            carrier: rep.replacementCarrier,
+            shippedAt: rep.replacementShippedAt ? rep.replacementShippedAt.toISOString() : null,
+            deliveredAt: rep.replacementDeliveredAt ? rep.replacementDeliveredAt.toISOString() : null,
+            createdAt: rep.createdAt.toISOString(),
+          })),
+        returns: (order.refundRequests || [])
+          .filter((rep) => Boolean(rep.returnTrackingNumber))
+          .map((rep) => ({
+            id: rep.id,
+            status: rep.status,
+            orderItemId: rep.orderItemId,
+            trackingNumber: rep.returnTrackingNumber,
+            carrier: rep.returnCarrier,
+            shippedAt: rep.returnShippedAt ? rep.returnShippedAt.toISOString() : null,
+            receivedAt: rep.returnReceivedAt ? rep.returnReceivedAt.toISOString() : null,
+            createdAt: rep.createdAt.toISOString(),
+          })),
         shippingMethodName: order.shippingMethod?.name || "Doorstep Courier Delivery",
         shippingCost: hideGiftPricing ? null : order.shippingCost,
         totalAmount: hideGiftPricing ? null : order.totalAmount,

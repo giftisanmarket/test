@@ -235,10 +235,14 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
                       <span className={cn(
                         "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border shrink-0",
                         order.status === "PENDING" ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
+                        order.status === "PROCESSING" ? "bg-purple-50 text-purple-600 border-purple-200" :
                         order.status === "SHIPPED" ? "bg-blue-50 text-blue-600 border-blue-200" :
+                        order.status === "OUT_FOR_DELIVERY" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                        order.status === "CANCELLED" ? "bg-red-50 text-red-600 border-red-200" :
+                        order.status === "REFUNDED" ? "bg-rose-50 text-rose-700 border-rose-200" :
                         "bg-green-50 text-green-700 border-green-200"
                       )}>
-                        {order.status}
+                        {order.status.replace(/_/g, " ")}
                       </span>
                     </div>
 
@@ -284,10 +288,14 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
                           <span className={cn(
                             "px-2.5 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest border shrink-0",
                             order.status === "PENDING" ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
+                            order.status === "PROCESSING" ? "bg-purple-50 text-purple-600 border-purple-200" :
                             order.status === "SHIPPED" ? "bg-blue-50 text-blue-600 border-blue-200" :
+                            order.status === "OUT_FOR_DELIVERY" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                            order.status === "CANCELLED" ? "bg-red-50 text-red-600 border-red-200" :
+                            order.status === "REFUNDED" ? "bg-rose-50 text-rose-700 border-rose-200" :
                             "bg-green-50 text-green-700 border-green-200"
                           )}>
-                            {order.status}
+                            {order.status.replace(/_/g, " ")}
                           </span>
                         </td>
                       </tr>

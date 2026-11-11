@@ -128,7 +128,7 @@ async function runJointDebugging() {
       expressType: "EZ",
       orderType: "2",
       serviceType: "01",
-      deliveryType: "03",
+      deliveryType: "04",
       payType: "PP_PM",
       goodsType: "ITN1",
       weight: 0.5,

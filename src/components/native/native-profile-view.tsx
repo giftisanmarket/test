@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { triggerHaptic, performSignOut } from "@/lib/native";
 import { BespokeImage } from "@/components/bespoke-image";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { evaluateRefundEligibility, getRefundStatusLabel } from "@/lib/refund-policy";
 import toast from "react-hot-toast";
 
 interface NativeProfileViewProps {
@@ -48,20 +49,23 @@ interface NativeProfileViewProps {
   onRetryPayment?: (orderId: string) => Promise<void>;
   onCancelOrder?: (orderId: string) => Promise<void>;
   onOpenRefundModal?: (order: any, item?: any) => void;
+  onViewClaim?: (claim: any) => void;
   retryingOrderId?: string | null;
   cancellingOrderId?: string | null;
 }
 
-const getTrackingUrl = (carrier?: string, trackingNumber?: string) => {
-  if (!carrier || !trackingNumber) return null;
-  const name = carrier.toLowerCase();
-  if (name.includes("aramex")) {
-    return `https://www.aramex.com/eg/en/track/results?shipmentNumber=${trackingNumber}`;
-  }
+const getTrackingDestination = (carrier?: string, trackingNumber?: string, orderId?: string, lang: string = "en") => {
+  const name = (carrier || "").toLowerCase();
   if (name.includes("j&t") || name.includes("jt")) {
-    return `https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(trackingNumber)}`;
+    return orderId ? { url: `/${lang}/track/${orderId}`, external: false } : null;
   }
-  return `https://www.google.com/search?q=${encodeURIComponent(carrier + " " + trackingNumber + " tracking")}`;
+  if (!carrier || !trackingNumber || trackingNumber.includes(",")) {
+    return orderId ? { url: `/${lang}/track/${orderId}`, external: false } : null;
+  }
+  if (name.includes("aramex")) {
+    return { url: `https://www.aramex.com/eg/en/track/results?shipmentNumber=${encodeURIComponent(trackingNumber)}`, external: true };
+  }
+  return { url: `https://www.google.com/search?q=${encodeURIComponent(carrier + " " + trackingNumber + " tracking")}`, external: true };
 };
 
 export function NativeProfileView({
@@ -73,6 +77,7 @@ export function NativeProfileView({
   onRetryPayment,
   onCancelOrder,
   onOpenRefundModal,
+  onViewClaim,
   retryingOrderId = null,
   cancellingOrderId = null,
 }: NativeProfileViewProps) {
@@ -317,7 +322,7 @@ export function NativeProfileView({
                 {orders.map((order) => {
                   const badge = getStatusBadge(order.status);
                   const StatusIcon = badge.icon;
-                  const trackingUrl = getTrackingUrl(order.carrier, order.trackingNumber);
+                  const trackingDest = getTrackingDestination(order.carrier, order.trackingNumber, order.id, lang);
                   const dateStr = new Date(order.createdAt).toLocaleDateString(
                     isArabic ? "ar-EG" : "en-US",
                     { month: "short", day: "numeric", year: "numeric" }
@@ -388,6 +393,19 @@ export function NativeProfileView({
                                     "{item.personalization}"
                                   </p>
                                 )}
+                                {item.trackingNumber && !(order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY") && (() => {
+                                  const itemDest = getTrackingDestination(item.carrier, item.trackingNumber, order.id, lang);
+                                  if (!itemDest) return null;
+                                  return itemDest.external ? (
+                                    <a href={itemDest.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-accent underline">
+                                      {isArabic ? "تتبع الشحنة" : "Track parcel"}
+                                    </a>
+                                  ) : (
+                                    <Link href={itemDest.url} className="text-[10px] font-bold text-accent underline">
+                                      {isArabic ? "تتبع مباشر" : "Live track"}
+                                    </Link>
+                                  );
+                                })()}
                               </div>
                             </div>
                           );
@@ -433,44 +451,97 @@ export function NativeProfileView({
                           )}
 
                           {/* Tracking button */}
-                          {(order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY") && trackingUrl && (
-                            <a
-                              href={trackingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="h-7 px-3 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-2xs flex items-center gap-1 active:scale-95 transition-transform"
-                            >
-                              <Truck className="w-3 h-3" />
-                              <span>{isArabic ? "تتبع الشحنة" : "Track"}</span>
-                              <ExternalLink className="w-2.5 h-2.5" />
-                            </a>
+                          {(order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY") && trackingDest && (
+                            trackingDest.external ? (
+                              <a
+                                href={trackingDest.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="h-7 px-3 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-2xs flex items-center gap-1 active:scale-95 transition-transform"
+                              >
+                                <Truck className="w-3 h-3" />
+                                <span>{isArabic ? "تتبع الشحنة" : "Track"}</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            ) : (
+                              <Link
+                                href={trackingDest.url}
+                                className="h-7 px-3 rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-2xs flex items-center gap-1 active:scale-95 transition-transform"
+                              >
+                                <Truck className="w-3 h-3" />
+                                <span>{isArabic ? "تتبع مباشر" : "Live Track"}</span>
+                              </Link>
+                            )
                           )}
 
                           {/* Help / Dispute button */}
-                          {order.status !== "PENDING" && order.status !== "CANCELLED" && onOpenRefundModal && (
+                          {order.status !== "PENDING" && order.status !== "CANCELLED" && order.status !== "FAILED" && onOpenRefundModal && (
                             (() => {
-                              const isDelivered = order.status === "DELIVERED";
-                              const deliveryRefTime = new Date(order.updatedAt || order.createdAt).getTime();
-                              const isExpired = isDelivered && (Date.now() - deliveryRefTime > 14 * 24 * 60 * 60 * 1000);
-
-                              if (isExpired) {
-                                return (
-                                  <span className="h-7 px-2.5 rounded-full bg-charcoal/5 text-charcoal/40 text-[9px] font-bold border border-primary/5 flex items-center gap-1">
-                                    <Clock className="w-2.5 h-2.5" />
-                                    <span>{isArabic ? "انتهت فترة الاسترجاع" : "Window closed"}</span>
-                                  </span>
-                                );
-                              }
+                              const singleItem = order.items?.length === 1 ? order.items[0] : undefined;
+                              const eligibility = evaluateRefundEligibility({
+                                order,
+                                item: singleItem,
+                                lang: isArabic ? "ar" : "en",
+                              });
+                              const displayClaim = eligibility.latestClaim;
 
                               return (
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenRefundModal(order)}
-                                  className="h-7 px-2.5 rounded-full bg-cream text-primary/70 text-[10px] font-bold border border-primary/10 flex items-center gap-1 active:scale-95 transition-transform"
-                                >
-                                  <HelpCircle className="w-3 h-3" />
-                                  <span>{isArabic ? "مساعدة" : "Help"}</span>
-                                </button>
+                                <>
+                                  {displayClaim && (() => {
+                                    const claimStatus = displayClaim.status;
+                                    const pillClass =
+                                      ["APPROVED", "REFUND_APPROVED", "REFUND_PROCESSING", "REFUNDED", "REPLACEMENT_DELIVERED"].includes(claimStatus)
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        : ["REPLACEMENT_SHIPPED", "REPLACEMENT_ISSUED"].includes(claimStatus)
+                                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                                          : claimStatus === "REPLACEMENT_APPROVED"
+                                            ? "bg-sky-50 text-sky-700 border-sky-200"
+                                            : claimStatus === "REJECTED"
+                                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                                              : "bg-amber-50 text-amber-700 border-amber-200";
+                                    const label = getRefundStatusLabel(claimStatus, isArabic);
+                                    if (onViewClaim) {
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => onViewClaim(displayClaim)}
+                                          className={cn("h-7 px-2.5 rounded-full text-[9px] font-bold border inline-flex items-center gap-1 whitespace-nowrap shrink-0 active:scale-95 transition-transform", pillClass)}
+                                        >
+                                          <AlertCircle className="w-2.5 h-2.5 shrink-0" />
+                                          <span>{label}</span>
+                                        </button>
+                                      );
+                                    }
+                                    return (
+                                      <span className={cn("h-7 px-2.5 rounded-full text-[9px] font-bold border inline-flex items-center gap-1 whitespace-nowrap shrink-0", pillClass)}>
+                                        <AlertCircle className="w-2.5 h-2.5 shrink-0" />
+                                        <span>{label}</span>
+                                      </span>
+                                    );
+                                  })()}
+
+                                  {!eligibility.existingClaim && (
+                                    eligibility.rejectionCode === "WINDOW_EXPIRED" ? (
+                                      <span className="h-7 px-2.5 rounded-full bg-charcoal/5 text-charcoal/40 text-[9px] font-bold border border-primary/5 flex items-center gap-1">
+                                        <Clock className="w-2.5 h-2.5" />
+                                        <span>{isArabic ? "انتهت فترة الاسترجاع" : "Window closed"}</span>
+                                      </span>
+                                    ) : eligibility.eligible ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => onOpenRefundModal(order, singleItem)}
+                                        className="h-7 px-2.5 rounded-full bg-cream text-primary/70 text-[10px] font-bold border border-primary/10 flex items-center gap-1 active:scale-95 transition-transform"
+                                      >
+                                        <HelpCircle className="w-3 h-3" />
+                                        <span>
+                                          {eligibility.eligibleStage === "TRANSIT_DELAYED"
+                                            ? (isArabic ? "مشكلة توصيل" : "Delivery Issue")
+                                            : (isArabic ? "مساعدة" : "Help")}
+                                        </span>
+                                      </button>
+                                    ) : null
+                                  )}
+                                </>
                               );
                             })()
                           )}

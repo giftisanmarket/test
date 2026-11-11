@@ -64,7 +64,7 @@ export interface CreateJtDeliveryParams {
   expressType?: string; // "EZ": Standard, "DR": Return, "EX": Exchange
   orderType?: string; // "1" or "2"
   serviceType?: string; // "01": Door-to-door pickup, "02": Drop-off
-  deliveryType?: string; // "03": Home delivery, "04": Station pickup
+  deliveryType?: string; // "04": Standard delivery ("01"/"02"/"04" per J&T Egypt contract)
   payType?: string; // "PP_PM" (Monthly), "PP_CASH" (Cash), "CC_CASH" (Collect)
   goodsType?: string; // "ITN1" or "bm000006"
   weight?: number; // Weight in KG
@@ -74,8 +74,10 @@ export interface CreateJtDeliveryParams {
   sender?: JtParty;
   pickupAddress?: JtAddress;
   notes?: string;
+  parcelCount?: number; // Number of physical parcels/boxes per waybill (default 1)
   itemsCount?: number;
   description?: string;
+  exdrDescription?: string; // Required by J&T addOrder when expressType is "DR" (Return) or "EX" (Exchange)
   items?: JtOrderItem[];
 }
 
@@ -115,8 +117,12 @@ export function generateBizDigest(
   return md5Base64(`${customerCode}${hashedPwd}${privateKey}`);
 }
 
+export function isJtConfigured(): boolean {
+  return Boolean(JT_API_ACCOUNT && JT_PRIVATE_KEY && JT_CUSTOMER_CODE);
+}
+
 function assertJtConfigured() {
-  if (!JT_API_ACCOUNT || !JT_PRIVATE_KEY || !JT_CUSTOMER_CODE) {
+  if (!isJtConfigured()) {
     throw new Error(
       "J&T Express credentials (JT_API_ACCOUNT, JT_PRIVATE_KEY, JT_CUSTOMER_CODE) are not configured in environment variables."
     );
@@ -138,17 +144,25 @@ export async function postJtRequest(endpointPath: string, bizPayload: Record<str
 
   const body = new URLSearchParams({ bizContent: bizContentJson });
 
-  const response = await fetch(`${JT_BASE_URL}${endpointPath}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-      apiAccount: JT_API_ACCOUNT,
-      digest: headerDigest,
-      timestamp,
-    },
-    body: body.toString(),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  let response: Response;
+  try {
+    response = await fetch(`${JT_BASE_URL}${endpointPath}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+        apiAccount: JT_API_ACCOUNT,
+        digest: headerDigest,
+        timestamp,
+      },
+      body: body.toString(),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await response.json().catch(() => null);
 
@@ -156,9 +170,9 @@ export async function postJtRequest(endpointPath: string, bizPayload: Record<str
     console.error(`[J&T Express API Error - ${endpointPath}]:`, data);
     throw new Error(
       data?.msg ||
-        data?.message ||
-        data?.error ||
-        `J&T Express API error (${response.status})`
+      data?.message ||
+      data?.error ||
+      `J&T Express API error (${response.status})`
     );
   }
 
@@ -222,45 +236,61 @@ export async function createJtOrder(params: CreateJtDeliveryParams) {
     .join(", ");
 
   const codAmount = Math.max(0, Number(params.cod || 0));
-  const totalQuantity = Math.max(1, Number(params.itemsCount || 1));
+  // J&T addOrder expects totalQuantity to be the physical parcel/box count per waybill (1 parcel per booking),
+  // whereas retail unit counts for each product live in items[].number.
+  const totalQuantity = Math.max(1, Math.floor(Number(params.parcelCount || 1)));
+  const fallbackItemCount = Math.max(1, Math.floor(Number(params.itemsCount || 1)));
   const itemDesc =
     (params.description || "Giftisan Handmade Items").slice(0, 100);
 
   const itemsList =
     params.items && params.items.length > 0
       ? params.items.map((i) => ({
-          itemName: i.itemName.slice(0, 80),
-          number: i.number,
-          itemType: i.itemType || "ITN1",
-          priceCurrency: i.priceCurrency || "EGP",
-          itemValue: String(i.itemValue ?? 0),
-          desc: (i.desc || i.itemName).slice(0, 100),
-        }))
+        itemName: i.itemName.slice(0, 80),
+        number: Math.max(1, Math.floor(Number(i.number || 1))),
+        itemType: i.itemType || "ITN1",
+        priceCurrency: i.priceCurrency || "EGP",
+        itemValue: String(i.itemValue ?? 0),
+        desc: (i.desc || i.itemName).slice(0, 100),
+      }))
       : [
-          {
-            itemName: itemDesc,
-            number: totalQuantity,
-            itemType: "ITN1",
-            priceCurrency: "EGP",
-            itemValue: String(codAmount),
-            desc: itemDesc,
-          },
-        ];
+        {
+          itemName: itemDesc,
+          number: fallbackItemCount,
+          itemType: "ITN1",
+          priceCurrency: "EGP",
+          itemValue: String(codAmount),
+          desc: itemDesc,
+        },
+      ];
+
+  const expressType = params.expressType || "EZ";
+  const resolvedExdrDescription = (
+    params.exdrDescription ||
+    params.description ||
+    itemDesc ||
+    "Giftisan Return/Exchange"
+  )
+    .trim()
+    .slice(0, 500);
 
   const bizPayload: Record<string, any> = {
     operateType: 1,
     txlogisticId: params.txlogisticId,
-    expressType: params.expressType || "EZ",
+    expressType,
     orderType: params.orderType || "2",
     serviceType: params.serviceType || "01",
-    deliveryType: params.deliveryType || "04",
-    payType: params.payType || "PP_PM",
+    deliveryType: params.deliveryType || process.env.JT_DELIVERY_TYPE || "04",
+    payType: params.payType || (codAmount > 0 ? "CC_CASH" : "PP_PM"),
     goodsType: params.goodsType || "ITN1",
     weight: Number(params.weight || 0.5),
     totalQuantity,
     priceCurrency: "EGP",
     itemsValue: codAmount,
     remark: (params.notes || "").slice(0, 200),
+    ...(params.exdrDescription || expressType === "DR" || expressType === "EX"
+      ? { exdrDescription: resolvedExdrDescription || "Giftisan Return/Exchange" }
+      : {}),
     sender: {
       name: senderFullName,
       mobile: senderPhone,
@@ -419,13 +449,156 @@ export async function getJtThreeSegmentCode(params: {
 export function isJtStatusDelivered(statusOrScanType: any): boolean {
   if (!statusOrScanType) return false;
   const s = String(statusOrScanType).toLowerCase().trim();
+  if (!s) return false;
+
+  // Exclude in-transit, out-for-delivery, and failed/undelivered scan descriptions
+  // before checking delivery terms so "Out for delivery" never marks an order DELIVERED.
+  if (
+    s.includes("out for delivery") ||
+    s.includes("not delivered") ||
+    s.includes("undelivered") ||
+    s.includes("un-delivered") ||
+    s.includes("unable to deliver") ||
+    s.includes("delivery attempt") ||
+    s.includes("delivery failed") ||
+    s.includes("failed delivery") ||
+    s.includes("delivery station") ||
+    s.includes("delivery center") ||
+    s.includes("delivery hub") ||
+    s.includes("delivery branch") ||
+    s.includes("ready for delivery") ||
+    s.includes("to be delivered") ||
+    s.includes("خرج للتوصيل") ||
+    s.includes("جاري التوصيل") ||
+    s.includes("لم يتم التوصيل") ||
+    s.includes("فشل التوصيل") ||
+    s.includes("تعذر التوصيل")
+  ) {
+    return false;
+  }
+
   return (
     s === "delivered" ||
-    s.includes("deliver") ||
-    s.includes("sign") ||
     s === "100" ||
+    /\bdelivered\b/.test(s) ||
+    /(?:^|\b)(?:signed|sign)(?:\b|$)/.test(s) ||
+    s.includes("签收") ||
     s.includes("تم التوصيل") ||
     s.includes("تم التسليم")
+  );
+}
+
+/**
+ * Helper to check if a J&T scan status or trace response indicates out-for-delivery
+ */
+export function isJtStatusOutForDelivery(statusOrScanType: any): boolean {
+  if (!statusOrScanType || isJtStatusDelivered(statusOrScanType)) return false;
+  const s = String(statusOrScanType).toLowerCase().trim();
+  return (
+    s.includes("dispatch") ||
+    s.includes("out for delivery") ||
+    s.includes("خرج للتوصيل") ||
+    s.includes("جاري التوصيل") ||
+    s.includes("مع المندوب") ||
+    s.includes("派件")
+  );
+}
+
+export interface JtTraceEvent {
+  time: string;
+  scanType: string;
+  desc: string;
+  location: string;
+}
+
+export interface JtParcelTrace {
+  billCode: string;
+  status: "DELIVERED" | "OUT_FOR_DELIVERY" | "SHIPPED";
+  delivered: boolean;
+  outForDelivery: boolean;
+  latestScanType: string;
+  latestDesc: string;
+  latestTime: string;
+  events: JtTraceEvent[];
+}
+
+export function normalizeJtTraceResponse(billCode: string, traceRes: any): JtParcelTrace {
+  const traceData = Array.isArray(traceRes?.data)
+    ? traceRes.data.find((entry: any) => entry?.billCode === billCode) || traceRes.data[0]
+    : traceRes?.data;
+  const rawDetails: any[] = Array.isArray(traceData?.details)
+    ? traceData.details
+    : Array.isArray(traceRes?.details)
+      ? traceRes.details
+      : [];
+
+  const events: JtTraceEvent[] = rawDetails.map((detail: any) => ({
+    time: String(detail?.scanTime || detail?.time || ""),
+    scanType: String(detail?.scanType || detail?.scanTypeName || detail?.status || ""),
+    desc: String(detail?.desc || detail?.scandesc || detail?.scanTypeName || detail?.scanType || ""),
+    location: [detail?.scanNetworkCity, detail?.scanNetworkProvince, detail?.scanNetworkName]
+      .map((part: any) => (typeof part === "string" ? part.trim() : ""))
+      .filter((part: string, idx: number, arr: string[]) => part.length > 0 && arr.indexOf(part) === idx)
+      .join(" - "),
+  }));
+
+  if (events.length > 1) {
+    const firstMs = Date.parse(events[0].time);
+    const lastMs = Date.parse(events[events.length - 1].time);
+    if (!Number.isNaN(firstMs) && !Number.isNaN(lastMs) && firstMs < lastMs) {
+      events.reverse();
+    }
+  }
+
+  const latest = events[0];
+  const delivered =
+    rawDetails.some((detail: any) =>
+      [detail?.scanType, detail?.status, detail?.desc, detail?.scandesc, detail?.scanTypeName].some(isJtStatusDelivered)
+    );
+  const outForDelivery =
+    !delivered &&
+    Boolean(
+      latest && [latest.scanType, latest.desc].some(isJtStatusOutForDelivery)
+    );
+
+  return {
+    billCode,
+    status: delivered ? "DELIVERED" : outForDelivery ? "OUT_FOR_DELIVERY" : "SHIPPED",
+    delivered,
+    outForDelivery,
+    latestScanType: latest?.scanType || "",
+    latestDesc: latest?.desc || "",
+    latestTime: latest?.time || "",
+    events,
+  };
+}
+
+export async function getJtParcelTraces(billCodes: string[]): Promise<JtParcelTrace[]> {
+  const uniqueCodes = Array.from(new Set(billCodes.map((code) => code.trim()).filter(Boolean)));
+  if (uniqueCodes.length === 0 || !isJtConfigured()) {
+    return [];
+  }
+
+  const settled = await Promise.allSettled(
+    uniqueCodes.map(async (billCode) => {
+      const traceRes = await getJtTracking(billCode);
+      return normalizeJtTraceResponse(billCode, traceRes);
+    })
+  );
+
+  return settled.map((result, idx) =>
+    result.status === "fulfilled"
+      ? result.value
+      : {
+          billCode: uniqueCodes[idx],
+          status: "SHIPPED" as const,
+          delivered: false,
+          outForDelivery: false,
+          latestScanType: "",
+          latestDesc: "",
+          latestTime: "",
+          events: [],
+        }
   );
 }
 

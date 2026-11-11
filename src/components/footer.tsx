@@ -283,7 +283,7 @@ export function Footer({ dict }: FooterProps) {
                   </li>
                   <li>
                     <Link href="/refund" className="inline-block py-0.5 hover:text-primary hover:underline transition-all">
-                      {dict?.common?.refund || (isArabic ? "سياسة الاسترجاع والاستبدال" : "Refund & Return Policy")}
+                      {dict?.common?.refund || (isArabic ? "سياسة الاسترجاع" : "Refund Policy")}
                     </Link>
                   </li>
                   <li>

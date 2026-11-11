@@ -30,11 +30,31 @@ export default async function AdminRefundsPage({
 
   const claims = await prisma.refundRequest.findMany({
     include: {
+      events: { orderBy: { createdAt: "asc" } },
       user: true,
       order: {
         include: {
+          coupon: true,
+          refundRequests: {
+            select: {
+              id: true,
+              status: true,
+              refundAmount: true,
+            },
+          },
+          transactions: {
+            where: { type: "SALE" },
+            select: {
+              id: true,
+              artisanId: true,
+              amount: true,
+              status: true,
+              createdAt: true,
+            },
+          },
           items: {
             include: {
+              variant: true,
               product: {
                 include: {
                   artisan: true
@@ -46,6 +66,7 @@ export default async function AdminRefundsPage({
       },
       orderItem: {
         include: {
+          variant: true,
           product: {
             include: {
               artisan: true

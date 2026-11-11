@@ -101,6 +101,7 @@ export async function POST(req: Request) {
           where: { id: item.id },
           data: {
             status: "DELIVERED",
+            deliveredAt: item.deliveredAt || new Date(),
             carrier: carrier || item.carrier || "Carrier Link",
           },
         });

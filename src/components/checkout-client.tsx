@@ -482,7 +482,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
 
               {/* Promo Code Input on Mobile */}
               {ENABLE_COUPONS && (
-                <div className="pt-3 border-t border-primary/10 flex gap-2">
+                <div className="pt-3 pb-3 border-t border-primary/10 flex gap-2">
                   <input
                     type="text"
                     placeholder={promoPlaceholder}
@@ -999,7 +999,7 @@ export function CheckoutClient({ dict }: { dict: any }) {
 
               {/* Promo Coupon Module */}
               {ENABLE_COUPONS && (
-                <div className="pt-5 pb-1 border-t border-primary/10 mt-5">
+                <div className="pt-5 pb-4 border-t border-primary/10 mt-5">
                   <div className="flex gap-2">
                     <input
                       type="text"

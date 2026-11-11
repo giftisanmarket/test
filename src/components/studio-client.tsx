@@ -48,12 +48,32 @@ import {
   Check,
   ExternalLink,
   ShieldAlert,
-  Loader2
+  Loader2,
+  RotateCcw,
+  RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo, useRef } from "react";
-import { updateOrderItemStatus, deleteProduct, bulkDeleteProducts, bulkUpdateProductStatus, subscribeToNewsletter, updateOrderItemNotes, updateArtisanStatus, toggleArtisanVerification } from "@/lib/actions";
+import {
+  updateOrderItemStatus,
+  deleteProduct,
+  bulkDeleteProducts,
+  bulkUpdateProductStatus,
+  subscribeToNewsletter,
+  updateOrderItemNotes,
+  updateArtisanStatus,
+  toggleArtisanVerification,
+  dispatchReplacementShipmentAction,
+  getJtWaybillAction,
+  syncReplacementTrackingAction,
+  syncReturnTrackingAction,
+} from "@/lib/actions";
+import {
+  getRefundStatusLabel,
+  isReplacementPreparingStatus,
+  isReplacementShippedStatus,
+} from "@/lib/refund-policy";
 import { toast } from "react-hot-toast";
 import dynamic from "next/dynamic";
 const EditProductModal = dynamic(() => import("@/components/edit-product-modal").then(mod => mod.EditProductModal), {
@@ -183,6 +203,145 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isSkipping, setIsSkipping] = useState<string | null>(null);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [isReplacementBusy, setIsReplacementBusy] = useState(false);
+
+  const isReplacementStatus = (status?: string | null) =>
+    isReplacementPreparingStatus(status) ||
+    isReplacementShippedStatus(status) ||
+    status === "REPLACEMENT_DELIVERED" ||
+    status === "REPLACEMENT_ISSUED";
+
+  const getItemClaims = (item: any): any[] => [
+    ...(Array.isArray(item?.refundRequests) ? item.refundRequests : []),
+    ...(Array.isArray(item?.order?.refundRequests) ? item.order.refundRequests : []),
+  ];
+
+  const getItemReplacementClaim = (item: any) =>
+    getItemClaims(item).find((claim) => isReplacementStatus(claim?.status)) || null;
+
+  const getItemReturnPickupClaim = (item: any) =>
+    getItemClaims(item).find((claim) => Boolean(claim?.returnTrackingNumber)) || null;
+
+  const updateSelectedItemClaim = (itemId: string, claimId: string, patchedClaim: any) => {
+    setSelectedItem((prev: any) => {
+      if (!prev || prev.id !== itemId) return prev;
+      const patchList = (list: any[] | undefined) =>
+        list ? list.map((c: any) => (c.id === claimId ? { ...c, ...patchedClaim } : c)) : list;
+      return {
+        ...prev,
+        refundRequests: patchList(prev.refundRequests),
+        order: prev.order
+          ? { ...prev.order, refundRequests: patchList(prev.order.refundRequests) }
+          : prev.order,
+      };
+    });
+  };
+
+  const handleDispatchReplacement = async (item: any, claim: any) => {
+    setIsReplacementBusy(true);
+    try {
+      const res = await dispatchReplacementShipmentAction({
+        claimId: claim.id,
+        mode: "JT_EXPRESS",
+        lang: lang === "ar" ? "ar" : "en",
+      });
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      if (res.claim) {
+        updateSelectedItemClaim(item.id, claim.id, res.claim);
+      }
+      toast.success(
+        lang === "ar"
+          ? `تم حجز شحنة البديل بنجاح (${res.trackingNumber})`
+          : `Replacement shipment booked (${res.trackingNumber})`
+      );
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to dispatch replacement");
+    } finally {
+      setIsReplacementBusy(false);
+    }
+  };
+
+  const handleSyncReplacement = async (item: any, claim: any) => {
+    setIsReplacementBusy(true);
+    try {
+      const res = await syncReplacementTrackingAction(claim.id, lang === "ar" ? "ar" : "en");
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      if (res.claim) {
+        updateSelectedItemClaim(item.id, claim.id, res.claim);
+      }
+      toast.success(
+        res.delivered
+          ? lang === "ar"
+            ? "أكدت شركة الشحن تسليم البديل!"
+            : "Courier confirmed replacement delivered!"
+          : lang === "ar"
+            ? "تم تحديث حالة تتبع البديل"
+            : "Replacement tracking updated"
+      );
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sync tracking");
+    } finally {
+      setIsReplacementBusy(false);
+    }
+  };
+
+  const handleSyncReturn = async (item: any, claim: any) => {
+    setIsReplacementBusy(true);
+    try {
+      const res = await syncReturnTrackingAction(claim.id, lang === "ar" ? "ar" : "en");
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      if (res.claim) {
+        updateSelectedItemClaim(item.id, claim.id, res.claim);
+      }
+      toast.success(
+        res.delivered
+          ? lang === "ar"
+            ? "أكدت شركة الشحن استلام المرتجع في ورشتك!"
+            : "Courier confirmed return delivered to your workshop!"
+          : lang === "ar"
+            ? "تم تحديث حالة تتبع المرتجع"
+            : "Return pickup tracking updated"
+      );
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sync return tracking");
+    } finally {
+      setIsReplacementBusy(false);
+    }
+  };
+
+  const handlePrintReplacementWaybill = async (billCode: string) => {
+    setIsReplacementBusy(true);
+    try {
+      const res = await getJtWaybillAction(billCode);
+      if (res.error || !res.data) {
+        toast.error(res.error || (lang === "ar" ? "تعذر تحميل بوليصة J&T" : "Could not load J&T waybill"));
+        return;
+      }
+      const payload = res.data?.data;
+      const pdfUrl = typeof payload === "string" ? payload : payload?.url || payload?.pdfUrl;
+      if (pdfUrl && /^https?:\/\//i.test(pdfUrl)) {
+        window.open(pdfUrl, "_blank", "noopener,noreferrer");
+      } else {
+        toast.success(lang === "ar" ? `تم استلام بيانات البوليصة (${billCode})` : `Waybill loaded (${billCode})`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Waybill error");
+    } finally {
+      setIsReplacementBusy(false);
+    }
+  };
   const [bulkProductsToDelete, setBulkProductsToDelete] = useState<string[] | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [selectedProductForEdit, setSelectedProductForEdit] = useState<any | null>(null);
@@ -745,7 +904,19 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                   [
                     { id: "overview", label: dict.studio.overview, icon: BarChart3 },
                     { id: "inventory", label: dict.studio.inventory, icon: ShoppingBag },
-                    { id: "sales", label: dict.studio.sales, icon: Package, badge: sales.filter((s: any) => s.status === "PENDING" || s.status === "PROCESSING").length },
+                    {
+                      id: "sales",
+                      label: dict.studio.sales,
+                      icon: Package,
+                      badge: sales.filter(
+                        (s: any) =>
+                          s.status === "PENDING" ||
+                          s.status === "PROCESSING" ||
+                          isReplacementPreparingStatus(getItemReplacementClaim(s)?.status) ||
+                          (Boolean(getItemReturnPickupClaim(s)?.returnTrackingNumber) &&
+                            !getItemReturnPickupClaim(s)?.returnReceivedAt)
+                      ).length,
+                    },
                     { id: "growth", label: dict.studio.growth, icon: TrendingUp },
                     { id: "logistics", label: dict.studio.logistics, icon: CreditCard },
                     { id: "reviews", label: dict.studio.community, icon: Star },
@@ -965,7 +1136,7 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                           </div>
                         </div>
 
-                        {selectedItem.status === "SHIPPED" && selectedItem.trackingNumber && (
+                        {(selectedItem.status === "SHIPPED" || selectedItem.status === "OUT_FOR_DELIVERY") && selectedItem.trackingNumber && (
                           <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200/60 text-blue-900">
                             <p className="text-[8px] font-black uppercase tracking-widest text-blue-500 mb-0.5">{dict.studio.shipment_tracking}</p>
                             <p className="text-xs font-bold flex items-center gap-1.5">
@@ -1052,6 +1223,267 @@ export function StudioClient({ artisan, sales, reviews, coupons, isAdminPreview 
                     )}
 
                     {/* Artisan Internal Notes (Private) */}
+                    {/* Replacement Fulfillment Section (when active claim requires replacement) */}
+                    {(() => {
+                      const activeRepl = getItemReplacementClaim(selectedItem);
+                      if (!activeRepl) return null;
+                      const isPreparing = isReplacementPreparingStatus(activeRepl.status);
+                      const isShipped = isReplacementShippedStatus(activeRepl.status);
+                      return (
+                        <div className={cn(
+                          "p-3.5 sm:p-5 rounded-2xl border space-y-3",
+                          isPreparing
+                            ? "bg-sky-50/70 border-sky-200"
+                            : isShipped
+                              ? "bg-blue-50/70 border-blue-200"
+                              : "bg-emerald-50/70 border-emerald-200"
+                        )}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-black text-xs text-primary">
+                              <RotateCcw className="w-4 h-4 text-blue-600 shrink-0" />
+                              <span>
+                                {lang === "ar" ? "إدارة شحنة الاستبدال" : "Replacement Fulfillment"}
+                              </span>
+                            </div>
+                            <span className={cn(
+                              "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                              isPreparing
+                                ? "bg-sky-100 text-sky-800 border-sky-300"
+                                : isShipped
+                                  ? "bg-blue-100 text-blue-800 border-blue-300"
+                                  : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                            )}>
+                              {getRefundStatusLabel(activeRepl.status, lang === "ar")}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-primary/80 space-y-1.5">
+                            {activeRepl.details && (
+                              <p className="bg-white/80 p-2.5 rounded-xl border border-primary/10 leading-relaxed">
+                                <span className="font-bold block text-[10px] uppercase tracking-wider text-primary/50 mb-0.5">
+                                  {lang === "ar" ? "تفاصيل بلاغ المشتري:" : "Buyer Claim Details:"}
+                                </span>
+                                {activeRepl.details}
+                              </p>
+                            )}
+                            {activeRepl.adminNote && (
+                              <p className="bg-white/80 p-2.5 rounded-xl border border-primary/10 leading-relaxed">
+                                <span className="font-bold block text-[10px] uppercase tracking-wider text-primary/50 mb-0.5">
+                                  {lang === "ar" ? "تعليمات الإدارة:" : "Admin Instructions:"}
+                                </span>
+                                {activeRepl.adminNote}
+                              </p>
+                            )}
+                            <p className="text-[11px] text-primary/70">
+                              {activeRepl.costBearer === "PLATFORM"
+                                ? lang === "ar"
+                                  ? "مسؤولية الشحن: على حساب المنصة · يظل الضمان معلقاً حتى تأكيد التسليم."
+                                  : "Cost bearer: Platform · Sale escrow stays held until replacement delivery."
+                                : lang === "ar"
+                                  ? "مسؤولية الاستبدال: الحرفي · يظل الضمان معلقاً حتى تأكيد تسليم البديل."
+                                  : "Responsibility: Artisan · Sale escrow remains paused until replacement delivery."}
+                              {activeRepl.replacementStockDeducted
+                                ? lang === "ar"
+                                  ? " · تم خصم قطعة من المخزون."
+                                  : " · 1 unit already deducted from inventory."
+                                : ""}
+                            </p>
+                          </div>
+
+                          {Array.isArray(activeRepl.evidence) && activeRepl.evidence.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {activeRepl.evidence.map((imgUrl: string, idx: number) => (
+                                <a
+                                  key={idx}
+                                  href={imgUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1 rounded-lg bg-white border border-primary/15 text-[11px] font-bold text-primary hover:bg-cream inline-flex items-center gap-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  <span>
+                                    {lang === "ar" ? `صورة الدليل ${idx + 1}` : `Evidence Photo ${idx + 1}`}
+                                  </span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+
+                          {activeRepl.replacementTrackingNumber && (
+                            <div className="p-2.5 rounded-xl bg-white border border-primary/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div>
+                                <span className="text-[10px] font-bold text-primary/50 uppercase block">
+                                  {activeRepl.replacementCarrier || "J&T Express"} ·{" "}
+                                  {lang === "ar" ? "COD 0 ج.م" : "COD EGP 0"}
+                                </span>
+                                <span className="font-mono font-black text-primary">
+                                  {activeRepl.replacementTrackingNumber}
+                                </span>
+                              </div>
+                              <Link
+                                href={`/${lang}/track/${encodeURIComponent(activeRepl.replacementTrackingNumber)}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-1 text-accent font-bold hover:underline text-[11px]"
+                              >
+                                <span>{lang === "ar" ? "تتبع الشحنة" : "Track Replacement"}</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </Link>
+                            </div>
+                          )}
+
+                          {!isAdminPreview && isPreparing && (
+                            <button
+                              type="button"
+                              disabled={isReplacementBusy}
+                              onClick={() => handleDispatchReplacement(selectedItem, activeRepl)}
+                              className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+                            >
+                              {isReplacementBusy ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Truck className="w-4 h-4" />
+                              )}
+                              <span>
+                                {lang === "ar"
+                                  ? "إنشاء بوليصة J&T للبديل (دفع عند الاستلام 0 ج.م)"
+                                  : "Book J&T Replacement Pickup (COD EGP 0)"}
+                              </span>
+                            </button>
+                          )}
+
+                          {!isAdminPreview &&
+                            activeRepl.status === "REPLACEMENT_SHIPPED" &&
+                            activeRepl.replacementTrackingNumber &&
+                            (!activeRepl.replacementCarrier ||
+                              activeRepl.replacementCarrier.toLowerCase().includes("j&t")) && (
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  disabled={isReplacementBusy}
+                                  onClick={() => handleSyncReplacement(selectedItem, activeRepl)}
+                                  className="flex-1 h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                                >
+                                  <RefreshCw className={cn("w-3.5 h-3.5", isReplacementBusy && "animate-spin")} />
+                                  <span>{lang === "ar" ? "تحديث تتبع J&T" : "Sync J&T Tracking"}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isReplacementBusy}
+                                  onClick={() =>
+                                    handlePrintReplacementWaybill(activeRepl.replacementTrackingNumber)
+                                  }
+                                  className="flex-1 h-9 px-3 bg-white border border-blue-200 text-blue-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 hover:bg-blue-50 disabled:opacity-50 cursor-pointer"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                  <span>{lang === "ar" ? "طباعة البوليصة" : "Print Waybill"}</span>
+                                </button>
+                              </div>
+                            )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Incoming Return Pickup Section (Buyer -> Workshop) */}
+                    {(() => {
+                      const activeReturn = getItemReturnPickupClaim(selectedItem);
+                      if (!activeReturn) return null;
+                      const isReceived = Boolean(activeReturn.returnReceivedAt);
+                      return (
+                        <div className={cn(
+                          "p-3.5 sm:p-5 rounded-2xl border space-y-3",
+                          isReceived
+                            ? "bg-emerald-50/70 border-emerald-200"
+                            : "bg-indigo-50/70 border-indigo-200"
+                        )}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-black text-xs text-primary">
+                              {isReceived ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              ) : (
+                                <Truck className="w-4 h-4 text-indigo-600 shrink-0" />
+                              )}
+                              <span>
+                                {lang === "ar"
+                                  ? "شحنة مرتجع قادمة (من المشتري إلى ورشتك)"
+                                  : "Incoming Return Pickup (Buyer to Workshop)"}
+                              </span>
+                            </div>
+                            <span className={cn(
+                              "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                              isReceived
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                : "bg-indigo-100 text-indigo-800 border-indigo-300"
+                            )}>
+                              {isReceived
+                                ? lang === "ar"
+                                  ? "تم استلام المرتجع"
+                                  : "Return Received"
+                                : lang === "ar"
+                                  ? "في الطريق إليك"
+                                  : "Return In Transit"}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-primary/80 space-y-1.5">
+                            {activeReturn.details && (
+                              <p className="bg-white/80 p-2.5 rounded-xl border border-primary/10 leading-relaxed">
+                                <span className="font-bold block text-[10px] uppercase tracking-wider text-primary/50 mb-0.5">
+                                  {lang === "ar" ? "تفاصيل بلاغ المشتري:" : "Buyer Claim Details:"}
+                                </span>
+                                {activeReturn.details}
+                              </p>
+                            )}
+                            {activeReturn.adminNote && (
+                              <p className="bg-white/80 p-2.5 rounded-xl border border-primary/10 leading-relaxed">
+                                <span className="font-bold block text-[10px] uppercase tracking-wider text-primary/50 mb-0.5">
+                                  {lang === "ar" ? "ملاحظة الإدارة:" : "Admin Note:"}
+                                </span>
+                                {activeReturn.adminNote}
+                              </p>
+                            )}
+                          </div>
+
+                          {activeReturn.returnTrackingNumber && (
+                            <div className="p-2.5 rounded-xl bg-white border border-primary/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <div>
+                                <span className="text-[10px] font-bold text-primary/50 uppercase block">
+                                  {activeReturn.returnCarrier || "J&T Express"} ·{" "}
+                                  {lang === "ar" ? "تحصيل 0 ج.م" : "COD EGP 0"}
+                                </span>
+                                <span className="font-mono font-black text-primary">
+                                  {activeReturn.returnTrackingNumber}
+                                </span>
+                              </div>
+                              <Link
+                                href={`/${lang}/track/${encodeURIComponent(activeReturn.returnTrackingNumber)}`}
+                                target="_blank"
+                                className="inline-flex items-center gap-1 text-accent font-bold hover:underline text-[11px]"
+                              >
+                                <span>{lang === "ar" ? "تتبع المرتجع" : "Track Return"}</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </Link>
+                            </div>
+                          )}
+
+                          {!isAdminPreview &&
+                            !isReceived &&
+                            activeReturn.returnTrackingNumber &&
+                            (!activeReturn.returnCarrier ||
+                              activeReturn.returnCarrier.toLowerCase().includes("j&t")) && (
+                              <button
+                                type="button"
+                                disabled={isReplacementBusy}
+                                onClick={() => handleSyncReturn(selectedItem, activeReturn)}
+                                className="w-full h-9 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                              >
+                                <RefreshCw className={cn("w-3.5 h-3.5", isReplacementBusy && "animate-spin")} />
+                                <span>{lang === "ar" ? "تحديث تتبع المرتجع من J&T" : "Sync J&T Return Tracking"}</span>
+                              </button>
+                            )}
+                        </div>
+                      );
+                    })()}
+
                     <div className="p-3.5 sm:p-5 bg-primary/5 rounded-2xl border border-primary/5">
                       <div className="flex items-center gap-1.5 mb-2">
                         <div className="w-1.5 h-1.5 bg-primary/40 rounded-full" />

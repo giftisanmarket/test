@@ -15,11 +15,27 @@ import {
   CheckCircle2,
   X,
   Clock,
-  Coins
+  Coins,
+  Printer,
+  RefreshCw,
+  RotateCcw,
+  ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BespokeImage } from "@/components/bespoke-image";
 import { useState, useMemo } from "react";
+import { toast } from "react-hot-toast";
+import {
+  dispatchReplacementShipmentAction,
+  getJtWaybillAction,
+  syncReplacementTrackingAction,
+  syncReturnTrackingAction,
+} from "@/lib/actions";
+import {
+  getRefundStatusLabel,
+  isReplacementPreparingStatus,
+  isReplacementShippedStatus,
+} from "@/lib/refund-policy";
 
 interface SalesTabProps {
   sales: any[];
@@ -51,9 +67,128 @@ export function SalesTab({
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [replacementBusyId, setReplacementBusyId] = useState<string | null>(null);
 
   // Use the lang prop directly — avoids brittle string-comparison heuristics
   const isArabic = lang === 'ar';
+
+  const isReplacementStatus = (status?: string | null) =>
+    isReplacementPreparingStatus(status) ||
+    isReplacementShippedStatus(status) ||
+    status === "REPLACEMENT_DELIVERED" ||
+    status === "REPLACEMENT_ISSUED";
+
+  const getItemClaims = (item: any): any[] => [
+    ...(Array.isArray(item?.refundRequests) ? item.refundRequests : []),
+    ...(Array.isArray(item?.order?.refundRequests) ? item.order.refundRequests : []),
+  ];
+
+  const getItemReplacement = (item: any) =>
+    getItemClaims(item).find((claim) => isReplacementStatus(claim?.status)) || null;
+
+  const getItemReturnPickup = (item: any) =>
+    getItemClaims(item).find((claim) => Boolean(claim?.returnTrackingNumber)) || null;
+
+  const handleQuickDispatchReplacement = async (e: React.MouseEvent, claimId: string) => {
+    e.stopPropagation();
+    setReplacementBusyId(claimId);
+    try {
+      const res = await dispatchReplacementShipmentAction({
+        claimId,
+        mode: "JT_EXPRESS",
+        lang: isArabic ? "ar" : "en",
+      });
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(
+        isArabic
+          ? `تم حجز شحنة J&T للبديل (${res.trackingNumber})`
+          : `J&T replacement booked (${res.trackingNumber})`
+      );
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to dispatch replacement");
+    } finally {
+      setReplacementBusyId(null);
+    }
+  };
+
+  const handleQuickWaybill = async (e: React.MouseEvent, billCode: string) => {
+    e.stopPropagation();
+    setReplacementBusyId(billCode);
+    try {
+      const res = await getJtWaybillAction(billCode);
+      if (res.error || !res.data) {
+        toast.error(res.error || (isArabic ? "تعذر فتح البوليصة" : "Could not load waybill"));
+        return;
+      }
+      const payload = res.data?.data;
+      const pdfUrl = typeof payload === "string" ? payload : payload?.url || payload?.pdfUrl;
+      if (pdfUrl && /^https?:\/\//i.test(pdfUrl)) {
+        window.open(pdfUrl, "_blank", "noopener,noreferrer");
+      } else {
+        toast.success(isArabic ? `تم استلام بيانات البوليصة (${billCode})` : `Waybill ready (${billCode})`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Waybill error");
+    } finally {
+      setReplacementBusyId(null);
+    }
+  };
+
+  const handleQuickSyncReplacement = async (e: React.MouseEvent, claimId: string) => {
+    e.stopPropagation();
+    setReplacementBusyId(claimId);
+    try {
+      const res = await syncReplacementTrackingAction(claimId, isArabic ? "ar" : "en");
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(
+        res.delivered
+          ? isArabic
+            ? "تم تأكيد تسليم القطعة البديلة!"
+            : "Replacement confirmed delivered!"
+          : isArabic
+            ? "تم تحديث حالة شحنة البديل"
+            : "Replacement tracking updated"
+      );
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sync tracking");
+    } finally {
+      setReplacementBusyId(null);
+    }
+  };
+
+  const handleQuickSyncReturn = async (e: React.MouseEvent, claimId: string) => {
+    e.stopPropagation();
+    setReplacementBusyId(`return-${claimId}`);
+    try {
+      const res = await syncReturnTrackingAction(claimId, isArabic ? "ar" : "en");
+      if (res.error) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(
+        res.delivered
+          ? isArabic
+            ? "تم تأكيد استلام المرتجع في ورشتك!"
+            : "Return confirmed received by your workshop!"
+          : isArabic
+            ? "تم تحديث حالة شحنة المرتجع"
+            : "Return pickup tracking updated"
+      );
+      router.refresh();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to sync return tracking");
+    } finally {
+      setReplacementBusyId(null);
+    }
+  };
 
   const getBulkOrdersLabel = (count: number) => {
     if (isArabic) {
@@ -67,8 +202,10 @@ export function SalesTab({
 
   const filteredSales = useMemo(() => {
     let result = sales;
-    
-    if (statusFilter !== "ALL") {
+
+    if (statusFilter === "REPLACEMENTS") {
+      result = result.filter((item) => Boolean(getItemReplacement(item)));
+    } else if (statusFilter !== "ALL") {
       result = result.filter(item => item.status === statusFilter);
     }
     
@@ -239,13 +376,21 @@ export function SalesTab({
 
             {/* Horizontally scrollable status pills on mobile, wrap on desktop */}
             <div className="flex overflow-x-auto no-scrollbar py-1 gap-1.5 sm:gap-2 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
-              {(["ALL", "PENDING", "PROCESSING", "SHIPPED", "DELIVERED"] as const).map((status) => {
-                const count = status === "ALL" ? sales.length : sales.filter(s => s.status === status).length;
+              {/* "REPLACEMENTS" filter pill commented out for now — refunds only */}
+              {(["ALL", "PENDING", "PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED" /* , "REPLACEMENTS" */] as const).map((status) => {
+                const count =
+                  status === "ALL"
+                    ? sales.length
+                    /* : status === "REPLACEMENTS"
+                      ? sales.filter((s) => Boolean(getItemReplacement(s))).length */
+                      : sales.filter((s) => s.status === status).length;
                 const label =
                   status === "ALL" ? dict.studio.all_orders :
                   status === "PENDING" ? dict.studio.status_pending :
                   status === "PROCESSING" ? dict.studio.status_ready :
                   status === "SHIPPED" ? dict.studio.status_shipped :
+                  status === "OUT_FOR_DELIVERY" ? (isArabic ? "خرج للتوصيل" : "Out for Delivery") :
+                  /* status === "REPLACEMENTS" ? (isArabic ? "طلبات الاستبدال" : "Replacements") : */
                   dict.studio.status_delivered;
                 const isActive = statusFilter === status;
                 return (
@@ -290,34 +435,79 @@ export function SalesTab({
         ) : (
           <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
           {filteredSales.map((item: any) => {
+            const replacementClaim = getItemReplacement(item);
+            const returnClaim = getItemReturnPickup(item);
             return (
               <div 
                 key={item.id} 
                 onClick={() => setSelectedItem(item)}
                 className={cn(
                   "group relative bg-white rounded-2xl md:rounded-[2.5rem] border border-primary/5 shadow-sm sm:shadow-lg shadow-primary/5 hover:shadow-xl hover:shadow-primary/10 transition-all overflow-hidden cursor-pointer active:scale-[0.99]",
-                  item.status === "PENDING"    ? "border-s-4 border-s-amber-400" :
+                  replacementClaim && isReplacementPreparingStatus(replacementClaim.status)
+                    ? "border-s-4 border-s-sky-500 ring-1 ring-sky-200/70"
+                    : item.status === "PENDING"    ? "border-s-4 border-s-amber-400" :
                   item.status === "PROCESSING" ? "border-s-4 border-s-teal-500"  :
                   item.status === "SHIPPED"    ? "border-s-4 border-s-blue-400"  :
+                  item.status === "OUT_FOR_DELIVERY" ? "border-s-4 border-s-indigo-500" :
                                                  "border-s-4 border-s-green-500"
                 )}
               >
                 <div className="p-3.5 sm:p-6 md:p-7 lg:p-8 flex flex-col justify-between h-full gap-3.5 sm:gap-5">
                   {/* Mobile Top Header: Status Pill + Date/Gift indicator */}
-                  <div className="flex md:hidden items-center justify-between gap-2 border-b border-primary/5 pb-2.5">
-                    <span className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-xs shrink-0",
-                      item.status === "PENDING"    ? "bg-amber-500 text-white border-amber-400"  :
-                      item.status === "PROCESSING" ? "bg-teal-500 text-white border-teal-400"   :
-                      item.status === "SHIPPED"    ? "bg-blue-500 text-white border-blue-400"   :
-                                                     "bg-green-500 text-white border-green-400"
-                    )}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
-                      {item.status === "PENDING"    ? dict.studio.status_pending :
-                       item.status === "PROCESSING" ? dict.studio.status_ready :
-                       item.status === "SHIPPED"    ? dict.studio.status_shipped :
-                       dict.studio.status_delivered}
-                    </span>
+                  <div className="flex md:hidden items-center justify-between gap-2 border-b border-primary/5 pb-2.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={cn(
+                        "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-xs shrink-0",
+                        item.status === "PENDING"    ? "bg-amber-500 text-white border-amber-400"  :
+                        item.status === "PROCESSING" ? "bg-teal-500 text-white border-teal-400"   :
+                        item.status === "SHIPPED"    ? "bg-blue-500 text-white border-blue-400"   :
+                        item.status === "OUT_FOR_DELIVERY" ? "bg-indigo-500 text-white border-indigo-400" :
+                                                       "bg-green-500 text-white border-green-400"
+                      )}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
+                        {item.status === "PENDING"    ? dict.studio.status_pending :
+                         item.status === "PROCESSING" ? dict.studio.status_ready :
+                         item.status === "SHIPPED"    ? dict.studio.status_shipped :
+                         item.status === "OUT_FOR_DELIVERY" ? (isArabic ? "خرج للتوصيل" : "Out for Delivery") :
+                         dict.studio.status_delivered}
+                      </span>
+                      {replacementClaim && (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shrink-0",
+                          isReplacementPreparingStatus(replacementClaim.status)
+                            ? "bg-sky-50 text-sky-700 border-sky-300"
+                            : isReplacementShippedStatus(replacementClaim.status)
+                              ? "bg-blue-50 text-blue-700 border-blue-300"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-300"
+                        )}>
+                          <RotateCcw className="w-2.5 h-2.5 shrink-0" />
+                          <span>{getRefundStatusLabel(replacementClaim.status, isArabic)}</span>
+                        </span>
+                      )}
+                      {returnClaim && (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shrink-0",
+                          returnClaim.returnReceivedAt
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                            : "bg-indigo-50 text-indigo-700 border-indigo-300"
+                        )}>
+                          {returnClaim.returnReceivedAt ? (
+                            <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                          ) : (
+                            <Truck className="w-2.5 h-2.5 shrink-0" />
+                          )}
+                          <span>
+                            {returnClaim.returnReceivedAt
+                              ? isArabic
+                                ? "تم استلام المرتجع"
+                                : "Return Received"
+                              : isArabic
+                                ? "مرتجع في الطريق إليك"
+                                : "Return In Transit"}
+                          </span>
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-2 text-charcoal/50 text-[11px] font-medium shrink-0">
                       {item.order.isGift && (
@@ -355,14 +545,52 @@ export function SalesTab({
                             item.status === "PENDING"    ? "bg-amber-500  text-white border-amber-400"  :
                             item.status === "PROCESSING" ? "bg-teal-500   text-white border-teal-400"   :
                             item.status === "SHIPPED"    ? "bg-blue-500   text-white border-blue-400"   :
+                            item.status === "OUT_FOR_DELIVERY" ? "bg-indigo-500 text-white border-indigo-400" :
                                                            "bg-green-500  text-white border-green-400"
                           )}>
                             <span className="w-1.5 h-1.5 rounded-full bg-white/70 shrink-0" />
                             {item.status === "PENDING"    ? dict.studio.status_pending :
                              item.status === "PROCESSING" ? dict.studio.status_ready :
                              item.status === "SHIPPED"    ? dict.studio.status_shipped :
+                             item.status === "OUT_FOR_DELIVERY" ? (isArabic ? "خرج للتوصيل" : "Out for Delivery") :
                              dict.studio.status_delivered}
                           </span>
+                          {replacementClaim && (
+                            <span className={cn(
+                              "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-wider border shrink-0",
+                              isReplacementPreparingStatus(replacementClaim.status)
+                                ? "bg-sky-50 text-sky-700 border-sky-300"
+                                : isReplacementShippedStatus(replacementClaim.status)
+                                  ? "bg-blue-50 text-blue-700 border-blue-300"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-300"
+                            )}>
+                              <RotateCcw className="w-3 h-3 shrink-0" />
+                              <span>{getRefundStatusLabel(replacementClaim.status, isArabic)}</span>
+                            </span>
+                          )}
+                          {returnClaim && (
+                            <span className={cn(
+                              "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-wider border shrink-0",
+                              returnClaim.returnReceivedAt
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                : "bg-indigo-50 text-indigo-700 border-indigo-300"
+                            )}>
+                              {returnClaim.returnReceivedAt ? (
+                                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                              ) : (
+                                <Truck className="w-3 h-3 shrink-0" />
+                              )}
+                              <span>
+                                {returnClaim.returnReceivedAt
+                                  ? isArabic
+                                    ? "تم استلام المرتجع"
+                                    : "Return Received"
+                                  : isArabic
+                                    ? "مرتجع في الطريق إليك"
+                                    : "Return In Transit"}
+                              </span>
+                            </span>
+                          )}
                         </div>
 
                         <h4 className="text-sm sm:text-base md:text-lg lg:text-xl font-heading font-bold text-primary line-clamp-2 leading-snug break-words" dir="auto">
@@ -481,17 +709,164 @@ export function SalesTab({
                     </div>
                   </div>
 
+                  {/* Replacement Summary Banner if active */}
+                  {replacementClaim && (
+                    <div className={cn(
+                      "rounded-xl px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 border",
+                      isReplacementPreparingStatus(replacementClaim.status)
+                        ? "bg-sky-50 border-sky-200 text-sky-900"
+                        : isReplacementShippedStatus(replacementClaim.status)
+                          ? "bg-blue-50 border-blue-200 text-blue-900"
+                          : "bg-emerald-50 border-emerald-200 text-emerald-900"
+                    )}>
+                      <span className="font-bold flex items-center gap-1.5">
+                        <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          {isReplacementPreparingStatus(replacementClaim.status)
+                            ? isArabic
+                              ? "مطلوب تجهيز وشحن قطعة بديلة (ضمان معلق لحين التسليم)"
+                              : "Replacement required — prepare piece & book J&T pickup (COD 0)"
+                            : replacementClaim.replacementTrackingNumber
+                              ? `${replacementClaim.replacementCarrier || "J&T Express"}: ${replacementClaim.replacementTrackingNumber}`
+                              : getRefundStatusLabel(replacementClaim.status, isArabic)}
+                        </span>
+                      </span>
+                      {replacementClaim.adminNote && (
+                        <span className="text-[10px] opacity-80 truncate max-w-full sm:max-w-[260px]">
+                          {replacementClaim.adminNote}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Incoming Return Pickup Banner if active */}
+                  {returnClaim && (
+                    <div className={cn(
+                      "rounded-xl px-3 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 border",
+                      returnClaim.returnReceivedAt
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                        : "bg-indigo-50 border-indigo-200 text-indigo-900"
+                    )}>
+                      <span className="font-bold flex items-center gap-1.5 min-w-0">
+                        {returnClaim.returnReceivedAt ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        ) : (
+                          <Truck className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span className="truncate">
+                          {returnClaim.returnReceivedAt
+                            ? isArabic
+                              ? `تم استلام المرتجع (${returnClaim.returnTrackingNumber})`
+                              : `Return Received at Workshop (${returnClaim.returnTrackingNumber})`
+                            : isArabic
+                              ? `مرتجع J&T قادم من المشتري: ${returnClaim.returnTrackingNumber}`
+                              : `Incoming Return Pickup (${returnClaim.returnCarrier || "J&T Express"}): ${returnClaim.returnTrackingNumber}`}
+                        </span>
+                      </span>
+                      {returnClaim.adminNote && (
+                        <span className="text-[10px] opacity-80 truncate max-w-full sm:max-w-[260px]">
+                          {returnClaim.adminNote}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Action Buttons Row */}
-                  <div className="pt-2.5 sm:pt-4 md:pt-6 border-t border-primary/5 flex items-center gap-2 sm:gap-3">
+                  <div className="pt-2.5 sm:pt-4 md:pt-6 border-t border-primary/5 flex flex-wrap items-center gap-2 sm:gap-3">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedItem(item);
                       }}
-                      className="flex-1 md:flex-initial h-9 sm:h-10 md:h-12 px-3.5 sm:px-5 md:px-7 bg-primary text-white text-[10px] sm:text-xs font-black uppercase tracking-wider md:tracking-widest rounded-xl md:rounded-2xl hover:bg-primary-light transition-all active:scale-95 flex items-center justify-center gap-1.5 md:gap-2 shadow-xs sm:shadow-lg shadow-primary/20 shrink-0"
+                      className="flex-1 sm:flex-initial h-9 sm:h-10 md:h-12 px-3.5 sm:px-5 md:px-7 bg-primary text-white text-[10px] sm:text-xs font-black uppercase tracking-wider md:tracking-widest rounded-xl md:rounded-2xl hover:bg-primary-light transition-all active:scale-95 flex items-center justify-center gap-1.5 md:gap-2 shadow-xs sm:shadow-lg shadow-primary/20 shrink-0"
                     >
                       {dict.studio.full_details}
                     </button>
+
+                    {replacementClaim && isReplacementPreparingStatus(replacementClaim.status) && (
+                      <button
+                        type="button"
+                        disabled={replacementBusyId === replacementClaim.id}
+                        onClick={(e) => handleQuickDispatchReplacement(e, replacementClaim.id)}
+                        className="flex-1 sm:flex-initial h-9 sm:h-10 md:h-12 px-3.5 sm:px-5 bg-blue-600 text-white text-[10px] sm:text-xs font-black uppercase tracking-wider rounded-xl md:rounded-2xl hover:bg-blue-700 transition-all shadow-xs sm:shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                      >
+                        {replacementBusyId === replacementClaim.id ? (
+                          <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                        ) : (
+                          <Truck className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span>{isArabic ? "شحن البديل بـ J&T" : "Dispatch Replacement (J&T)"}</span>
+                      </button>
+                    )}
+
+                    {replacementClaim &&
+                      replacementClaim.status === "REPLACEMENT_SHIPPED" &&
+                      replacementClaim.replacementTrackingNumber && (
+                        <>
+                          {(!replacementClaim.replacementCarrier ||
+                            replacementClaim.replacementCarrier.toLowerCase().includes("j&t")) && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={replacementBusyId === replacementClaim.id}
+                                onClick={(e) => handleQuickSyncReplacement(e, replacementClaim.id)}
+                                className="h-9 sm:h-10 md:h-12 px-3 sm:px-4 bg-blue-50 text-blue-700 border border-blue-200 text-[10px] sm:text-xs font-bold rounded-xl md:rounded-2xl hover:bg-blue-100 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                              >
+                                <RefreshCw
+                                  className={cn(
+                                    "w-3.5 h-3.5 shrink-0",
+                                    replacementBusyId === replacementClaim.id && "animate-spin"
+                                  )}
+                                />
+                                <span>{isArabic ? "تحديث البديل" : "Sync Replacement"}</span>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={replacementBusyId === replacementClaim.replacementTrackingNumber}
+                                onClick={(e) =>
+                                  handleQuickWaybill(e, replacementClaim.replacementTrackingNumber)
+                                }
+                                className="h-9 sm:h-10 md:h-12 px-3 sm:px-4 bg-white text-primary border border-primary/15 text-[10px] sm:text-xs font-bold rounded-xl md:rounded-2xl hover:bg-cream transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                              >
+                                <Printer className="w-3.5 h-3.5 shrink-0" />
+                                <span>{isArabic ? "بوليصة البديل" : "Waybill"}</span>
+                              </button>
+                            </>
+                          )}
+                        </>
+                      )}
+
+                    {returnClaim && returnClaim.returnTrackingNumber && (
+                      <>
+                        <Link
+                          href={`/${lang}/track/${encodeURIComponent(returnClaim.returnTrackingNumber)}`}
+                          target="_blank"
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-9 sm:h-10 md:h-12 px-3 sm:px-4 bg-white text-indigo-700 border border-indigo-200 text-[10px] sm:text-xs font-bold rounded-xl md:rounded-2xl hover:bg-indigo-50 transition-all flex items-center justify-center gap-1.5 shrink-0"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                          <span>{isArabic ? "تتبع المرتجع" : "Track Return"}</span>
+                        </Link>
+                        {!returnClaim.returnReceivedAt &&
+                          (!returnClaim.returnCarrier ||
+                            returnClaim.returnCarrier.toLowerCase().includes("j&t")) && (
+                            <button
+                              type="button"
+                              disabled={replacementBusyId === `return-${returnClaim.id}`}
+                              onClick={(e) => handleQuickSyncReturn(e, returnClaim.id)}
+                              className="h-9 sm:h-10 md:h-12 px-3 sm:px-4 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] sm:text-xs font-bold rounded-xl md:rounded-2xl hover:bg-indigo-100 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                            >
+                              <RefreshCw
+                                className={cn(
+                                  "w-3.5 h-3.5 shrink-0",
+                                  replacementBusyId === `return-${returnClaim.id}` && "animate-spin"
+                                )}
+                              />
+                              <span>{isArabic ? "تحديث المرتجع" : "Sync Return"}</span>
+                            </button>
+                          )}
+                      </>
+                    )}
 
                     {item.status === "PENDING" && (
                       <button

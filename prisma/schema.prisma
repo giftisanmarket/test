@@ -394,6 +394,8 @@ model OrderItem {
   status          String  @default("PENDING")
   trackingNumber  String?
   carrier         String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
   artisanNotes    String? @db.Text
 
   order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -506,8 +508,18 @@ enum RefundReason {
 
 enum RefundStatus {
   PENDING
+  INVESTIGATING
+  WAITING_CUSTOMER
+  WAITING_COURIER
+  RETURN_REQUESTED
+  REFUND_APPROVED
+  REFUND_PROCESSING
+  REFUNDED
   APPROVED
   REJECTED
+  REPLACEMENT_APPROVED
+  REPLACEMENT_SHIPPED
+  REPLACEMENT_DELIVERED
   REPLACEMENT_ISSUED
 }
 
@@ -521,13 +533,29 @@ model RefundRequest {
   orderItem       OrderItem?     @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  reason          RefundReason
-  details         String         @db.Text
-  images          String[]       // Photo evidence URLs
-  preferredAction String         // "REFUND" or "REPLACEMENT"
-  status          RefundStatus   @default(PENDING)
-  adminNote       String?        @db.Text
-  refundAmount    Float?
+  reason                    RefundReason
+  details                   String         @db.Text
+  images                    String[]       // Photo evidence URLs
+  preferredAction           String         // "REFUND" or "REPLACEMENT"
+  status                    RefundStatus   @default(PENDING)
+  adminNote                 String?        @db.Text
+  refundAmount              Float?
+  refundMethod              String?
+  refundReference           String?
+  refundProcessedAt         DateTime?
+  costBearer                String?        // "ARTISAN" or "PLATFORM"
+  replacementStockDeducted  Boolean        @default(false)
+  replacementTrackingNumber String?
+  replacementCarrier        String?
+  replacementLogisticId     String?
+  replacementShippedAt      DateTime?
+  replacementDeliveredAt    DateTime?
+  returnTrackingNumber      String?
+  returnCarrier             String?
+  returnLogisticId          String?
+  returnShippedAt           DateTime?
+  returnReceivedAt          DateTime?
+  events                    RefundRequestEvent[]
   
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -535,6 +563,24 @@ model RefundRequest {
   @@index([orderId])
   @@index([userId])
   @@index([status])
+  @@index([replacementTrackingNumber])
+  @@index([replacementLogisticId])
+  @@index([returnTrackingNumber])
+  @@index([returnLogisticId])
+}
+
+model RefundRequestEvent {
+  id              String   @id @default(cuid())
+  refundRequestId String
+  actorUserId     String?
+  fromStatus      String?
+  toStatus        String
+  note            String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  refundRequest RefundRequest @relation(fields: [refundRequestId], references: [id], onDelete: Cascade)
+
+  @@index([refundRequestId, createdAt])
 }
 
 enum ExpenseCategory {

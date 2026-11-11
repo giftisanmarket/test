@@ -10,6 +10,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 const QRCode = dynamic(() => import("react-qr-code"), { ssr: false });
 import { ShippingAddressDisplay } from "@/lib/location-utils";
+import { isOpenRefundClaimStatus } from "@/lib/refund-policy";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 interface AdminOrdersClientProps {
   orders: any[];
@@ -31,13 +33,14 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
   const [carrier, setCarrier] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [liveTracesByOrder, setLiveTracesByOrder] = useState<Record<string, any[]>>({});
 
   const isAr = lang === "ar";
 
   const filteredOrders = orders.filter((order) => {
     if (statusFilter === "READY TO SHIP") {
       const totalItems = order.items?.length || 0;
-      const prepared = order.items?.filter((i: any) => i.status === "PROCESSING" || i.status === "SHIPPED" || i.status === "DELIVERED").length || 0;
+      const prepared = order.items?.filter((i: any) => ["PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(i.status)).length || 0;
       if (!["PENDING", "PROCESSING"].includes(order.status) || totalItems === 0 || prepared !== totalItems) return false;
     } else if (statusFilter !== "ALL" && order.status !== statusFilter) {
       return false;
@@ -68,6 +71,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
   });
 
   const [isJtLoading, setIsJtLoading] = useState(false);
+  const [confirmingJtCancelOrderId, setConfirmingJtCancelOrderId] = useState<string | null>(null);
   const [isJtSyncing, setIsJtSyncing] = useState(false);
   const [copiedTracking, setCopiedTracking] = useState(false);
   const [showManualOverride, setShowManualOverride] = useState(false);
@@ -89,6 +93,12 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
     try {
       const res = await syncJtOrderStatusAction(orderId);
       if (res.success) {
+        if (Array.isArray(res.parcels)) {
+          setLiveTracesByOrder((prev) => ({
+            ...prev,
+            [orderId]: res.parcels,
+          }));
+        }
         toast.success(
           `J&T Sync: ${res.latestScan?.scanType || "Active"} (${res.latestScan?.desc || "Status updated"})`,
           {
@@ -97,17 +107,21 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           }
         );
         if (res.currentStatus) {
+          const applyScans = (value: any) => ({ ...value, status: res.currentStatus,
+            items: value.items?.map((item: any) => {
+              if (["DELIVERED", "CANCELLED", "REFUNDED"].includes(item.status)) return item;
+              const parcel = res.parcels?.find((entry: any) => entry.trackingNumber === item.trackingNumber);
+              return parcel ? { ...item, status: parcel.status } : item;
+            }) });
           setOrders((prev) =>
-            prev.map((o) => (o.id === orderId ? { ...o, status: res.currentStatus } : o))
+            prev.map((o) => (o.id === orderId ? applyScans(o) : o))
           );
           if (editingOrder?.id === orderId) {
-            setEditingOrder((prev: any) => (prev ? { ...prev, status: res.currentStatus } : null));
+            setEditingOrder((prev: any) => (prev ? applyScans(prev) : null));
             setNewStatus(res.currentStatus);
           }
           if (selectedOrderDetails?.id === orderId) {
-            setSelectedOrderDetails((prev: any) =>
-              prev ? { ...prev, status: res.currentStatus } : null
-            );
+            setSelectedOrderDetails((prev: any) => (prev ? applyScans(prev) : null));
           }
         }
       } else {
@@ -124,6 +138,48 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
     }
   };
 
+  const renderLiveJtScans = (orderId: string) => {
+    const parcels = liveTracesByOrder[orderId];
+    if (!parcels || parcels.length === 0) return null;
+    return (
+      <div className="bg-white border border-blue-100 rounded-2xl p-3.5 space-y-3">
+        <p className="text-[9px] font-black uppercase tracking-widest text-blue-500">Live J&amp;T Courier Timeline</p>
+        {parcels.map((parcel: any) => (
+          <div key={parcel.trackingNumber} className="space-y-2 border-t first:border-t-0 border-blue-50 pt-2 first:pt-0">
+            <div className="flex items-center justify-between gap-2 text-[11px]">
+              <span className="font-mono font-bold text-primary">{parcel.trackingNumber}</span>
+              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-bold text-[10px]">
+                {(parcel.status || "SHIPPED").replace(/_/g, " ")}
+              </span>
+            </div>
+            {Array.isArray(parcel.events) && parcel.events.length > 0 ? (
+              <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                {parcel.events.map((ev: any, idx: number) => (
+                  <div
+                    key={`${ev.time}-${idx}`}
+                    className={cn(
+                      "text-[11px] rounded-xl px-2.5 py-2 border",
+                      idx === 0 ? "bg-blue-50/70 border-blue-200 text-primary" : "bg-cream/30 border-primary/5 text-primary/70"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold">{ev.scanType || "Scan Update"}</span>
+                      {ev.time && <span className="font-mono text-[10px] text-primary/50 shrink-0">{ev.time}</span>}
+                    </div>
+                    {ev.desc && <p className="text-[11px] mt-0.5 leading-snug">{ev.desc}</p>}
+                    {ev.location && <p className="text-[10px] text-primary/50 mt-0.5">{ev.location}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-primary/60 italic">No courier scans posted yet for this waybill.</p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const handleJtShip = async (orderId: string) => {
     setIsJtLoading(true);
     try {
@@ -133,9 +189,14 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           duration: 6000,
           style: { borderRadius: '20px', background: '#1a4332', color: '#fff' }
         });
+        const applyParcels = (value: any) => ({ ...value, status: res.orderStatus || "SHIPPED", trackingNumber: res.trackingNumber, carrier: "J&T Express",
+          items: value.items?.map((item: any) => {
+            const parcel = res.parcels?.find((entry: any) => entry.itemIds?.includes(item.id));
+            return parcel ? { ...item, status: parcel.status || item.status || "SHIPPED", trackingNumber: parcel.trackingNumber, carrier: "J&T Express" } : item;
+          }) });
         setOrders(prev => prev.map(o => {
           if (o.id === orderId) {
-            return { ...o, status: "SHIPPED", trackingNumber: res.trackingNumber, carrier: "J&T Express" };
+            return applyParcels(o);
           }
           return o;
         }));
@@ -143,7 +204,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           setEditingOrder(null);
         }
         if (selectedOrderDetails?.id === orderId) {
-          setSelectedOrderDetails((prev: any) => prev ? { ...prev, status: "SHIPPED", trackingNumber: res.trackingNumber, carrier: "J&T Express" } : null);
+          setSelectedOrderDetails((prev: any) => prev ? applyParcels(prev) : null);
         }
       } else {
         toast.error(res.error || "Failed to create shipment on J&T Express", {
@@ -160,9 +221,6 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
   };
 
   const handleJtCancel = async (orderId: string) => {
-    if (!confirm("Are you sure you want to cancel this J&T Express shipment? This will cancel the courier pickup request and revert the order to processing.")) {
-      return;
-    }
     setIsJtLoading(true);
     try {
       const res = await cancelJtOrderAction(orderId, "Cancelled by Admin");
@@ -171,9 +229,22 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           duration: 5000,
           style: { borderRadius: '20px', background: '#1a4332', color: '#fff' }
         });
+        const revertCancelledItems = (items: any[] = []) => items.map((item: any) => {
+          const keepStatus = ["CANCELLED", "REFUNDED", "PENDING"].includes(item.status);
+          if (item.trackingNumber) {
+            return {
+              ...item,
+              status: keepStatus ? item.status : "PROCESSING",
+              trackingNumber: null,
+              carrier: null,
+            };
+          }
+          return keepStatus ? item : { ...item, status: "PROCESSING" };
+        });
         setOrders(prev => prev.map(o => {
           if (o.id === orderId) {
-            return { ...o, status: "PROCESSING", trackingNumber: null, carrier: null };
+            return { ...o, status: "PROCESSING", trackingNumber: null, carrier: null,
+              items: revertCancelledItems(o.items) };
           }
           return o;
         }));
@@ -181,7 +252,8 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           setEditingOrder(null);
         }
         if (selectedOrderDetails?.id === orderId) {
-          setSelectedOrderDetails((prev: any) => prev ? { ...prev, status: "PROCESSING", trackingNumber: null, carrier: null } : null);
+          setSelectedOrderDetails((prev: any) => prev ? { ...prev, status: "PROCESSING", trackingNumber: null, carrier: null,
+            items: revertCancelledItems(prev.items) } : null);
         }
       } else {
         toast.error(res.error || "Failed to cancel shipment on J&T Express", {
@@ -209,9 +281,35 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
         style: { borderRadius: '20px', background: '#1a4332', color: '#fff' }
       });
       // Update local state
+      const isUnvoiding = (editingOrder.status === "CANCELLED" || editingOrder.status === "REFUNDED") &&
+        (newStatus !== "CANCELLED" && newStatus !== "REFUNDED");
+      const activeCarrier = carrier || editingOrder.carrier || "";
+      const isJtCarrier = /j&t|jt/i.test(activeCarrier);
+      const keepParcelTracking = isJtCarrier && Boolean(trackingNumber) && (
+        trackingNumber.includes(",") ||
+        editingOrder.items?.some((item: any) => item.trackingNumber && item.trackingNumber !== trackingNumber) ||
+        (editingOrder.items?.some((item: any) => Boolean(item.trackingNumber)) &&
+          editingOrder.items?.some((item: any) => !item.trackingNumber && !["CANCELLED", "REFUNDED"].includes(item.status)))
+      );
       setOrders(prev => prev.map(o => {
         if (o.id === editingOrder.id) {
-          return { ...o, status: newStatus, trackingNumber, carrier };
+          return {
+            ...o,
+            status: newStatus,
+            ...(trackingNumber ? { trackingNumber } : {}),
+            ...(carrier ? { carrier } : {}),
+            items: o.items?.map((item: any) => {
+              if (!isUnvoiding && newStatus !== "CANCELLED" && newStatus !== "REFUNDED" && ["CANCELLED", "REFUNDED"].includes(item.status)) {
+                return item;
+              }
+              return {
+                ...item,
+                status: newStatus,
+                ...(!keepParcelTracking && trackingNumber ? { trackingNumber } : {}),
+                ...(carrier ? { carrier } : {}),
+              };
+            }),
+          };
         }
         return o;
       }));
@@ -222,6 +320,18 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
       });
     }
   };
+
+  const selectedBillCodes: string[] = (() => {
+    if (!selectedOrderDetails) return [];
+    const codes = (selectedOrderDetails.items || [])
+      .map((item: any) => item.trackingNumber)
+      .filter((code: unknown): code is string => typeof code === "string" && code.trim().length > 0);
+    return Array.from(new Set<string>(
+      codes.length
+        ? codes
+        : (selectedOrderDetails.trackingNumber || "").split(",").map((code: string) => code.trim()).filter(Boolean)
+    ));
+  })();
 
   return (
     <div className="space-y-12">
@@ -255,7 +365,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 w-full lg:w-auto">
-              {["ALL", "READY TO SHIP", "PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "REFUNDED", "CANCELLED"].map((status) => (
+              {["ALL", "READY TO SHIP", "PENDING", "PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "REFUNDED", "CANCELLED"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
@@ -268,7 +378,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                 >
                   <span>{status === "READY TO SHIP" ? dict.admin.ready_to_ship : status === "REFUNDED" ? (isAr ? "مسترجع" : "Refunded") : status}</span>
                   <span className="opacity-50 text-[9px]">
-                    ({status === "ALL" ? orders.length : status === "READY TO SHIP" ? orders.filter(o => ["PENDING", "PROCESSING"].includes(o.status) && (o.items?.length || 0) > 0 && o.items?.filter((i: any) => i.status === "PROCESSING" || i.status === "SHIPPED" || i.status === "DELIVERED").length === o.items?.length).length : orders.filter(o => o.status === status).length})
+                    ({status === "ALL" ? orders.length : status === "READY TO SHIP" ? orders.filter(o => ["PENDING", "PROCESSING"].includes(o.status) && (o.items?.length || 0) > 0 && o.items?.filter((i: any) => ["PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(i.status)).length === o.items?.length).length : orders.filter(o => o.status === status).length})
                   </span>
                 </button>
               ))}
@@ -313,7 +423,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
               filteredOrders.map((order: any) => {
                 const isVoided = order.status === "CANCELLED" || order.status === "REFUNDED";
                 const totalItems = order.items?.length || 0;
-                const prepared = order.items?.filter((i: any) => i.status === "PROCESSING" || i.status === "SHIPPED" || i.status === "DELIVERED").length || 0;
+                const prepared = order.items?.filter((i: any) => ["PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(i.status)).length || 0;
                 const isFullyPrepared = prepared === totalItems && totalItems > 0;
 
                 return (
@@ -329,7 +439,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                               {dict.checkout?.mark_as_gift || "GIFT"}
                             </span>
                           )}
-                          {order.refundRequests?.some((r: any) => r.status === "PENDING") && (
+                          {order.refundRequests?.some((r: any) => isOpenRefundClaimStatus(r.status)) && (
                             <Link 
                               href={`/${lang}/admin/refunds`}
                               className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-500 text-white rounded-full text-[8px] font-black uppercase animate-pulse"
@@ -350,16 +460,17 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                         order.status === "CANCELLED" ? "bg-red-50 text-red-600 border-red-200" :
                         order.status === "PROCESSING" ? "bg-purple-50 text-purple-600 border-purple-200" :
                         order.status === "SHIPPED" ? "bg-blue-50 text-blue-600 border-blue-200" :
+                        order.status === "OUT_FOR_DELIVERY" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
                         order.status === "REFUNDED" ? "bg-rose-50 text-rose-700 border-rose-200" :
                         "bg-green-50 text-green-700 border-green-200"
                       )}>
                         {order.status === "PENDING" && <Clock className="w-3 h-3" />}
                         {order.status === "PROCESSING" && <RefreshCw className="w-3 h-3 animate-spin" />}
                         {order.status === "CANCELLED" && <X className="w-3 h-3" />}
-                        {order.status === "SHIPPED" && <Truck className="w-3 h-3" />}
+                        {(order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY") && <Truck className="w-3 h-3" />}
                         {order.status === "REFUNDED" && <RotateCcw className="w-3 h-3" />}
                         {order.status === "DELIVERED" && <CheckCircle2 className="w-3 h-3" />}
-                        {order.status}
+                        {order.status.replace(/_/g, " ")}
                       </span>
                     </div>
 
@@ -516,7 +627,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                   <span className="text-[8px] font-black uppercase text-accent tracking-widest">{dict.checkout?.mark_as_gift || "GIFT"}</span>
                                 </div>
                               )}
-                              {order.refundRequests?.some((r: any) => r.status === "PENDING") && (
+                              {order.refundRequests?.some((r: any) => isOpenRefundClaimStatus(r.status)) && (
                                 <Link 
                                   href={`/${lang}/admin/refunds`}
                                   className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 bg-amber-500 text-white font-bold rounded-lg text-[9px] uppercase tracking-wider animate-pulse hover:bg-amber-600 transition-colors shadow-sm"
@@ -557,7 +668,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                               <div>
                                 {(() => {
                                   const totalItems = order.items?.length || 0;
-                                  const prepared = order.items?.filter((i: any) => i.status === "PROCESSING" || i.status === "SHIPPED" || i.status === "DELIVERED").length || 0;
+                                  const prepared = order.items?.filter((i: any) => ["PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(i.status)).length || 0;
                                   const isFullyPrepared = prepared === totalItems && totalItems > 0;
                                   return (
                                     <div className="space-y-1">
@@ -586,16 +697,17 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                               order.status === "CANCELLED" ? "bg-red-50 text-red-600 border-red-200" :
                               order.status === "PROCESSING" ? "bg-purple-50 text-purple-600 border-purple-200" :
                               order.status === "SHIPPED" ? "bg-blue-50 text-blue-600 border-blue-200" :
+                              order.status === "OUT_FOR_DELIVERY" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
                               order.status === "REFUNDED" ? "bg-rose-50 text-rose-700 border-rose-200" :
                               "bg-green-50 text-green-700 border-green-200"
                             )}>
                               {order.status === "PENDING" && <Clock className="w-3 h-3" />}
                               {order.status === "PROCESSING" && <RefreshCw className="w-3 h-3 animate-spin" />}
                               {order.status === "CANCELLED" && <X className="w-3 h-3" />}
-                              {order.status === "SHIPPED" && <Truck className="w-3 h-3" />}
+                              {(order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY") && <Truck className="w-3 h-3" />}
                               {order.status === "REFUNDED" && <RotateCcw className="w-3 h-3" />}
                               {order.status === "DELIVERED" && <CheckCircle2 className="w-3 h-3" />}
-                              {order.status}
+                              {order.status.replace(/_/g, " ")}
                             </span>
                           </td>
                           <td className="px-6 md:px-8 py-4 md:py-6 text-right">
@@ -758,14 +870,17 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
               <div className="space-y-6">
                 {/* Dynamic Fulfillment & Courier State Handler */}
                 {(() => {
-                  const activeBillCode = editingOrder.trackingNumber || trackingNumber;
+                  const itemBillCodes = Array.from(new Set((editingOrder.items || []).map((item: any) => item.trackingNumber).filter(Boolean))) as string[];
+                  const activeBillCodes = itemBillCodes.length ? itemBillCodes : (editingOrder.trackingNumber || trackingNumber || "").split(",").map((code: string) => code.trim()).filter(Boolean);
+                  const activeBillCode = activeBillCodes.join(", ");
+                  const hasUntrackedActiveItems = (editingOrder.items || []).some((item: any) => !["CANCELLED", "REFUNDED"].includes(item.status) && !item.trackingNumber);
                   const isJtDispatched = Boolean(
                     activeBillCode &&
                     (
-                      editingOrder.carrier === "J&T Express" ||
-                      carrier === "J&T Express" ||
+                      /j&t|jt/i.test(editingOrder.carrier || "") ||
+                      /j&t|jt/i.test(carrier || "") ||
                       activeBillCode.startsWith("JEG") ||
-                      editingOrder.status === "SHIPPED"
+                      ["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(editingOrder.status)
                     )
                   );
 
@@ -786,22 +901,22 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                             </div>
                             <span className={cn(
                               "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                              editingOrder.status === "DELIVERED"
+                              ["DELIVERED", "OUT_FOR_DELIVERY"].includes(editingOrder.status)
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-blue-100 text-blue-800"
                             )}>
-                              {editingOrder.status === "DELIVERED" ? "Delivered" : "In Transit / Dispatched"}
+                              {editingOrder.status === "DELIVERED" ? "Delivered" : editingOrder.status === "OUT_FOR_DELIVERY" ? "Out for delivery" : "In Transit / Dispatched"}
                             </span>
                           </div>
 
                           <div className="bg-white/90 border border-blue-100 rounded-2xl p-3.5 space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-black uppercase tracking-widest text-blue-500">Waybill Number (AWB)</span>
+                              <span className="text-[9px] font-black uppercase tracking-widest text-blue-500">Waybill Number{activeBillCodes.length > 1 ? "s" : ""} (AWB)</span>
                               <button
                                 type="button"
                                 onClick={() => {
                                   if (activeBillCode) {
-                                    navigator.clipboard.writeText(activeBillCode);
+                                    navigator.clipboard.writeText(activeBillCodes.join("\n"));
                                     setCopiedTracking(true);
                                     setTimeout(() => setCopiedTracking(false), 2000);
                                     toast.success("Waybill copied to clipboard!");
@@ -830,21 +945,24 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                               <span>{isJtSyncing ? "Syncing J&T..." : "Sync Live Status"}</span>
                             </button>
 
-                            <a
-                              href={`https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(activeBillCode)}`}
+                            {hasUntrackedActiveItems && <button type="button" onClick={() => handleJtShip(editingOrder.id)} disabled={isJtLoading} className="h-11 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><Truck className="w-3.5 h-3.5" /><span>{isJtLoading ? "Booking remaining parcels..." : "Complete remaining parcels"}</span></button>}
+                            <Link
+                              href={`/${lang}/track/${editingOrder.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="h-11 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
-                              <span>Track on J&amp;T Site</span>
-                            </a>
+                              <span>Open Live Tracker</span>
+                            </Link>
                           </div>
+
+                          {renderLiveJtScans(editingOrder.id)}
 
                           <button
                             type="button"
-                            onClick={() => handleJtCancel(editingOrder.id)}
-                            disabled={isJtLoading}
+                            onClick={() => setConfirmingJtCancelOrderId(editingOrder.id)}
+                            disabled={isJtLoading || ["DELIVERED", "OUT_FOR_DELIVERY"].includes(editingOrder.status)}
                             className="w-full h-11 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-xl transition-all text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
                           >
                             {isJtLoading ? (
@@ -855,7 +973,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                             ) : (
                               <>
                                 <XCircle className="w-3.5 h-3.5" />
-                                <span>Cancel J&amp;T Shipment &amp; Revert</span>
+                                <span>{["DELIVERED", "OUT_FOR_DELIVERY"].includes(editingOrder.status) ? "Cancellation unavailable at this stage" : "Cancel J&T Shipment & Revert"}</span>
                               </>
                             )}
                           </button>
@@ -902,7 +1020,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                         exit={{ opacity: 0, y: -10 }}
                                         className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-primary/5 shadow-2xl p-2 z-20 space-y-1"
                                       >
-                                        {["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"].map((s) => (
+                                        {["PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].map((s) => (
                                           <button
                                             key={s}
                                             type="button"
@@ -1079,7 +1197,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                       exit={{ opacity: 0, y: -10 }}
                                       className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl border border-primary/5 shadow-2xl p-2 z-20 space-y-1"
                                     >
-                                      {["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"].map((s) => (
+                                      {["PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "REFUNDED"].map((s) => (
                                         <button
                                           key={s}
                                           type="button"
@@ -1101,6 +1219,26 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                 )}
                               </AnimatePresence>
                             </div>
+
+                            {newStatus === "REFUNDED" && editingOrder.refundRequests?.some((r: any) => isOpenRefundClaimStatus(r.status)) && (
+                              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                  <p className="font-medium leading-relaxed">
+                                    {isAr
+                                      ? "هذا الطلب لديه مطالبة استرجاع مفتوحة. يجب إتمام الاسترداد من مركز النزاعات لتسجيل المرجع وتحديث المخزون بدقة."
+                                      : "This order has an open refund claim. Resolve it in Refunds & Claims so the ticket, reference, and restocking are tracked accurately."}
+                                  </p>
+                                </div>
+                                <Link
+                                  href={`/${lang}/admin/refunds`}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-[11px] font-bold hover:bg-amber-700 transition-colors"
+                                >
+                                  <span>{isAr ? "فتح مركز الاسترجاع" : "Open Refunds & Claims"}</span>
+                                  <ExternalLink className="w-3 h-3" />
+                                </Link>
+                              </div>
+                            )}
 
                             {newStatus === "SHIPPED" && (
                               <div className="space-y-3 pt-2">
@@ -1143,7 +1281,11 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                 </button>
                 <button
                   onClick={handleUpdateStatus}
-                  disabled={isUpdating}
+                  disabled={
+                    isUpdating ||
+                    (newStatus === "REFUNDED" &&
+                      Boolean(editingOrder.refundRequests?.some((r: any) => isOpenRefundClaimStatus(r.status))))
+                  }
                   className="flex-1 h-12 sm:h-14 bg-primary text-white font-bold rounded-2xl hover:bg-primary-light transition-all shadow-xl shadow-primary/20 text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isUpdating ? (
@@ -1216,9 +1358,12 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                   item.status === "PENDING" ? "bg-yellow-50 text-yellow-600 border-yellow-200" :
                                   item.status === "PROCESSING" ? "bg-purple-50 text-purple-600 border-purple-200" :
                                   item.status === "SHIPPED" ? "bg-blue-50 text-blue-600 border-blue-200" :
+                                  item.status === "OUT_FOR_DELIVERY" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                                  item.status === "CANCELLED" ? "bg-red-50 text-red-600 border-red-200" :
+                                  item.status === "REFUNDED" ? "bg-rose-50 text-rose-700 border-rose-200" :
                                   "bg-green-50 text-green-700 border-green-200"
                                 )}>
-                                  {item.status}
+                                  {item.status.replace(/_/g, " ")}
                                 </span>
                               </div>
                               {item.variant && (
@@ -1401,7 +1546,7 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                       </div>
                     </div>
                     
-                    {(selectedOrderDetails.status === "SHIPPED" || selectedOrderDetails.status === "DELIVERED") ? (
+                    {(["SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"].includes(selectedOrderDetails.status) || Boolean(selectedOrderDetails.trackingNumber && /j&t|jt/i.test(selectedOrderDetails.carrier || "")) || Boolean(selectedOrderDetails.items?.some((item: any) => item.trackingNumber && /j&t|jt/i.test(item.carrier || "")))) ? (
                       <div className="space-y-4">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/40">Fulfillment</h3>
                         <div className="bg-blue-50/50 border border-blue-100 p-4 sm:p-6 rounded-2xl space-y-3">
@@ -1410,20 +1555,21 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                               <Truck className="w-4 h-4" />
                               <span className="text-xs font-black uppercase tracking-widest">{selectedOrderDetails.carrier || "J&T Express"}</span>
                             </div>
-                            {selectedOrderDetails.trackingNumber && (
+                            {(selectedOrderDetails.trackingNumber || selectedBillCodes.length > 0) && (
                               <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[9px] font-black uppercase tracking-wider">
-                                {selectedOrderDetails.status}
+                                {selectedOrderDetails.status.replace(/_/g, " ")}
                               </span>
                             )}
                           </div>
                           <div>
                             <p className="text-[8px] font-black text-blue-400 uppercase tracking-widest mb-1">Tracking Number</p>
                             <p className="font-mono text-sm font-bold text-blue-900 tracking-wider break-all">
-                              {selectedOrderDetails.trackingNumber || "N/A"}
+                              {selectedOrderDetails.trackingNumber || selectedBillCodes.join(", ") || "N/A"}
                             </p>
                           </div>
-                          {selectedOrderDetails.trackingNumber && (
+                          {(selectedOrderDetails.trackingNumber || selectedBillCodes.length > 0) && (
                             <div className="pt-2 flex flex-wrap gap-2">
+                              {selectedOrderDetails.items?.some((item: any) => !["CANCELLED", "REFUNDED"].includes(item.status) && !item.trackingNumber) && <button type="button" onClick={() => handleJtShip(selectedOrderDetails.id)} disabled={isJtLoading} className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold disabled:opacity-50">{isJtLoading ? "Booking remaining parcels..." : "Complete remaining parcels"}</button>}
                               <button
                                 type="button"
                                 onClick={() => handleJtSync(selectedOrderDetails.id)}
@@ -1433,19 +1579,34 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                 <RefreshCw className={cn("w-3.5 h-3.5", isJtSyncing && "animate-spin text-blue-600")} />
                                 <span>{isJtSyncing ? "Syncing..." : "Sync Status"}</span>
                               </button>
-                              <a
-                                href={`https://www.jtexpress-eg.com/?billCode=${encodeURIComponent(selectedOrderDetails.trackingNumber)}`}
+                              <Link
+                                href={`/${lang}/track/${selectedOrderDetails.id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
-                                Live J&amp;T Express Tracking
-                              </a>
+                                <span>Open Live Tracker</span>
+                              </Link>
+                              {selectedBillCodes.map((billCode: string) => (
+                                <button
+                                  key={billCode}
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(billCode);
+                                    toast.success(`Copied ${billCode}`);
+                                  }}
+                                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-mono font-bold transition-all"
+                                  title="Copy waybill number"
+                                >
+                                  <Copy className="w-3.5 h-3.5 text-gray-500" />
+                                  <span>Copy {billCode}</span>
+                                </button>
+                              ))}
                               <button
                                 type="button"
-                                onClick={() => handleJtCancel(selectedOrderDetails.id)}
-                                disabled={isJtLoading}
+                                onClick={() => setConfirmingJtCancelOrderId(selectedOrderDetails.id)}
+                                disabled={isJtLoading || ["DELIVERED", "OUT_FOR_DELIVERY"].includes(selectedOrderDetails.status)}
                                 className="inline-flex items-center justify-center gap-1.5 w-full sm:w-auto px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
                               >
                                 {isJtLoading ? (
@@ -1453,10 +1614,11 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
                                 ) : (
                                   <XCircle className="w-3.5 h-3.5" />
                                 )}
-                                <span>Cancel J&amp;T Shipment</span>
+                                <span>Cancel J&T Shipment</span>
                               </button>
                             </div>
                           )}
+                          {renderLiveJtScans(selectedOrderDetails.id)}
                         </div>
                       </div>
                     ) : selectedOrderDetails.status === "PENDING" ? (
@@ -1625,6 +1787,18 @@ export function AdminOrdersClient({ orders: initialOrders, dict, lang }: AdminOr
           )}
         </div>
       )}
+      <ConfirmationModal
+        isOpen={Boolean(confirmingJtCancelOrderId)}
+        onClose={() => setConfirmingJtCancelOrderId(null)}
+        onConfirm={() => { if (confirmingJtCancelOrderId) void handleJtCancel(confirmingJtCancelOrderId); }}
+        title={isAr ? "إلغاء شحنة J&T؟" : "Cancel J&T shipment?"}
+        message={isAr
+          ? "سيطلب هذا إلغاء الشحنة من J&T، وإذا وافقت الشركة فستعود حالة الطلب إلى قيد التجهيز ويُحذف رقم التتبع من النظام. هذا الإجراء لا يسترجع طرداً تم تسليمه بالفعل للمندوب."
+          : "This asks J&T to cancel the courier shipment. If J&T accepts, the order returns to Processing and its tracking numbers are cleared in Giftisan. It will not retrieve a parcel already handed to the courier."}
+        confirmText={isAr ? "إلغاء شحنة J&T" : "Cancel J&T shipment"}
+        cancelText={isAr ? "الاحتفاظ بالشحنة" : "Keep shipment"}
+        isDestructive
+      />
     </div>
   );
 }

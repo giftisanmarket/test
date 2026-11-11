@@ -48,7 +48,17 @@ const createPrismaClient = () =>
     },
   });
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+const cachedPrisma = globalForPrisma.prisma;
+const hasLatestSchema = Boolean(
+  (cachedPrisma as any)?._runtimeDataModel?.models?.RefundRequest?.fields?.some(
+    (f: any) => f.name === "returnTrackingNumber"
+  )
+);
+
+export const prisma =
+  cachedPrisma && (process.env.NODE_ENV === "production" || hasLatestSchema)
+    ? cachedPrisma
+    : createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

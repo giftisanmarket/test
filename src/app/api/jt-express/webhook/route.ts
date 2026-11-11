@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { sendOrderStatusUpdateEmail } from "@/lib/mail";
+import { sendOrderStatusUpdateEmail, sendRefundResolvedEmail } from "@/lib/mail";
 import { revalidatePath } from "next/cache";
 import { safeCompareSecrets } from "@/lib/security";
 import {
   generateHeaderDigest,
   getJtTracking,
   isJtStatusDelivered,
+  isJtStatusOutForDelivery,
 } from "@/lib/jt-express";
 
 function isWebhookAuthorized(req: NextRequest, rawBizContent?: string): boolean {
@@ -112,52 +113,59 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const statusCandidates = [
+      data.scanType,
+      data.status,
+      data.state,
+      data.desc,
+      latestDetail.scanType,
+      latestDetail.status,
+      latestDetail.desc,
+    ];
     const isDelivered =
-      isJtStatusDelivered(rawStatus) ||
+      statusCandidates.some((val) => isJtStatusDelivered(val)) ||
       detailsList.some((d: any) =>
         isJtStatusDelivered(d.scanType || d.status || d.desc)
       );
 
-    const s = String(rawStatus || "").toLowerCase();
     const isOutForDelivery =
-      s.includes("dispatch") ||
-      s.includes("out for delivery") ||
-      s.includes("خرج للتوصيل") ||
-      s.includes("派件") ||
-      detailsList.some((d: any) => {
-        const ds = String(d.scanType || d.status || d.desc || "").toLowerCase();
-        return (
-          ds.includes("dispatch") ||
-          ds.includes("out for delivery") ||
-          ds.includes("خرج للتوصيل") ||
-          ds.includes("派件")
-        );
-      });
+      !isDelivered &&
+      (statusCandidates.some((val) => isJtStatusOutForDelivery(val)) ||
+        detailsList.some((d: any) =>
+          isJtStatusOutForDelivery(d.scanType || d.status || d.desc)
+        ));
 
     if (isDelivered) {
-      const baseOrderId = businessReference
-        ? String(businessReference).split("-")[0]
-        : undefined;
-      const updated = await markItemsAsDelivered(
-        trackingNumber ? String(trackingNumber) : undefined,
-        baseOrderId
-      );
-      if (updated) {
+      const [itemsUpdated, replacementUpdated, returnUpdated] = await Promise.all([
+        markItemsAsDelivered(
+          trackingNumber ? String(trackingNumber) : undefined,
+          businessReference ? String(businessReference) : undefined
+        ),
+        markReplacementAsDelivered(
+          trackingNumber ? String(trackingNumber) : undefined,
+          businessReference ? String(businessReference) : undefined
+        ),
+        markReturnAsDelivered(
+          trackingNumber ? String(trackingNumber) : undefined,
+          businessReference ? String(businessReference) : undefined
+        ),
+      ]);
+      if (itemsUpdated || replacementUpdated || returnUpdated) {
         return NextResponse.json({
           code: "1",
           msg: "success",
           success: true,
-          message:
-            "Order items updated to DELIVERED and escrow countdown initiated.",
+          message: replacementUpdated
+            ? "Replacement claim updated to REPLACEMENT_DELIVERED and escrow hold lifted."
+            : returnUpdated
+              ? "Return parcel marked delivered back to artisan workshop."
+              : "Order items updated to DELIVERED and escrow countdown initiated.",
         });
       }
     } else if (isOutForDelivery) {
-      const baseOrderId = businessReference
-        ? String(businessReference).split("-")[0]
-        : undefined;
       await markItemsAsOutForDelivery(
         trackingNumber ? String(trackingNumber) : undefined,
-        baseOrderId
+        businessReference ? String(businessReference) : undefined
       );
       return NextResponse.json({
         code: "1",
@@ -226,14 +234,36 @@ export async function GET(req: NextRequest) {
       );
 
     if (isDelivered) {
-      const updated = await markItemsAsDelivered(
+      const [itemsUpdated, replacementUpdated, returnUpdated] = await Promise.all([
+        markItemsAsDelivered(trackingId, orderId || undefined),
+        markReplacementAsDelivered(trackingId, orderId || undefined),
+        markReturnAsDelivered(trackingId, orderId || undefined),
+      ]);
+      if (itemsUpdated || replacementUpdated || returnUpdated) {
+        return NextResponse.json({
+          success: true,
+          status: replacementUpdated
+            ? "REPLACEMENT_DELIVERED"
+            : returnUpdated
+              ? "RETURN_RECEIVED"
+              : "DELIVERED",
+          synced: true,
+        });
+      }
+    } else if (
+      isJtStatusOutForDelivery(latestScan.scanType) ||
+      isJtStatusOutForDelivery(latestScan.status) ||
+      isJtStatusOutForDelivery(latestScan.desc) ||
+      isJtStatusOutForDelivery(traceData?.status)
+    ) {
+      const updated = await markItemsAsOutForDelivery(
         trackingId,
         orderId || undefined
       );
       if (updated) {
         return NextResponse.json({
           success: true,
-          status: "DELIVERED",
+          status: "OUT_FOR_DELIVERY",
           synced: true,
         });
       }
@@ -254,13 +284,135 @@ export async function GET(req: NextRequest) {
   }
 }
 
-async function markItemsAsDelivered(
+function revalidateOrderPaths() {
+  for (const locale of ["en", "ar"]) {
+    revalidatePath(`/${locale}/profile`);
+    revalidatePath(`/${locale}/studio`);
+    revalidatePath(`/${locale}/track`);
+    revalidatePath(`/${locale}/admin/orders`);
+    revalidatePath(`/${locale}/admin/refunds`);
+  }
+}
+
+async function markReplacementAsDelivered(
   trackingNumber?: string,
   businessReference?: string
 ) {
-  let matchingItems = trackingNumber
+  const cleanTracking = trackingNumber?.trim();
+  const cleanRef = businessReference?.trim();
+  if (!cleanTracking && !cleanRef) return false;
+
+  const orConditions: any[] = [];
+  if (cleanTracking) orConditions.push({ replacementTrackingNumber: cleanTracking });
+  if (cleanRef) orConditions.push({ replacementLogisticId: cleanRef });
+
+  const matchingClaims = await prisma.refundRequest.findMany({
+    where: {
+      OR: orConditions,
+      status: { in: ["REPLACEMENT_SHIPPED", "REPLACEMENT_APPROVED"] },
+    },
+    include: {
+      user: true,
+      order: { include: { user: true } },
+    },
+  });
+
+  if (matchingClaims.length === 0) return false;
+
+  for (const claim of matchingClaims) {
+    const transitioned = await prisma.$transaction(async (tx) => {
+      const res = await tx.refundRequest.updateMany({
+        where: { id: claim.id, status: claim.status },
+        data: {
+          status: "REPLACEMENT_DELIVERED",
+          replacementDeliveredAt: new Date(),
+        },
+      });
+      if (res.count === 0) return false;
+
+      await tx.refundRequestEvent.create({
+        data: {
+          refundRequestId: claim.id,
+          fromStatus: claim.status,
+          toStatus: "REPLACEMENT_DELIVERED",
+          note: `[Replacement delivered via J&T Express webhook${cleanTracking ? ` (${cleanTracking})` : ""}]`,
+        },
+      });
+      return true;
+    });
+
+    if (transitioned) {
+      const recipientEmail = claim.user?.email || claim.order?.clientEmail;
+      if (recipientEmail) {
+        sendRefundResolvedEmail({
+          email: recipientEmail,
+          customerName: claim.user?.name || claim.order?.user?.name || "Customer",
+          orderId: claim.orderId,
+          status: "REPLACEMENT_DELIVERED",
+          replacementTrackingNumber: cleanTracking || claim.replacementTrackingNumber || undefined,
+          replacementCarrier: claim.replacementCarrier || "J&T Express",
+          lang: "en",
+        }).catch(() => {});
+      }
+    }
+  }
+
+  revalidateOrderPaths();
+  return true;
+}
+
+async function markReturnAsDelivered(
+  trackingNumber?: string,
+  businessReference?: string
+) {
+  const cleanTracking = trackingNumber?.trim();
+  const cleanRef = businessReference?.trim();
+  if (!cleanTracking && !cleanRef) return false;
+
+  const orConditions: any[] = [];
+  if (cleanTracking) orConditions.push({ returnTrackingNumber: cleanTracking });
+  if (cleanRef) orConditions.push({ returnLogisticId: cleanRef });
+
+  const matchingClaims = await prisma.refundRequest.findMany({
+    where: {
+      OR: orConditions,
+      returnReceivedAt: null,
+    },
+  });
+
+  if (matchingClaims.length === 0) return false;
+
+  for (const claim of matchingClaims) {
+    await prisma.$transaction(async (tx) => {
+      const res = await tx.refundRequest.updateMany({
+        where: { id: claim.id, returnReceivedAt: null },
+        data: { returnReceivedAt: new Date() },
+      });
+      if (res.count === 0) return;
+
+      await tx.refundRequestEvent.create({
+        data: {
+          refundRequestId: claim.id,
+          fromStatus: claim.status,
+          toStatus: claim.status,
+          note: `[Return parcel delivered to artisan via J&T Express webhook${cleanTracking ? ` (${cleanTracking})` : ""}]`,
+        },
+      });
+    });
+  }
+
+  revalidateOrderPaths();
+  return true;
+}
+
+async function findMatchingOrderItems(
+  trackingNumber?: string,
+  businessReference?: string
+) {
+  const cleanTracking = trackingNumber?.trim();
+  let matchingItems = cleanTracking
     ? await prisma.orderItem.findMany({
-        where: { trackingNumber },
+        where: { trackingNumber: cleanTracking },
         include: {
           order: { include: { user: true } },
           product: true,
@@ -268,26 +420,65 @@ async function markItemsAsDelivered(
       })
     : [];
 
-  if (matchingItems.length === 0) {
-    const parentOrder = await prisma.order.findFirst({
-      where: {
-        OR: [
-          ...(trackingNumber ? [{ trackingNumber }] : []),
-          ...(businessReference ? [{ id: businessReference }] : []),
-        ],
-      },
+  if (matchingItems.length === 0 && businessReference) {
+    const reference = String(businessReference).trim();
+    let parentOrder = await prisma.order.findUnique({
+      where: { id: reference },
+      select: { id: true },
     });
+    let artisanSuffix: string | undefined;
+
+    if (!parentOrder && reference.includes("-")) {
+      const dashIndex = reference.lastIndexOf("-");
+      const baseOrderId = reference.slice(0, dashIndex);
+      const suffix = reference.slice(dashIndex + 1);
+      if (baseOrderId && suffix) {
+        parentOrder = await prisma.order.findUnique({
+          where: { id: baseOrderId },
+          select: { id: true },
+        });
+        artisanSuffix = suffix;
+      }
+    }
 
     if (parentOrder) {
       matchingItems = await prisma.orderItem.findMany({
-        where: { orderId: parentOrder.id },
-        include: {
-          order: { include: { user: true } },
-          product: true,
+        where: {
+          orderId: parentOrder.id,
+          ...(artisanSuffix ? { product: { artisanId: { endsWith: artisanSuffix } } } : {}),
+          ...(cleanTracking
+            ? { OR: [{ trackingNumber: null }, { trackingNumber: cleanTracking }] }
+            : {}),
         },
+        include: { order: { include: { user: true } }, product: true },
       });
     }
   }
+
+  if (matchingItems.length === 0 && cleanTracking) {
+    const legacyOrder = await prisma.order.findFirst({
+      where: { trackingNumber: cleanTracking },
+      select: { id: true },
+    });
+    if (legacyOrder) {
+      matchingItems = await prisma.orderItem.findMany({
+        where: {
+          orderId: legacyOrder.id,
+          OR: [{ trackingNumber: null }, { trackingNumber: cleanTracking }],
+        },
+        include: { order: { include: { user: true } }, product: true },
+      });
+    }
+  }
+
+  return matchingItems;
+}
+
+async function markItemsAsDelivered(
+  trackingNumber?: string,
+  businessReference?: string
+) {
+  const matchingItems = await findMatchingOrderItems(trackingNumber, businessReference);
 
   if (matchingItems.length === 0) {
     return false;
@@ -304,69 +495,80 @@ async function markItemsAsDelivered(
     return false;
   }
 
-  const orderId = undeliveredItems[0].orderId;
-  const affectedArtisanIds = new Set<string>();
+  const itemsByOrder = new Map<string, typeof undeliveredItems>();
+  for (const item of undeliveredItems) {
+    const list = itemsByOrder.get(item.orderId) || [];
+    list.push(item);
+    itemsByOrder.set(item.orderId, list);
+  }
 
   await prisma.$transaction(async (tx) => {
-    for (const item of undeliveredItems) {
-      await tx.orderItem.update({
-        where: { id: item.id },
-        data: { status: "DELIVERED" },
-      });
-      affectedArtisanIds.add(item.product.artisanId);
-    }
+    for (const [orderId, items] of itemsByOrder.entries()) {
+      const affectedArtisanIds = new Set<string>();
+      for (const item of items) {
+        await tx.orderItem.update({
+          where: { id: item.id },
+          data: { status: "DELIVERED", deliveredAt: item.deliveredAt || new Date() },
+        });
+        affectedArtisanIds.add(item.product.artisanId);
+      }
 
-    for (const artisanId of affectedArtisanIds) {
-      await tx.artisanTransaction.updateMany({
-        where: {
-          orderId,
-          artisanId,
-          type: "SALE",
-          status: "PENDING",
-        },
-        data: {
-          createdAt: new Date(),
-        },
-      });
-    }
+      for (const artisanId of affectedArtisanIds) {
+        await tx.artisanTransaction.updateMany({
+          where: {
+            orderId,
+            artisanId,
+            type: "SALE",
+            status: "PENDING",
+          },
+          data: {
+            createdAt: new Date(),
+          },
+        });
+      }
 
-    const allOrderItems = await tx.orderItem.findMany({
-      where: { orderId },
-      select: { status: true },
-    });
-    const allDelivered = allOrderItems.every((i) => i.status === "DELIVERED");
-    if (allDelivered) {
-      await tx.order.update({
-        where: { id: orderId },
-        data: { status: "DELIVERED" },
+      const allOrderItems = await tx.orderItem.findMany({
+        where: { orderId },
+        select: { status: true },
       });
+      const activeOrderItems = allOrderItems.filter(
+        (item) => !["CANCELLED", "REFUNDED"].includes(item.status)
+      );
+      const allDelivered =
+        activeOrderItems.length > 0 &&
+        activeOrderItems.every((i) => i.status === "DELIVERED");
+      if (allDelivered) {
+        await tx.order.update({
+          where: { id: orderId },
+          data: { status: "DELIVERED" },
+        });
+      }
     }
   });
 
-  const sampleItem = undeliveredItems[0];
-  const recipientEmail =
-    sampleItem.order.user?.email || sampleItem.order.clientEmail;
-  const recipientName = sampleItem.order.user?.name || "Customer";
+  for (const [orderId, items] of itemsByOrder.entries()) {
+    const sampleItem = items[0];
+    const recipientEmail =
+      sampleItem.order.user?.email || sampleItem.order.clientEmail;
+    const recipientName = sampleItem.order.user?.name || "Customer";
 
-  if (recipientEmail) {
-    sendOrderStatusUpdateEmail(
-      recipientEmail,
-      recipientName,
-      orderId,
-      "DELIVERED",
-      sampleItem.product.name,
-      sampleItem.product.slug || undefined,
-      trackingNumber || sampleItem.trackingNumber || undefined,
-      sampleItem.carrier || "J&T Express"
-    ).catch((err) =>
-      console.error("[J&T Express Automation] Failed to send delivery email:", err)
-    );
+    if (recipientEmail) {
+      sendOrderStatusUpdateEmail(
+        recipientEmail,
+        recipientName,
+        orderId,
+        "DELIVERED",
+        sampleItem.product.name,
+        sampleItem.product.slug || undefined,
+        trackingNumber || sampleItem.trackingNumber || undefined,
+        sampleItem.carrier || "J&T Express"
+      ).catch((err) =>
+        console.error("[J&T Express Automation] Failed to send delivery email:", err)
+      );
+    }
   }
 
-  revalidatePath("/en/profile");
-  revalidatePath("/ar/profile");
-  revalidatePath("/en/studio");
-  revalidatePath("/ar/studio");
+  revalidateOrderPaths();
   return true;
 }
 
@@ -374,35 +576,29 @@ async function markItemsAsOutForDelivery(
   trackingNumber?: string,
   businessReference?: string
 ) {
-  const parentOrder = await prisma.order.findFirst({
-    where: {
-      OR: [
-        ...(trackingNumber ? [{ trackingNumber: { contains: trackingNumber } }] : []),
-        ...(businessReference ? [{ id: businessReference }] : []),
-      ],
-    },
-  });
+  const matchingItems = await findMatchingOrderItems(trackingNumber, businessReference);
+  if (matchingItems.length === 0) return false;
 
-  if (!parentOrder || parentOrder.status === "DELIVERED") {
-    return false;
+  const orderIds = Array.from(new Set(matchingItems.map((item) => item.orderId)));
+  for (const item of matchingItems) {
+    await prisma.orderItem.updateMany({
+      where: { id: item.id, status: { notIn: ["DELIVERED", "CANCELLED", "REFUNDED"] } },
+      data: { status: "OUT_FOR_DELIVERY", ...(!item.shippedAt ? { shippedAt: new Date() } : {}) },
+    });
   }
 
-  await prisma.order.update({
-    where: { id: parentOrder.id },
-    data: { status: "OUT_FOR_DELIVERY" },
-  });
+  for (const orderId of orderIds) {
+    const statuses = await prisma.orderItem.findMany({ where: { orderId }, select: { status: true } });
+    const activeStatuses = statuses.filter((item) => !["CANCELLED", "REFUNDED"].includes(item.status));
+    if (
+      activeStatuses.some((item) => item.status === "OUT_FOR_DELIVERY") &&
+      !activeStatuses.every((item) => item.status === "DELIVERED")
+    ) {
+      await prisma.order.update({ where: { id: orderId }, data: { status: "OUT_FOR_DELIVERY" } });
+    }
+  }
 
-  await prisma.orderItem.updateMany({
-    where: {
-      orderId: parentOrder.id,
-      status: { notIn: ["DELIVERED", "CANCELLED", "REFUNDED"] },
-    },
-    data: { status: "OUT_FOR_DELIVERY" },
-  });
-
-  revalidatePath("/profile");
-  revalidatePath("/track");
-  revalidatePath("/admin/orders");
+  revalidateOrderPaths();
   return true;
 }
 

@@ -157,12 +157,12 @@ export function FloatingChatHub({ dict, lang }: { dict: any; lang: string }) {
 
     fetchInbox();
 
-    // Fast polling (every 8s) when the drawer is open to provide real-time updates
+    // Polling every 15s when the drawer is open and tab is visible
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         fetchInbox();
       }
-    }, 8000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [isChatOpen, session?.user?.id, isArtisan, isStudioPage]);

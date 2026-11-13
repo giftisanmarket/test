@@ -37,6 +37,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   };
 }
 
+export const revalidate = 60;
+
 export default async function ArtisansPage({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params;
   if (!hasLocale(lang)) notFound();

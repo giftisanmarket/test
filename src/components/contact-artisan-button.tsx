@@ -187,10 +187,12 @@ export function ContactArtisanButton({
     // Initial load with spinner
     fetchThreadMessages(true);
 
-    // Dynamic real-time polling every 5 seconds while drawer is active
+    // Dynamic real-time polling every 15 seconds while drawer is active and tab is visible
     const pollingInterval = setInterval(() => {
-      fetchThreadMessages(false);
-    }, 5000);
+      if (document.visibilityState === "visible") {
+        fetchThreadMessages(false);
+      }
+    }, 15000);
 
     return () => clearInterval(pollingInterval);
   }, [isOpen, session?.user?.id, artisanUserId]);

@@ -95,7 +95,6 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 }
 
 import { SessionProvider } from "next-auth/react";
-import { auth } from "@/auth";
 import { Toaster } from "react-hot-toast";
 import { NotificationProvider } from "@/components/notification-provider";
 import { NativeLifecycle } from "@/components/native-lifecycle";
@@ -116,7 +115,6 @@ export default async function RootLayout({
   params: Promise<{ lang: string }>;
 }) {
   const { lang } = await params;
-  const session = await auth();
   const dict = await getDictionary(lang as any);
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
 
@@ -267,7 +265,7 @@ export default async function RootLayout({
             }(window, document, 'ttq');
           `}
         </Script>
-        <SessionProvider session={session} key={session?.user?.id || "guest"}>
+        <SessionProvider refetchOnWindowFocus={false}>
           <NativeLifecycle />
           <OfflineBanner lang={lang} />
           <NotificationProvider lang={lang}>
